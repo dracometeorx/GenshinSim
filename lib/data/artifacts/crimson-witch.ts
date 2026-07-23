@@ -8,8 +8,7 @@ export const crimsonWitch: ArtifactSetPreset = {
     description: "获得 15% 火元素伤害加成。",
     modifiers: [
       {
-        kind: "stat",
-        stat: "elementalDmg",
+        kind: "damageBonus",
         value: 15,
         element: "pyro",
       },
@@ -18,7 +17,7 @@ export const crimsonWitch: ArtifactSetPreset = {
   fourPiece: {
     description:
       "施放元素战技后，二件套效果提高 50%，最多叠加 3 次；同时提高相关火元素反应伤害。",
-    panelNote: "当前计入火元素伤害；反应加成留待伤害公式。",
+    panelNote: "火伤与反应增幅仅用于最终技能伤害，不写入最终面板。",
     control: {
       key: "crimsonWitchStacks",
       label: "魔女套层数",
@@ -30,8 +29,7 @@ export const crimsonWitch: ArtifactSetPreset = {
           label: "1 层",
           modifiers: [
             {
-              kind: "stat",
-              stat: "elementalDmg",
+              kind: "damageBonus",
               value: 7.5,
               element: "pyro",
             },
@@ -42,8 +40,7 @@ export const crimsonWitch: ArtifactSetPreset = {
           label: "2 层",
           modifiers: [
             {
-              kind: "stat",
-              stat: "elementalDmg",
+              kind: "damageBonus",
               value: 15,
               element: "pyro",
             },
@@ -54,8 +51,7 @@ export const crimsonWitch: ArtifactSetPreset = {
           label: "3 层",
           modifiers: [
             {
-              kind: "stat",
-              stat: "elementalDmg",
+              kind: "damageBonus",
               value: 22.5,
               element: "pyro",
             },
