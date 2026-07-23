@@ -12,6 +12,14 @@ export type ElementKey =
   | "geo"
   | "dendro";
 
+export type WeaponType =
+  | "sword"
+  | "claymore"
+  | "polearm"
+  | "bow"
+  | "catalyst"
+  | "any";
+
 export type SecondaryStatKey =
   | "none"
   | "atkPct"
@@ -35,6 +43,7 @@ export interface CharacterBase {
 export interface WeaponBase {
   id?: string;
   name: string;
+  weaponType?: WeaponType;
   level: number;
   refinement: number;
   baseAtk: number;
@@ -120,6 +129,7 @@ function oneDecimal(value: number) {
  * 计算基础面板、当前武器自身的被动与圣遗物套装效果：
  * - 基础属性、角色突破属性、武器基础攻击/副属性、圣遗物合计值。
  * - 套装中的角色面板属性与分类伤害加成会参与结果计算。
+ * - 仅作用于最终伤害的套装增伤不会写入角色面板。
  * - 不包含敌人抗性、反应倍率、角色技能动态增益或队伍效果。
  */
 export function calculateFinalPanel(input: BuildInput): FinalPanel {
@@ -160,6 +170,9 @@ export function calculateFinalPanel(input: BuildInput): FinalPanel {
     input.artifactSetPieces,
     input.artifactSetSelections,
   )) {
+    if (modifier.kind === "damageBonus") {
+      continue;
+    }
     if (modifier.kind === "burstFromEnergyRecharge") {
       deferredArtifactModifiers.push(modifier);
       continue;
