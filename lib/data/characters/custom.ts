@@ -11,4 +11,6 @@ export const customCharacter: CharacterPreset = {
   ascensionValue: 0,
   ascensionLabel: "无突破属性",
   element: "anemo",
+  weaponType: "any",
+  defaultWeaponId: "custom",
 };
