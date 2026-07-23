@@ -85,6 +85,78 @@ test("calculates Hu Tao skill-enhanced charged attack reaction variants", () => 
   assert.equal(plain.crit, plain.nonCrit * 2);
 });
 
+test("uses separate normal, skill, and burst talent levels", () => {
+  const build: BuildInput = {
+    element: "pyro",
+    character: hutao,
+    weapon: {
+      name: "测试长柄武器",
+      level: 90,
+      refinement: 1,
+      baseAtk: 608,
+      secondaryStat: "none",
+      secondaryValue: 0,
+    },
+    artifact,
+    talentBonuses,
+  };
+  const baseSettings = {
+    ...defaultDamageSettings,
+    skillTalentLevel: 10,
+    selections: {
+      ...defaultDamageSettings.selections,
+      hutaoHpState: "above50",
+    },
+  };
+  const lowNormal = calculateRepresentativeDamage(
+    hutao,
+    build,
+    panel,
+    {
+      ...baseSettings,
+      normalTalentLevel: 1,
+      burstTalentLevel: 10,
+    },
+  );
+  const highNormal = calculateRepresentativeDamage(
+    hutao,
+    build,
+    panel,
+    {
+      ...baseSettings,
+      normalTalentLevel: 10,
+      burstTalentLevel: 10,
+    },
+  );
+  const lowBurst = calculateRepresentativeDamage(
+    hutao,
+    build,
+    panel,
+    {
+      ...baseSettings,
+      normalTalentLevel: 10,
+      burstTalentLevel: 1,
+    },
+  );
+
+  assert.ok(
+    highNormal.skills[0].variants[0].nonCrit >
+      lowNormal.skills[0].variants[0].nonCrit,
+  );
+  assert.equal(
+    highNormal.skills[1].variants[0].nonCrit,
+    lowNormal.skills[1].variants[0].nonCrit,
+  );
+  assert.ok(
+    highNormal.skills[1].variants[0].nonCrit >
+      lowBurst.skills[1].variants[0].nonCrit,
+  );
+  assert.equal(
+    highNormal.skills[0].variants[0].nonCrit,
+    lowBurst.skills[0].variants[0].nonCrit,
+  );
+});
+
 test("applies Crimson Witch stacks in the reaction bonus layer", () => {
   const baseBuild: BuildInput = {
     element: "pyro",
