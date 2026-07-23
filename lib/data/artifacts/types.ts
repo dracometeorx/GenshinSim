@@ -37,6 +37,11 @@ export type ArtifactModifier =
       category?: "skill" | "burst" | "normal" | "charged" | "plunge";
     }
   | {
+      kind: "reactionBonus";
+      value: number;
+      reactions: Array<"vaporize" | "melt">;
+    }
+  | {
       kind: "burstFromEnergyRecharge";
       ratio: number;
       max: number;

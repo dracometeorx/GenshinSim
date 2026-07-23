@@ -132,8 +132,14 @@ test("applies Blizzard Strayer damage and conditional CRIT Rate", () => {
   assert.equal(panel.critRate, 85);
 });
 
-test("keeps Crimson Witch damage-only bonuses out of the panel", () => {
-  const panel = calculateFinalPanel({
+test("adds Crimson Witch two-piece Pyro bonus to the panel only once", () => {
+  const twoPiecePanel = calculateFinalPanel({
+    ...build,
+    element: "pyro",
+    artifactSetId: "crimson-witch",
+    artifactSetPieces: 2,
+  });
+  const fourPiecePanel = calculateFinalPanel({
     ...build,
     element: "pyro",
     artifactSetId: "crimson-witch",
@@ -141,7 +147,8 @@ test("keeps Crimson Witch damage-only bonuses out of the panel", () => {
     artifactSetSelections: { crimsonWitchStacks: "3" },
   });
 
-  assert.equal(panel.elementalDmg, 46.6);
+  assert.equal(twoPiecePanel.elementalDmg, 61.6);
+  assert.equal(fourPiecePanel.elementalDmg, 61.6);
 });
 
 test("converts final Energy Recharge into Emblem burst damage", () => {

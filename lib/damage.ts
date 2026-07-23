@@ -352,11 +352,6 @@ export function calculateRepresentativeDamage(
   const resistanceMultiplier = calculateResistanceMultiplier(
     effectiveResistance,
   );
-  const reactionBonus =
-    build.artifactSetId === "crimson-witch" &&
-    build.artifactSetPieces === 4
-      ? 0.15
-      : 0;
   const artifactModifiers = getArtifactModifiers(
     build.artifactSetId,
     build.artifactSetPieces,
@@ -406,6 +401,14 @@ export function calculateRepresentativeDamage(
         let baseDamage = target.baseDamage;
         let reactionMultiplier = 1;
         if (reaction === "vaporize" || reaction === "melt") {
+          const reactionBonus = artifactModifiers.reduce(
+            (total, modifier) => {
+              if (modifier.kind !== "reactionBonus") return total;
+              if (!modifier.reactions.includes(reaction)) return total;
+              return total + Math.max(0, modifier.value) / 100;
+            },
+            0,
+          );
           reactionMultiplier = amplifyingReactionMultiplier(
             reaction,
             build.element,
