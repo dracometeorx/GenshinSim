@@ -9,4 +9,9 @@ export const dreams: WeaponPreset = {
   secondaryStat: "elementalMastery",
   secondaryValue: 265,
   secondaryLabel: "元素精通 +265",
+  passive: {
+    name: "千夜的曙歌",
+    description: "效果取决于队伍中其他角色的元素类型，本版暂不计入。",
+    teammateDependent: true,
+  },
 };

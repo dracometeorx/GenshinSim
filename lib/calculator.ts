@@ -1,3 +1,8 @@
+import {
+  getArtifactModifiers,
+  type ArtifactModifier,
+} from "./data/artifacts/index.ts";
+
 export type ElementKey =
   | "cryo"
   | "hydro"
@@ -28,6 +33,7 @@ export interface CharacterBase {
 }
 
 export interface WeaponBase {
+  id?: string;
   name: string;
   level: number;
   refinement: number;
@@ -60,6 +66,10 @@ export interface BuildInput {
   element: ElementKey;
   character: CharacterBase;
   weapon: WeaponBase;
+  weaponPassiveSelections?: Record<string, string>;
+  artifactSetId?: string;
+  artifactSetPieces?: 0 | 2 | 4;
+  artifactSetSelections?: Record<string, string>;
   artifact: ArtifactStats;
   talentBonuses: TalentBonuses;
 }
@@ -74,6 +84,7 @@ export interface FinalPanel {
   elementalMastery: number;
   elementalDmg: number;
   healingBonus: number;
+  talentBonuses: TalentBonuses;
 }
 
 type AccumulatedStats = {
@@ -84,6 +95,8 @@ type AccumulatedStats = {
   critDmg: number;
   energyRecharge: number;
   elementalMastery: number;
+  elementalDmg: number;
+  healingBonus: number;
 };
 
 function finite(value: number) {
@@ -104,12 +117,20 @@ function oneDecimal(value: number) {
 }
 
 /**
- * 第一版只计算静态面板：
+ * 计算基础面板、当前武器自身的被动与圣遗物套装效果：
  * - 基础属性、角色突破属性、武器基础攻击/副属性、圣遗物合计值。
- * - 不包含武器被动、套装效果、技能动态增益、敌人或队伍效果。
- * - 天赋分类伤害加成被保留在 BuildInput 中，供后续伤害公式使用。
+ * - 套装中的角色面板属性与分类伤害加成会参与结果计算。
+ * - 不包含敌人抗性、反应倍率、角色技能动态增益或队伍效果。
  */
 export function calculateFinalPanel(input: BuildInput): FinalPanel {
+  const passive = input.weaponPassiveSelections ?? {};
+  const talentBonuses: TalentBonuses = {
+    skill: finite(input.talentBonuses.skill),
+    burst: finite(input.talentBonuses.burst),
+    normal: finite(input.talentBonuses.normal),
+    charged: finite(input.talentBonuses.charged),
+    plunge: finite(input.talentBonuses.plunge),
+  };
   const totals: AccumulatedStats = {
     hpPct: 0,
     atkPct: 0,
@@ -118,6 +139,8 @@ export function calculateFinalPanel(input: BuildInput): FinalPanel {
     critDmg: 50 + finite(input.artifact.critDmg),
     energyRecharge: 100 + finite(input.artifact.energyRecharge),
     elementalMastery: finite(input.artifact.elementalMastery),
+    elementalDmg: finite(input.artifact.elementalDmg),
+    healingBonus: finite(input.artifact.healingBonus),
   };
 
   addSecondary(
@@ -131,17 +154,82 @@ export function calculateFinalPanel(input: BuildInput): FinalPanel {
     input.weapon.secondaryValue,
   );
 
+  const deferredArtifactModifiers: ArtifactModifier[] = [];
+  for (const modifier of getArtifactModifiers(
+    input.artifactSetId,
+    input.artifactSetPieces,
+    input.artifactSetSelections,
+  )) {
+    if (modifier.kind === "burstFromEnergyRecharge") {
+      deferredArtifactModifiers.push(modifier);
+      continue;
+    }
+    if (modifier.element && modifier.element !== input.element) continue;
+    if (
+      modifier.stat === "skill" ||
+      modifier.stat === "burst" ||
+      modifier.stat === "normal" ||
+      modifier.stat === "charged" ||
+      modifier.stat === "plunge"
+    ) {
+      talentBonuses[modifier.stat] += finite(modifier.value);
+      continue;
+    }
+    totals[modifier.stat] += finite(modifier.value);
+  }
+
   const baseHp = finite(input.character.baseHp);
   const baseAtk =
     finite(input.character.baseAtk) + finite(input.weapon.baseAtk);
   const baseDef = finite(input.character.baseDef);
+  let flatAtkFromWeapon = 0;
+
+  switch (input.weapon.id) {
+    case "mistsplitter": {
+      const stacks = Math.min(
+        3,
+        Math.max(0, Number(passive.mistsplitterStacks) || 0),
+      );
+      totals.elementalDmg += 12 + [0, 8, 16, 28][stacks];
+      break;
+    }
+    case "homa": {
+      totals.hpPct += 20;
+      const passiveHp =
+        baseHp * (1 + totals.hpPct / 100) + finite(input.artifact.flatHp);
+      const lowHpBonus = passive.homaHpState === "below50" ? 1 : 0;
+      flatAtkFromWeapon += passiveHp * ((0.8 + lowHpBonus) / 100);
+      break;
+    }
+    case "engulfing": {
+      if (passive.engulfingBurst === "active") {
+        totals.energyRecharge += 30;
+      }
+      totals.atkPct += Math.min(
+        80,
+        Math.max(0, totals.energyRecharge - 100) * 0.28,
+      );
+      break;
+    }
+  }
+
+  for (const modifier of deferredArtifactModifiers) {
+    if (modifier.kind === "burstFromEnergyRecharge") {
+      talentBonuses.burst += Math.min(
+        finite(modifier.max),
+        totals.energyRecharge * finite(modifier.ratio),
+      );
+    }
+  }
 
   return {
     hp: Math.round(
       baseHp * (1 + totals.hpPct / 100) + finite(input.artifact.flatHp),
     ),
     atk: Math.round(
-      baseAtk * (1 + totals.atkPct / 100) + finite(input.artifact.flatAtk),
+      baseAtk * (1 + totals.atkPct / 100) +
+        finite(input.artifact.flatAtk) +
+        flatAtkFromWeapon,
     ),
     def: Math.round(
       baseDef * (1 + totals.defPct / 100) + finite(input.artifact.flatDef),
@@ -150,7 +238,14 @@ export function calculateFinalPanel(input: BuildInput): FinalPanel {
     critDmg: oneDecimal(totals.critDmg),
     energyRecharge: oneDecimal(totals.energyRecharge),
     elementalMastery: Math.round(totals.elementalMastery),
-    elementalDmg: oneDecimal(finite(input.artifact.elementalDmg)),
-    healingBonus: oneDecimal(finite(input.artifact.healingBonus)),
+    elementalDmg: oneDecimal(totals.elementalDmg),
+    healingBonus: oneDecimal(totals.healingBonus),
+    talentBonuses: {
+      skill: oneDecimal(talentBonuses.skill),
+      burst: oneDecimal(talentBonuses.burst),
+      normal: oneDecimal(talentBonuses.normal),
+      charged: oneDecimal(talentBonuses.charged),
+      plunge: oneDecimal(talentBonuses.plunge),
+    },
   };
 }
