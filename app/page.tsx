@@ -20,7 +20,6 @@ import {
   BuildInput,
   ElementKey,
   FinalPanel,
-  SecondaryStatKey,
   calculateFinalPanel,
 } from "../lib/calculator";
 import {
@@ -100,17 +99,6 @@ const talentTabs: Array<{
   { key: "plunge", label: "下落攻击", icon: "↓" },
 ];
 
-const secondaryOptions: Array<{ value: SecondaryStatKey; label: string }> = [
-  { value: "none", label: "无" },
-  { value: "atkPct", label: "攻击力 %" },
-  { value: "hpPct", label: "生命值 %" },
-  { value: "defPct", label: "防御力 %" },
-  { value: "critRate", label: "暴击率 %" },
-  { value: "critDmg", label: "暴击伤害 %" },
-  { value: "energyRecharge", label: "元素充能效率 %" },
-  { value: "elementalMastery", label: "元素精通" },
-];
-
 function NumberField({
   label,
   value,
@@ -134,9 +122,7 @@ function NumberField({
       <span className="number-wrap">
         <input
           inputMode="decimal"
-          min="0"
-          step="0.1"
-          type="number"
+          type="text"
           value={value}
           onChange={(event) => onChange(Math.max(0, Number(event.target.value) || 0))}
         />
@@ -153,8 +139,9 @@ function formatNumber(value: number, digits = 0) {
   });
 }
 
-const storageKey = "genshin-panel-build-v5";
+const storageKey = "genshin-panel-build-v6";
 const previousStorageKeys = [
+  "genshin-panel-build-v5",
   "genshin-panel-build-v4",
   "genshin-panel-build-v3",
   "genshin-panel-build-v2",
@@ -167,6 +154,10 @@ type LegacyBuildInput = Omit<BuildInput, "artifact"> & {
     atkPct?: number;
     defPct?: number;
   };
+};
+
+type PersistedDamageSettings = Partial<DamageSettings> & {
+  talentLevel?: number;
 };
 
 function migrateLegacyBuild(legacy: LegacyBuildInput): BuildInput {
@@ -240,7 +231,6 @@ export default function Home() {
   const [weaponId, setWeaponId] = useState("mistsplitter");
   const [activeTalent, setActiveTalent] =
     useState<keyof BuildInput["talentBonuses"]>("skill");
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [artifactOpen, setArtifactOpen] = useState(true);
   const [helpOpen, setHelpOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -261,14 +251,35 @@ export default function Home() {
             build: BuildInput | LegacyBuildInput;
             characterId: string;
             weaponId: string;
-            damageSettings?: Partial<DamageSettings>;
+            damageSettings?: PersistedDamageSettings;
           };
           const restoredBuild = sourceKey === "genshin-panel-build-v1"
             ? migrateLegacyBuild(parsed.build as LegacyBuildInput)
             : (parsed.build as BuildInput);
+          const legacyTalentLevel = Math.min(
+            10,
+            Math.max(
+              1,
+              Number(parsed.damageSettings?.talentLevel) ||
+                defaultDamageSettings.normalTalentLevel,
+            ),
+          );
           const restoredDamageSettings: DamageSettings = {
-            ...defaultDamageSettings,
-            ...parsed.damageSettings,
+            enemyLevel:
+              parsed.damageSettings?.enemyLevel ??
+              defaultDamageSettings.enemyLevel,
+            enemyResistance:
+              parsed.damageSettings?.enemyResistance ??
+              defaultDamageSettings.enemyResistance,
+            normalTalentLevel:
+              parsed.damageSettings?.normalTalentLevel ??
+              legacyTalentLevel,
+            skillTalentLevel:
+              parsed.damageSettings?.skillTalentLevel ??
+              legacyTalentLevel,
+            burstTalentLevel:
+              parsed.damageSettings?.burstTalentLevel ??
+              legacyTalentLevel,
             selections: {
               ...defaultDamageSettings.selections,
               ...parsed.damageSettings?.selections,
@@ -953,9 +964,7 @@ export default function Home() {
                   <input
                     aria-label="额外伤害加成"
                     inputMode="decimal"
-                    min="0"
-                    step="0.1"
-                    type="number"
+                    type="text"
                     value={build.talentBonuses[activeTalent]}
                     onChange={(event) =>
                       setBuild((current) => ({
@@ -973,120 +982,6 @@ export default function Home() {
                   <span>%</span>
                 </div>
               </div>
-            </article>
-
-            <article className="panel advanced-panel">
-              <button
-                className="panel-heading compact"
-                onClick={() => setAdvancedOpen((value) => !value)}
-                aria-expanded={advancedOpen}
-              >
-                <span>
-                  <strong>自定义基础参数</strong>
-                  <small>用于录入暂未收录的角色与武器</small>
-                </span>
-                <span className={advancedOpen ? "chevron open" : "chevron"}>
-                  ⌄
-                </span>
-              </button>
-              {advancedOpen ? (
-                <div className="advanced-content">
-                  <div className="advanced-group">
-                    <h3>角色基础属性</h3>
-                    <div className="mini-grid">
-                      <NumberField
-                        label="基础生命"
-                        value={build.character.baseHp}
-                        onChange={(value) =>
-                          setBuild((current) => ({
-                            ...current,
-                            character: {
-                              ...current.character,
-                              baseHp: value,
-                            },
-                          }))
-                        }
-                      />
-                      <NumberField
-                        label="基础攻击"
-                        value={build.character.baseAtk}
-                        onChange={(value) =>
-                          setBuild((current) => ({
-                            ...current,
-                            character: {
-                              ...current.character,
-                              baseAtk: value,
-                            },
-                          }))
-                        }
-                      />
-                      <NumberField
-                        label="基础防御"
-                        value={build.character.baseDef}
-                        onChange={(value) =>
-                          setBuild((current) => ({
-                            ...current,
-                            character: {
-                              ...current.character,
-                              baseDef: value,
-                            },
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="advanced-group">
-                    <h3>武器基础属性</h3>
-                    <div className="custom-weapon-row">
-                      <NumberField
-                        label="武器基础攻击"
-                        value={build.weapon.baseAtk}
-                        onChange={(value) =>
-                          setBuild((current) => ({
-                            ...current,
-                            weapon: { ...current.weapon, baseAtk: value },
-                          }))
-                        }
-                      />
-                      <label className="select-field">
-                        <span>武器副属性</span>
-                        <select
-                          value={build.weapon.secondaryStat}
-                          onChange={(event) =>
-                            setBuild((current) => ({
-                              ...current,
-                              weapon: {
-                                ...current.weapon,
-                                secondaryStat: event.target
-                                  .value as SecondaryStatKey,
-                              },
-                            }))
-                          }
-                        >
-                          {secondaryOptions.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <NumberField
-                        label="副属性数值"
-                        value={build.weapon.secondaryValue}
-                        onChange={(value) =>
-                          setBuild((current) => ({
-                            ...current,
-                            weapon: {
-                              ...current.weapon,
-                              secondaryValue: value,
-                            },
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
-                </div>
-              ) : null}
             </article>
 
             <button className="calculate-button" onClick={calculate}>
@@ -1193,105 +1088,142 @@ export default function Home() {
                   <strong>代表技能伤害</strong>
                   <small>单目标 · 含防御、抗性与元素反应</small>
                 </span>
-                <span className="damage-badge">Lv.{damageSettings.talentLevel}</span>
+                <span className="damage-badge">天赋独立设置</span>
               </div>
 
               <div className="damage-settings">
-                <label>
-                  <span>
-                    {selectedCharacter?.damageProfile?.talentLabel ??
-                      "天赋等级"}
-                  </span>
-                  <select
-                    aria-label="选择天赋等级"
-                    value={damageSettings.talentLevel}
-                    onChange={(event) =>
-                      setDamageSettings((current) => ({
-                        ...current,
-                        talentLevel: Number(event.target.value),
-                      }))
-                    }
-                  >
-                    {Array.from({ length: 10 }, (_, index) => index + 1).map(
-                      (level) => (
-                        <option key={level} value={level}>
-                          {level} 级
-                        </option>
-                      ),
-                    )}
-                  </select>
-                </label>
-                <label>
-                  <span>敌人等级</span>
-                  <input
-                    aria-label="敌人等级"
-                    inputMode="numeric"
-                    min="1"
-                    max="200"
-                    type="number"
-                    value={damageSettings.enemyLevel}
-                    onChange={(event) =>
-                      setDamageSettings((current) => ({
-                        ...current,
-                        enemyLevel: Math.min(
-                          200,
-                          Math.max(1, Number(event.target.value) || 1),
+                <section className="damage-setting-group character-settings">
+                  <header>
+                    <strong>角色状态</strong>
+                    <small>天赋等级与角色自身条件</small>
+                  </header>
+                  <div className="talent-level-settings">
+                    {[
+                      {
+                        key: "normalTalentLevel" as const,
+                        label: "普攻等级",
+                      },
+                      {
+                        key: "skillTalentLevel" as const,
+                        label: "战技等级",
+                      },
+                      {
+                        key: "burstTalentLevel" as const,
+                        label: "爆发等级",
+                      },
+                    ].map((talent) => (
+                      <label key={talent.key}>
+                        <span>{talent.label}</span>
+                        <select
+                          aria-label={talent.label}
+                          value={damageSettings[talent.key]}
+                          onChange={(event) =>
+                            setDamageSettings((current) => ({
+                              ...current,
+                              [talent.key]: Number(event.target.value),
+                            }))
+                          }
+                        >
+                          {Array.from(
+                            { length: 10 },
+                            (_, index) => index + 1,
+                          ).map((level) => (
+                            <option key={level} value={level}>
+                              {level} 级
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ))}
+                  </div>
+                  {selectedCharacter?.damageProfile?.controls.length ? (
+                    <div className="character-condition-settings">
+                      {selectedCharacter.damageProfile.controls.map(
+                        (control) => (
+                          <label key={control.key}>
+                            <span>{control.label}</span>
+                            <select
+                              aria-label={control.label}
+                              value={
+                                damageSettings.selections[control.key] ??
+                                control.defaultValue
+                              }
+                              onChange={(event) =>
+                                updateDamageSelection(
+                                  control.key,
+                                  event.target.value,
+                                )
+                              }
+                            >
+                              {control.options.map((option) => (
+                                <option
+                                  key={option.value}
+                                  value={option.value}
+                                >
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
                         ),
-                      }))
-                    }
-                  />
-                </label>
-                <label>
-                  <span>元素抗性</span>
-                  <span className="compact-number">
-                    <input
-                      aria-label="敌人元素抗性"
-                      inputMode="decimal"
-                      min="-100"
-                      max="1000"
-                      step="0.1"
-                      type="number"
-                      value={damageSettings.enemyResistance}
-                      onChange={(event) =>
-                        setDamageSettings((current) => ({
-                          ...current,
-                          enemyResistance: Math.min(
-                            1000,
-                            Math.max(
-                              -100,
-                              Number(event.target.value) || 0,
+                      )}
+                    </div>
+                  ) : null}
+                </section>
+
+                <section className="damage-setting-group enemy-settings">
+                  <header>
+                    <strong>敌人设置</strong>
+                    <small>独立参与防御与抗性计算</small>
+                  </header>
+                  <div className="enemy-setting-fields">
+                    <label>
+                      <span>敌人等级</span>
+                      <input
+                        aria-label="敌人等级"
+                        inputMode="numeric"
+                        type="text"
+                        value={damageSettings.enemyLevel}
+                        onChange={(event) =>
+                          setDamageSettings((current) => ({
+                            ...current,
+                            enemyLevel: Math.min(
+                              200,
+                              Math.max(
+                                1,
+                                Number(event.target.value) || 1,
+                              ),
                             ),
-                          ),
-                        }))
-                      }
-                    />
-                    <i>%</i>
-                  </span>
-                </label>
-                {selectedCharacter?.damageProfile?.controls.map((control) => (
-                  <label key={control.key}>
-                    <span>{control.label}</span>
-                    <select
-                      aria-label={control.label}
-                      value={
-                        damageSettings.selections[control.key] ??
-                        control.defaultValue
-                      }
-                      onChange={(event) =>
-                        updateDamageSelection(
-                          control.key,
-                          event.target.value,
-                        )
-                      }
-                    >
-                      {control.options.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ))}
+                          }))
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>元素抗性</span>
+                      <span className="compact-number">
+                        <input
+                          aria-label="敌人元素抗性"
+                          inputMode="decimal"
+                          type="text"
+                          value={damageSettings.enemyResistance}
+                          onChange={(event) =>
+                            setDamageSettings((current) => ({
+                              ...current,
+                              enemyResistance: Math.min(
+                                1000,
+                                Math.max(
+                                  -100,
+                                  Number(event.target.value) || 0,
+                                ),
+                              ),
+                            }))
+                          }
+                        />
+                        <i>%</i>
+                      </span>
+                    </label>
+                  </div>
+                </section>
               </div>
 
               {damageResult?.skills.length ? (
@@ -1325,9 +1257,9 @@ export default function Home() {
                             <strong role="cell">
                               {formatNumber(variant.crit)}
                             </strong>
-                            <span role="cell">
+                            <strong className="damage-expected" role="cell">
                               {formatNumber(variant.expected)}
-                            </span>
+                            </strong>
                           </div>
                         ))}
                       </div>
