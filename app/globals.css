@@ -339,6 +339,68 @@ a:focus-visible {
   white-space: nowrap;
 }
 
+.weapon-passive {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e8eef5;
+  grid-column: 1 / -1;
+}
+
+.weapon-passive-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.weapon-passive-copy strong {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.weapon-passive-copy small {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.passive-select {
+  display: grid;
+  flex: 0 0 118px;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.passive-select select {
+  min-height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fbff;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.passive-badge {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #eefaf6;
+  color: #188061;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.passive-badge.excluded {
+  background: #f2f5f8;
+  color: var(--muted);
+}
+
 .selection-main p span {
   padding: 0 5px;
   color: var(--line-strong);
@@ -386,10 +448,101 @@ a:focus-visible {
   transform: rotate(180deg);
 }
 
+.artifact-content {
+  padding: 2px 20px 20px;
+}
+
+.artifact-set-picker {
+  overflow: hidden;
+  margin-bottom: 18px;
+  border: 1px solid #dfe9f5;
+  border-radius: 12px;
+  background: #f9fbfe;
+}
+
+.artifact-set-controls {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  grid-template-columns: minmax(0, 1fr) 132px;
+}
+
+.artifact-set-field {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.artifact-set-field select {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: white;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.artifact-set-field select:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.artifact-set-effect {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border-top: 1px solid #e3ebf5;
+  background: white;
+}
+
+.artifact-set-copy {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.artifact-set-copy strong {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.artifact-set-copy small {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.artifact-set-copy em {
+  color: #7a6b35;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 750;
+}
+
+.artifact-condition {
+  flex-basis: 132px;
+}
+
+.artifact-set-empty {
+  padding: 12px 14px;
+  border-top: 1px solid #e3ebf5;
+  background: white;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 650;
+}
+
 .artifact-grid {
   display: grid;
   gap: 11px 22px;
-  padding: 2px 20px 20px;
   grid-template-columns: 1fr 1fr;
 }
 
@@ -1054,6 +1207,24 @@ a:focus-visible {
     min-height: 108px;
   }
 
+  .weapon-passive {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .artifact-set-controls {
+    grid-template-columns: minmax(0, 1fr) 112px;
+  }
+
+  .artifact-set-effect {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .passive-select {
+    flex-basis: auto;
+  }
+
   .artifact-grid {
     gap: 11px;
     grid-template-columns: 1fr;
@@ -1069,7 +1240,7 @@ a:focus-visible {
     padding-left: 14px;
   }
 
-  .artifact-grid,
+  .artifact-content,
   .advanced-content {
     padding-right: 14px;
     padding-left: 14px;

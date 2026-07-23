@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import {
+  artifactSets,
+  getArtifactSet,
+} from "../lib/data/artifacts";
 import { characters } from "../lib/data/characters";
 import { weapons } from "../lib/data/weapons";
 import {
@@ -25,6 +29,14 @@ const defaultBuild: BuildInput = {
   element: "cryo",
   character: characters[0],
   weapon: weapons[0],
+  weaponPassiveSelections: {
+    mistsplitterStacks: "0",
+  },
+  artifactSetId: "blizzard-strayer",
+  artifactSetPieces: 4,
+  artifactSetSelections: {
+    blizzardEnemyState: "frozen",
+  },
   artifact: {
     flatHp: 9615,
     flatAtk: 1110,
@@ -127,7 +139,8 @@ function formatNumber(value: number, digits = 0) {
   });
 }
 
-const storageKey = "genshin-panel-build-v2";
+const storageKey = "genshin-panel-build-v3";
+const previousStorageKey = "genshin-panel-build-v2";
 const legacyStorageKey = "genshin-panel-build-v1";
 
 type LegacyBuildInput = Omit<BuildInput, "artifact"> & {
@@ -189,10 +202,13 @@ export default function Home() {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const saved = window.localStorage.getItem(storageKey);
-      const legacySaved = saved
+      const previousSaved = saved
+        ? null
+        : window.localStorage.getItem(previousStorageKey);
+      const legacySaved = saved || previousSaved
         ? null
         : window.localStorage.getItem(legacyStorageKey);
-      const persisted = saved ?? legacySaved;
+      const persisted = saved ?? previousSaved ?? legacySaved;
       if (persisted) {
         try {
           const parsed = JSON.parse(persisted) as {
@@ -203,16 +219,25 @@ export default function Home() {
           const restoredBuild = legacySaved
             ? migrateLegacyBuild(parsed.build as LegacyBuildInput)
             : (parsed.build as BuildInput);
-          setBuild(restoredBuild);
-          setPanel(calculateFinalPanel(restoredBuild));
+          const normalizedBuild: BuildInput = {
+            ...restoredBuild,
+            artifactSetId: restoredBuild.artifactSetId ?? "none",
+            artifactSetPieces: restoredBuild.artifactSetPieces ?? 0,
+            artifactSetSelections:
+              restoredBuild.artifactSetSelections ?? {},
+          };
+          setBuild(normalizedBuild);
+          setPanel(calculateFinalPanel(normalizedBuild));
           setCharacterId(parsed.characterId);
           setWeaponId(parsed.weaponId);
-          setUpdatedAt(legacySaved ? "已迁移旧版数据" : "已恢复");
-          if (legacySaved) {
+          setUpdatedAt(saved ? "已恢复" : "已迁移旧版数据");
+          if (!saved) {
+            window.localStorage.removeItem(previousStorageKey);
             window.localStorage.removeItem(legacyStorageKey);
           }
         } catch {
           window.localStorage.removeItem(storageKey);
+          window.localStorage.removeItem(previousStorageKey);
           window.localStorage.removeItem(legacyStorageKey);
         }
       }
@@ -233,6 +258,10 @@ export default function Home() {
     () => elements.find((element) => element.key === build.element) ?? elements[0],
     [build.element],
   );
+  const selectedArtifactSet = useMemo(
+    () => getArtifactSet(build.artifactSetId),
+    [build.artifactSetId],
+  );
 
   function chooseCharacter(id: string) {
     const character = characters.find((item) => item.id === id);
@@ -249,7 +278,57 @@ export default function Home() {
     const weapon = weapons.find((item) => item.id === id);
     if (!weapon) return;
     setWeaponId(id);
-    setBuild((current) => ({ ...current, weapon }));
+    setBuild((current) => ({
+      ...current,
+      weapon,
+      weaponPassiveSelections: weapon.passive.control
+        ? {
+            [weapon.passive.control.key]:
+              weapon.passive.control.defaultValue,
+          }
+        : {},
+    }));
+  }
+
+  function updateWeaponPassive(key: string, value: string) {
+    setBuild((current) => ({
+      ...current,
+      weaponPassiveSelections: {
+        ...current.weaponPassiveSelections,
+        [key]: value,
+      },
+    }));
+  }
+
+  function chooseArtifactSet(id: string) {
+    const artifactSet = getArtifactSet(id);
+    const control = artifactSet.fourPiece.control;
+    setBuild((current) => ({
+      ...current,
+      artifactSetId: artifactSet.id,
+      artifactSetPieces: artifactSet.id === "none" ? 0 : 4,
+      artifactSetSelections: control
+        ? { [control.key]: control.defaultValue }
+        : {},
+    }));
+  }
+
+  function updateArtifactSetPieces(value: string) {
+    const pieces = Number(value) as 0 | 2 | 4;
+    setBuild((current) => ({
+      ...current,
+      artifactSetPieces: pieces,
+    }));
+  }
+
+  function updateArtifactSetEffect(key: string, value: string) {
+    setBuild((current) => ({
+      ...current,
+      artifactSetSelections: {
+        ...current.artifactSetSelections,
+        [key]: value,
+      },
+    }));
   }
 
   function updateArtifact(
@@ -284,6 +363,7 @@ export default function Home() {
     setWeaponId("mistsplitter");
     setUpdatedAt("已重置");
     window.localStorage.removeItem(storageKey);
+    window.localStorage.removeItem(previousStorageKey);
     window.localStorage.removeItem(legacyStorageKey);
   }
 
@@ -291,6 +371,10 @@ export default function Home() {
     const payload = {
       角色: `${build.character.name} Lv.${build.character.level}`,
       武器: `${build.weapon.name} Lv.${build.weapon.level}`,
+      圣遗物套装:
+        build.artifactSetPieces && build.artifactSetPieces > 0
+          ? `${selectedArtifactSet.name} ${build.artifactSetPieces} 件套`
+          : "无套装效果",
       生命值: panel.hp,
       攻击力: panel.atk,
       防御力: panel.def,
@@ -299,7 +383,7 @@ export default function Home() {
       元素充能效率: `${panel.energyRecharge}%`,
       元素精通: panel.elementalMastery,
       [`${activeElement.label}伤害加成`]: `${panel.elementalDmg}%`,
-      额外伤害加成: build.talentBonuses,
+      额外伤害加成: panel.talentBonuses,
     };
     await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
     setCopied(true);
@@ -327,7 +411,7 @@ export default function Home() {
           <span className="brand-mark">✦</span>
           <span>
             <strong>原神伤害计算器</strong>
-            <small>面板模拟 · v0.2</small>
+            <small>面板模拟 · v0.3</small>
           </span>
         </a>
         <nav className="top-actions" aria-label="页面操作">
@@ -393,7 +477,7 @@ export default function Home() {
               <article className="selection-card">
                 <div className="card-kicker">
                   <span>武器</span>
-                  <span className="status-dot neutral">不计特效</span>
+                  <span className="status-dot">特效已启用</span>
                 </div>
                 <div className="round-icon weapon-icon">⌁</div>
                 <div className="selection-main">
@@ -414,6 +498,54 @@ export default function Home() {
                     {selectedWeapon?.secondaryLabel ?? "使用当前副属性"}
                   </p>
                 </div>
+                {selectedWeapon ? (
+                  <div className="weapon-passive">
+                    <div className="weapon-passive-copy">
+                      <strong>{selectedWeapon.passive.name}</strong>
+                      <small>{selectedWeapon.passive.description}</small>
+                    </div>
+                    {selectedWeapon.passive.control ? (
+                      <label className="passive-select">
+                        <span>{selectedWeapon.passive.control.label}</span>
+                        <select
+                          aria-label={selectedWeapon.passive.control.label}
+                          value={
+                            build.weaponPassiveSelections?.[
+                              selectedWeapon.passive.control.key
+                            ] ??
+                            selectedWeapon.passive.control.defaultValue
+                          }
+                          onChange={(event) =>
+                            updateWeaponPassive(
+                              selectedWeapon.passive.control!.key,
+                              event.target.value,
+                            )
+                          }
+                        >
+                          {selectedWeapon.passive.control.options.map(
+                            (option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ),
+                          )}
+                        </select>
+                      </label>
+                    ) : (
+                      <span
+                        className={
+                          selectedWeapon.passive.teammateDependent
+                            ? "passive-badge excluded"
+                            : "passive-badge"
+                        }
+                      >
+                        {selectedWeapon.passive.teammateDependent
+                          ? "队友效果暂不计算"
+                          : "无条件选项"}
+                      </span>
+                    )}
+                  </div>
+                ) : null}
               </article>
             </div>
 
@@ -425,28 +557,136 @@ export default function Home() {
               >
                 <span>
                   <strong>圣遗物面板</strong>
-                  <small>填写圣遗物详情页合计值</small>
+                  <small>选择套装并填写详情页合计值</small>
                 </span>
                 <span className={artifactOpen ? "chevron open" : "chevron"}>
                   ⌄
                 </span>
               </button>
               {artifactOpen ? (
-                <div className="artifact-grid">
-                  {artifactFields.map((field) => (
-                    <NumberField
-                      key={field.key}
-                      label={field.label}
-                      unit={field.unit}
-                      icon={
-                        field.key === "elementalDmg"
-                          ? activeElement.icon
-                          : field.icon
-                      }
-                      value={build.artifact[field.key]}
-                      onChange={(value) => updateArtifact(field.key, value)}
-                    />
-                  ))}
+                <div className="artifact-content">
+                  <div className="artifact-set-picker">
+                    <div className="artifact-set-controls">
+                      <label className="artifact-set-field">
+                        <span>套装选择</span>
+                        <select
+                          aria-label="选择圣遗物套装"
+                          value={build.artifactSetId ?? "none"}
+                          onChange={(event) =>
+                            chooseArtifactSet(event.target.value)
+                          }
+                        >
+                          {artifactSets.map((artifactSet) => (
+                            <option key={artifactSet.id} value={artifactSet.id}>
+                              {artifactSet.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="artifact-set-field pieces-field">
+                        <span>套装件数</span>
+                        <select
+                          aria-label="选择圣遗物套装件数"
+                          disabled={selectedArtifactSet.id === "none"}
+                          value={build.artifactSetPieces ?? 0}
+                          onChange={(event) =>
+                            updateArtifactSetPieces(event.target.value)
+                          }
+                        >
+                          <option value="0">不启用</option>
+                          <option value="2">2 件套</option>
+                          <option value="4">4 件套</option>
+                        </select>
+                      </label>
+                    </div>
+
+                    {build.artifactSetPieces ? (
+                      <div className="artifact-set-effect">
+                        <div className="artifact-set-copy">
+                          <strong>
+                            {selectedArtifactSet.shortName} ·{" "}
+                            {build.artifactSetPieces} 件套
+                          </strong>
+                          <small>
+                            {selectedArtifactSet.twoPiece.description}
+                            {build.artifactSetPieces === 4
+                              ? ` ${selectedArtifactSet.fourPiece.description}`
+                              : ""}
+                          </small>
+                          {build.artifactSetPieces === 4 &&
+                          selectedArtifactSet.fourPiece.panelNote ? (
+                            <em>
+                              {selectedArtifactSet.fourPiece.panelNote}
+                            </em>
+                          ) : null}
+                        </div>
+                        {build.artifactSetPieces === 4 &&
+                        selectedArtifactSet.fourPiece.control ? (
+                          <label className="passive-select artifact-condition">
+                            <span>
+                              {selectedArtifactSet.fourPiece.control.label}
+                            </span>
+                            <select
+                              aria-label={
+                                selectedArtifactSet.fourPiece.control.label
+                              }
+                              value={
+                                build.artifactSetSelections?.[
+                                  selectedArtifactSet.fourPiece.control.key
+                                ] ??
+                                selectedArtifactSet.fourPiece.control
+                                  .defaultValue
+                              }
+                              onChange={(event) =>
+                                updateArtifactSetEffect(
+                                  selectedArtifactSet.fourPiece.control!.key,
+                                  event.target.value,
+                                )
+                              }
+                            >
+                              {selectedArtifactSet.fourPiece.control.options.map(
+                                (option) => (
+                                  <option
+                                    key={option.value}
+                                    value={option.value}
+                                  >
+                                    {option.label}
+                                  </option>
+                                ),
+                              )}
+                            </select>
+                          </label>
+                        ) : (
+                          <span className="passive-badge">
+                            {build.artifactSetPieces === 4
+                              ? "效果自动计算"
+                              : "2 件套已启用"}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="artifact-set-empty">
+                        选择套装与件数后，对应效果会加入最终面板。
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="artifact-grid">
+                    {artifactFields.map((field) => (
+                      <NumberField
+                        key={field.key}
+                        label={field.label}
+                        unit={field.unit}
+                        icon={
+                          field.key === "elementalDmg"
+                            ? activeElement.icon
+                            : field.icon
+                        }
+                        value={build.artifact[field.key]}
+                        onChange={(value) => updateArtifact(field.key, value)}
+                      />
+                    ))}
+                  </div>
                 </div>
               ) : null}
             </article>
@@ -642,7 +882,10 @@ export default function Home() {
                 <span>
                   <strong>最终面板</strong>
                   <small>
-                    {build.character.name} · {build.weapon.name}
+                    {build.character.name} · {build.weapon.name} ·{" "}
+                    {build.artifactSetPieces
+                      ? selectedArtifactSet.shortName
+                      : "无套装"}
                   </small>
                 </span>
               </div>
@@ -708,11 +951,11 @@ export default function Home() {
             </dl>
 
             <div className="bonus-summary">
-              <span>额外伤害接口</span>
+              <span>分类伤害加成</span>
               <div>
                 {talentTabs.map((tab) => (
                   <b key={tab.key}>
-                    {tab.label} {build.talentBonuses[tab.key]}%
+                    {tab.label} {panel.talentBonuses[tab.key]}%
                   </b>
                 ))}
               </div>
@@ -723,7 +966,7 @@ export default function Home() {
               <p>
                 最终面板为理论计算值，仅供参考；
                 <br />
-                当前不计武器特效、圣遗物套装效果与角色技能面板加成。
+                已计入当前武器与圣遗物套装自身效果；暂不计队友效果、敌方抗性与角色技能动态增益。
               </p>
             </div>
 
@@ -764,13 +1007,13 @@ export default function Home() {
             <span className="modal-icon">✦</span>
             <h2 id="help-title">如何录入</h2>
             <ol>
-              <li>选择角色和武器；未收录时可展开“自定义基础参数”。</li>
+              <li>选择角色、武器和圣遗物套装，并设置触发条件。</li>
               <li>把游戏内圣遗物详情页的绿色加成合计录入对应字段。</li>
-              <li>为未来伤害计算填写战技、爆发等额外伤害加成。</li>
+              <li>按需填写战技、爆发等额外伤害加成。</li>
               <li>点击“计算最终面板”，右侧或下方会生成结果。</li>
             </ol>
             <div className="formula-box">
-              攻击力 = 角色基础攻击 + 武器基础攻击 + 圣遗物攻击力
+              最终面板 = 基础属性 + 武器属性/特效 + 圣遗物属性/套装效果
             </div>
             <button className="modal-primary" onClick={() => setHelpOpen(false)}>
               开始录入
