@@ -184,9 +184,14 @@ a:focus-visible {
   font-size: 19px;
 }
 
-.element-tabs button:hover {
+.element-tabs button:not(:disabled):hover {
   background: #f8fbff;
   color: var(--text);
+}
+
+.element-tabs button:disabled {
+  cursor: default;
+  opacity: 1;
 }
 
 .element-tabs button.active {
@@ -957,6 +962,247 @@ a:focus-visible {
   background: #edf4ff;
   color: #3f649b;
   font-size: 9px;
+}
+
+.damage-section {
+  margin-top: 14px;
+  padding-top: 15px;
+  border-top: 1px solid #dfe8f3;
+}
+
+.damage-heading,
+.damage-heading > span:first-child {
+  display: flex;
+}
+
+.damage-heading {
+  align-items: start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 0 3px;
+}
+
+.damage-heading > span:first-child {
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.damage-heading strong {
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.damage-heading small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.damage-badge {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border-radius: 7px;
+  background: #eaf3ff;
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.damage-settings {
+  display: grid;
+  gap: 8px;
+  margin-top: 11px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.damage-settings label {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.damage-settings select,
+.damage-settings input {
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdff;
+  color: #314765;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.damage-settings input {
+  appearance: textfield;
+  text-align: right;
+}
+
+.damage-settings select:focus,
+.damage-settings input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(23, 105, 255, 0.08);
+  outline: none;
+}
+
+.compact-number {
+  position: relative;
+}
+
+.compact-number input {
+  padding-right: 22px;
+}
+
+.compact-number i {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  color: var(--faint);
+  font-size: 10px;
+  font-style: normal;
+  transform: translateY(-50%);
+}
+
+.damage-skills {
+  display: grid;
+  gap: 10px;
+  margin-top: 11px;
+}
+
+.damage-skill {
+  overflow: hidden;
+  border: 1px solid #dce7f4;
+  border-radius: 11px;
+  background: white;
+}
+
+.damage-skill-title {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 11px 10px;
+  background: linear-gradient(180deg, #fbfdff, #f7faff);
+}
+
+.damage-skill-title > span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.damage-skill-title strong {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.damage-skill-title small {
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.damage-skill-title > b {
+  flex: 0 0 auto;
+  max-width: 46%;
+  padding: 4px 6px;
+  border-radius: 6px;
+  background: #edf4ff;
+  color: #416a9f;
+  font-size: 8px;
+  line-height: 1.4;
+  text-align: right;
+}
+
+.damage-table-head,
+.damage-row {
+  display: grid;
+  align-items: center;
+  gap: 4px;
+  grid-template-columns: minmax(54px, 0.75fr) repeat(3, minmax(58px, 1fr));
+}
+
+.damage-table-head {
+  min-height: 28px;
+  padding: 0 9px;
+  border-top: 1px solid #e4ecf6;
+  border-bottom: 1px solid #e4ecf6;
+  background: #f7f9fc;
+  color: var(--faint);
+  font-size: 8px;
+  font-weight: 800;
+  text-align: right;
+}
+
+.damage-table-head span:first-child {
+  text-align: left;
+}
+
+.damage-row {
+  min-height: 39px;
+  padding: 0 9px;
+  border-bottom: 1px solid #edf1f6;
+  color: #556986;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 750;
+  text-align: right;
+}
+
+.damage-row:last-child {
+  border-bottom: 0;
+}
+
+.damage-row span:first-child {
+  color: #45617f;
+  font-size: 9px;
+  text-align: left;
+}
+
+.damage-row strong {
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.damage-row.reaction-vaporize span:first-child,
+.damage-row.reaction-melt span:first-child {
+  color: #d85b42;
+}
+
+.damage-row.reaction-spread span:first-child {
+  color: #648e2f;
+}
+
+.damage-formula-note {
+  margin: 9px 2px 0;
+  color: var(--faint);
+  font-size: 8px;
+  font-weight: 650;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.damage-empty {
+  margin-top: 11px;
+  padding: 13px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 9px;
+  background: #fafcff;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.6;
+  text-align: center;
 }
 
 .result-note {
