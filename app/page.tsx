@@ -5,8 +5,17 @@ import {
   artifactSets,
   getArtifactSet,
 } from "../lib/data/artifacts";
-import { characters } from "../lib/data/characters";
-import { weapons } from "../lib/data/weapons";
+import {
+  characters,
+  type CharacterPreset,
+} from "../lib/data/characters";
+import {
+  getCompatibleWeapons,
+  isWeaponCompatible,
+  weaponTypeLabels,
+  weapons,
+  type WeaponPreset,
+} from "../lib/data/weapons";
 import {
   BuildInput,
   ElementKey,
@@ -14,6 +23,11 @@ import {
   SecondaryStatKey,
   calculateFinalPanel,
 } from "../lib/calculator";
+import {
+  DamageSettings,
+  calculateRepresentativeDamage,
+  defaultDamageSettings,
+} from "../lib/damage";
 
 const elements: Array<{ key: ElementKey; label: string; icon: string }> = [
   { key: "cryo", label: "冰元素", icon: "❄" },
@@ -139,9 +153,13 @@ function formatNumber(value: number, digits = 0) {
   });
 }
 
-const storageKey = "genshin-panel-build-v3";
-const previousStorageKey = "genshin-panel-build-v2";
-const legacyStorageKey = "genshin-panel-build-v1";
+const storageKey = "genshin-panel-build-v5";
+const previousStorageKeys = [
+  "genshin-panel-build-v4",
+  "genshin-panel-build-v3",
+  "genshin-panel-build-v2",
+  "genshin-panel-build-v1",
+];
 
 type LegacyBuildInput = Omit<BuildInput, "artifact"> & {
   artifact: BuildInput["artifact"] & {
@@ -183,11 +201,41 @@ function migrateLegacyBuild(legacy: LegacyBuildInput): BuildInput {
   };
 }
 
+function getPreferredWeapon(character: CharacterPreset) {
+  const preferred = weapons.find(
+    (weapon) =>
+      weapon.id === character.defaultWeaponId &&
+      isWeaponCompatible(character.weaponType, weapon),
+  );
+  return preferred ?? getCompatibleWeapons(character.weaponType)[0] ?? weapons[0];
+}
+
+function getWeaponPassiveSelections(
+  weapon: WeaponPreset,
+  character: CharacterPreset,
+  settings: DamageSettings,
+  currentSelections?: Record<string, string>,
+) {
+  const control = weapon.passive.control;
+  if (!control) return {};
+  const value =
+    weapon.id === "homa" && character.id === "hutao"
+      ? settings.selections.hutaoHpState === "below50"
+        ? "below50"
+        : "above50"
+      : currentSelections?.[control.key] ?? control.defaultValue;
+  return { [control.key]: value };
+}
+
 export default function Home() {
   const [build, setBuild] = useState<BuildInput>(defaultBuild);
   const [panel, setPanel] = useState<FinalPanel>(() =>
     calculateFinalPanel(defaultBuild),
   );
+  const [damageSettings, setDamageSettings] = useState<DamageSettings>(() => ({
+    ...defaultDamageSettings,
+    selections: { ...defaultDamageSettings.selections },
+  }));
   const [characterId, setCharacterId] = useState("ayaka");
   const [weaponId, setWeaponId] = useState("mistsplitter");
   const [activeTalent, setActiveTalent] =
@@ -201,26 +249,76 @@ export default function Home() {
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const saved = window.localStorage.getItem(storageKey);
-      const previousSaved = saved
-        ? null
-        : window.localStorage.getItem(previousStorageKey);
-      const legacySaved = saved || previousSaved
-        ? null
-        : window.localStorage.getItem(legacyStorageKey);
-      const persisted = saved ?? previousSaved ?? legacySaved;
+      const sourceKey = [storageKey, ...previousStorageKeys].find((key) =>
+        window.localStorage.getItem(key),
+      );
+      const persisted = sourceKey
+        ? window.localStorage.getItem(sourceKey)
+        : null;
       if (persisted) {
         try {
           const parsed = JSON.parse(persisted) as {
             build: BuildInput | LegacyBuildInput;
             characterId: string;
             weaponId: string;
+            damageSettings?: Partial<DamageSettings>;
           };
-          const restoredBuild = legacySaved
+          const restoredBuild = sourceKey === "genshin-panel-build-v1"
             ? migrateLegacyBuild(parsed.build as LegacyBuildInput)
             : (parsed.build as BuildInput);
+          const restoredDamageSettings: DamageSettings = {
+            ...defaultDamageSettings,
+            ...parsed.damageSettings,
+            selections: {
+              ...defaultDamageSettings.selections,
+              ...parsed.damageSettings?.selections,
+            },
+          };
+          const restoredCharacter =
+            characters.find(
+              (character) => character.id === parsed.characterId,
+            ) ??
+            characters.find(
+              (character) => character.name === restoredBuild.character.name,
+            ) ??
+            characters[0];
+          const requestedWeapon =
+            weapons.find((weapon) => weapon.id === parsed.weaponId) ??
+            weapons.find(
+              (weapon) => weapon.name === restoredBuild.weapon.name,
+            );
+          const compatibleWeapon =
+            requestedWeapon &&
+            isWeaponCompatible(
+              restoredCharacter.weaponType,
+              requestedWeapon,
+            )
+              ? requestedWeapon
+              : getPreferredWeapon(restoredCharacter);
+          const keepRestoredWeapon =
+            requestedWeapon?.id === compatibleWeapon.id &&
+            restoredBuild.weapon.name === compatibleWeapon.name;
           const normalizedBuild: BuildInput = {
             ...restoredBuild,
+            character:
+              restoredBuild.character.name === restoredCharacter.name
+                ? restoredBuild.character
+                : restoredCharacter,
+            weapon: keepRestoredWeapon
+              ? restoredBuild.weapon
+              : compatibleWeapon,
+            element:
+              restoredCharacter.id === "custom"
+                ? restoredBuild.element
+                : restoredCharacter.element,
+            weaponPassiveSelections: getWeaponPassiveSelections(
+              compatibleWeapon,
+              restoredCharacter,
+              restoredDamageSettings,
+              keepRestoredWeapon
+                ? restoredBuild.weaponPassiveSelections
+                : undefined,
+            ),
             artifactSetId: restoredBuild.artifactSetId ?? "none",
             artifactSetPieces: restoredBuild.artifactSetPieces ?? 0,
             artifactSetSelections:
@@ -228,17 +326,22 @@ export default function Home() {
           };
           setBuild(normalizedBuild);
           setPanel(calculateFinalPanel(normalizedBuild));
-          setCharacterId(parsed.characterId);
-          setWeaponId(parsed.weaponId);
-          setUpdatedAt(saved ? "已恢复" : "已迁移旧版数据");
-          if (!saved) {
-            window.localStorage.removeItem(previousStorageKey);
-            window.localStorage.removeItem(legacyStorageKey);
+          setCharacterId(restoredCharacter.id);
+          setWeaponId(compatibleWeapon.id);
+          setDamageSettings(restoredDamageSettings);
+          setUpdatedAt(
+            sourceKey === storageKey ? "已恢复" : "已迁移旧版数据",
+          );
+          if (sourceKey !== storageKey) {
+            previousStorageKeys.forEach((key) =>
+              window.localStorage.removeItem(key),
+            );
           }
         } catch {
           window.localStorage.removeItem(storageKey);
-          window.localStorage.removeItem(previousStorageKey);
-          window.localStorage.removeItem(legacyStorageKey);
+          previousStorageKeys.forEach((key) =>
+            window.localStorage.removeItem(key),
+          );
         }
       }
       setHydrated(true);
@@ -250,9 +353,14 @@ export default function Home() {
     if (!hydrated) return;
     window.localStorage.setItem(
       storageKey,
-      JSON.stringify({ build, characterId, weaponId }),
+      JSON.stringify({
+        build,
+        characterId,
+        weaponId,
+        damageSettings,
+      }),
     );
-  }, [build, characterId, weaponId, hydrated]);
+  }, [build, characterId, damageSettings, hydrated, weaponId]);
 
   const activeElement = useMemo(
     () => elements.find((element) => element.key === build.element) ?? elements[0],
@@ -262,31 +370,80 @@ export default function Home() {
     () => getArtifactSet(build.artifactSetId),
     [build.artifactSetId],
   );
+  const selectedCharacter = useMemo(
+    () => characters.find((item) => item.id === characterId),
+    [characterId],
+  );
+  const compatibleWeapons = useMemo(
+    () =>
+      selectedCharacter
+        ? getCompatibleWeapons(selectedCharacter.weaponType)
+        : weapons,
+    [selectedCharacter],
+  );
+  const selectedWeapon = useMemo(
+    () => weapons.find((item) => item.id === weaponId),
+    [weaponId],
+  );
+  const damageResult = useMemo(
+    () =>
+      selectedCharacter
+        ? calculateRepresentativeDamage(
+            selectedCharacter,
+            build,
+            panel,
+            damageSettings,
+          )
+        : null,
+    [build, damageSettings, panel, selectedCharacter],
+  );
 
   function chooseCharacter(id: string) {
     const character = characters.find((item) => item.id === id);
     if (!character) return;
+    const currentWeapon = weapons.find((item) => item.id === weaponId);
+    const nextWeapon =
+      currentWeapon &&
+      isWeaponCompatible(character.weaponType, currentWeapon)
+        ? currentWeapon
+        : getPreferredWeapon(character);
     setCharacterId(id);
-    setBuild((current) => ({
-      ...current,
-      character,
-      element: character.element,
-    }));
+    setWeaponId(nextWeapon.id);
+    setBuild((current) => {
+      const weaponChanged = currentWeapon?.id !== nextWeapon.id;
+      return {
+        ...current,
+        character,
+        weapon: weaponChanged ? nextWeapon : current.weapon,
+        weaponPassiveSelections: getWeaponPassiveSelections(
+          nextWeapon,
+          character,
+          damageSettings,
+          weaponChanged ? undefined : current.weaponPassiveSelections,
+        ),
+        element: character.element,
+      };
+    });
   }
 
   function chooseWeapon(id: string) {
     const weapon = weapons.find((item) => item.id === id);
-    if (!weapon) return;
+    if (
+      !weapon ||
+      !selectedCharacter ||
+      !isWeaponCompatible(selectedCharacter.weaponType, weapon)
+    ) {
+      return;
+    }
     setWeaponId(id);
     setBuild((current) => ({
       ...current,
       weapon,
-      weaponPassiveSelections: weapon.passive.control
-        ? {
-            [weapon.passive.control.key]:
-              weapon.passive.control.defaultValue,
-          }
-        : {},
+      weaponPassiveSelections: getWeaponPassiveSelections(
+        weapon,
+        selectedCharacter,
+        damageSettings,
+      ),
     }));
   }
 
@@ -298,6 +455,34 @@ export default function Home() {
         [key]: value,
       },
     }));
+    if (key === "homaHpState") {
+      setDamageSettings((current) => ({
+        ...current,
+        selections: {
+          ...current.selections,
+          hutaoHpState: value === "below50" ? "below50" : "above50",
+        },
+      }));
+    }
+  }
+
+  function updateDamageSelection(key: string, value: string) {
+    setDamageSettings((current) => ({
+      ...current,
+      selections: {
+        ...current.selections,
+        [key]: value,
+      },
+    }));
+    if (key === "hutaoHpState" && build.weapon.id === "homa") {
+      setBuild((current) => ({
+        ...current,
+        weaponPassiveSelections: {
+          ...current.weaponPassiveSelections,
+          homaHpState: value === "below50" ? "below50" : "above50",
+        },
+      }));
+    }
   }
 
   function chooseArtifactSet(id: string) {
@@ -359,12 +544,17 @@ export default function Home() {
   function reset() {
     setBuild(defaultBuild);
     setPanel(calculateFinalPanel(defaultBuild));
+    setDamageSettings({
+      ...defaultDamageSettings,
+      selections: { ...defaultDamageSettings.selections },
+    });
     setCharacterId("ayaka");
     setWeaponId("mistsplitter");
     setUpdatedAt("已重置");
     window.localStorage.removeItem(storageKey);
-    window.localStorage.removeItem(previousStorageKey);
-    window.localStorage.removeItem(legacyStorageKey);
+    previousStorageKeys.forEach((key) =>
+      window.localStorage.removeItem(key),
+    );
   }
 
   async function copyResult() {
@@ -384,6 +574,25 @@ export default function Home() {
       元素精通: panel.elementalMastery,
       [`${activeElement.label}伤害加成`]: `${panel.elementalDmg}%`,
       额外伤害加成: panel.talentBonuses,
+      敌人: {
+        等级: damageSettings.enemyLevel,
+        元素抗性: `${damageSettings.enemyResistance}%`,
+      },
+      代表技能伤害: Object.fromEntries(
+        (damageResult?.skills ?? []).map((skill) => [
+          skill.name,
+          Object.fromEntries(
+            skill.variants.map((variant) => [
+              variant.label,
+              {
+                未暴击: variant.nonCrit,
+                暴击: variant.crit,
+                期望: variant.expected,
+              },
+            ]),
+          ),
+        ]),
+      ),
     };
     await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
     setCopied(true);
@@ -401,9 +610,6 @@ export default function Home() {
     }
   }
 
-  const selectedCharacter = characters.find((item) => item.id === characterId);
-  const selectedWeapon = weapons.find((item) => item.id === weaponId);
-
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -411,7 +617,7 @@ export default function Home() {
           <span className="brand-mark">✦</span>
           <span>
             <strong>原神伤害计算器</strong>
-            <small>面板模拟 · v0.3</small>
+            <small>面板与技能伤害 · v0.5</small>
           </span>
         </a>
         <nav className="top-actions" aria-label="页面操作">
@@ -431,9 +637,21 @@ export default function Home() {
           {elements.map((element) => (
             <button
               className={build.element === element.key ? "active" : ""}
+              disabled={characterId !== "custom"}
+              aria-pressed={build.element === element.key}
               key={element.key}
-              onClick={() =>
-                setBuild((current) => ({ ...current, element: element.key }))
+              onClick={() => {
+                if (characterId === "custom") {
+                  setBuild((current) => ({
+                    ...current,
+                    element: element.key,
+                  }));
+                }
+              }}
+              title={
+                characterId === "custom"
+                  ? `设置自定义角色为${element.label}`
+                  : "元素由当前角色自动绑定"
               }
             >
               <span>{element.icon}</span>
@@ -468,6 +686,10 @@ export default function Home() {
                   <p>
                     {selectedCharacter?.level ?? build.character.level} 级
                     <span>·</span>
+                    {selectedCharacter
+                      ? weaponTypeLabels[selectedCharacter.weaponType]
+                      : "武器类型未设置"}
+                    <span>·</span>
                     {selectedCharacter?.ascensionLabel ??
                       "使用当前基础属性"}
                   </p>
@@ -486,7 +708,7 @@ export default function Home() {
                     value={weaponId}
                     onChange={(event) => chooseWeapon(event.target.value)}
                   >
-                    {weapons.map((weapon) => (
+                    {compatibleWeapons.map((weapon) => (
                       <option key={weapon.id} value={weapon.id}>
                         {weapon.name}
                       </option>
@@ -494,6 +716,10 @@ export default function Home() {
                   </select>
                   <p>
                     {selectedWeapon?.level ?? build.weapon.level} 级
+                    <span>·</span>
+                    {selectedWeapon
+                      ? weaponTypeLabels[selectedWeapon.weaponType]
+                      : "武器类型未设置"}
                     <span>·</span>
                     {selectedWeapon?.secondaryLabel ?? "使用当前副属性"}
                   </p>
@@ -666,7 +892,7 @@ export default function Home() {
                       </div>
                     ) : (
                       <div className="artifact-set-empty">
-                        选择套装与件数后，对应效果会加入最终面板。
+                        选择套装与件数后，效果会按类型加入最终面板或技能伤害。
                       </div>
                     )}
                   </div>
@@ -865,11 +1091,11 @@ export default function Home() {
 
             <button className="calculate-button" onClick={calculate}>
               <span className="calc-icon">▦</span>
-              计算最终面板
+              计算面板与技能伤害
             </button>
             <p className="calculate-note">
               <span>ⓘ</span>
-              点击后根据当前输入生成结果，数据会自动保存在本机
+              默认敌人 105 级、10% 抗性，参数可在结果区调整
             </p>
           </section>
 
@@ -961,12 +1187,176 @@ export default function Home() {
               </div>
             </div>
 
+            <section className="damage-section" aria-label="代表技能伤害">
+              <div className="damage-heading">
+                <span>
+                  <strong>代表技能伤害</strong>
+                  <small>单目标 · 含防御、抗性与元素反应</small>
+                </span>
+                <span className="damage-badge">Lv.{damageSettings.talentLevel}</span>
+              </div>
+
+              <div className="damage-settings">
+                <label>
+                  <span>
+                    {selectedCharacter?.damageProfile?.talentLabel ??
+                      "天赋等级"}
+                  </span>
+                  <select
+                    aria-label="选择天赋等级"
+                    value={damageSettings.talentLevel}
+                    onChange={(event) =>
+                      setDamageSettings((current) => ({
+                        ...current,
+                        talentLevel: Number(event.target.value),
+                      }))
+                    }
+                  >
+                    {Array.from({ length: 10 }, (_, index) => index + 1).map(
+                      (level) => (
+                        <option key={level} value={level}>
+                          {level} 级
+                        </option>
+                      ),
+                    )}
+                  </select>
+                </label>
+                <label>
+                  <span>敌人等级</span>
+                  <input
+                    aria-label="敌人等级"
+                    inputMode="numeric"
+                    min="1"
+                    max="200"
+                    type="number"
+                    value={damageSettings.enemyLevel}
+                    onChange={(event) =>
+                      setDamageSettings((current) => ({
+                        ...current,
+                        enemyLevel: Math.min(
+                          200,
+                          Math.max(1, Number(event.target.value) || 1),
+                        ),
+                      }))
+                    }
+                  />
+                </label>
+                <label>
+                  <span>元素抗性</span>
+                  <span className="compact-number">
+                    <input
+                      aria-label="敌人元素抗性"
+                      inputMode="decimal"
+                      min="-100"
+                      max="1000"
+                      step="0.1"
+                      type="number"
+                      value={damageSettings.enemyResistance}
+                      onChange={(event) =>
+                        setDamageSettings((current) => ({
+                          ...current,
+                          enemyResistance: Math.min(
+                            1000,
+                            Math.max(
+                              -100,
+                              Number(event.target.value) || 0,
+                            ),
+                          ),
+                        }))
+                      }
+                    />
+                    <i>%</i>
+                  </span>
+                </label>
+                {selectedCharacter?.damageProfile?.controls.map((control) => (
+                  <label key={control.key}>
+                    <span>{control.label}</span>
+                    <select
+                      aria-label={control.label}
+                      value={
+                        damageSettings.selections[control.key] ??
+                        control.defaultValue
+                      }
+                      onChange={(event) =>
+                        updateDamageSelection(
+                          control.key,
+                          event.target.value,
+                        )
+                      }
+                    >
+                      {control.options.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ))}
+              </div>
+
+              {damageResult?.skills.length ? (
+                <div className="damage-skills">
+                  {damageResult.skills.map((skill) => (
+                    <article className="damage-skill" key={skill.id}>
+                      <div className="damage-skill-title">
+                        <span>
+                          <strong>{skill.name}</strong>
+                          <small>{skill.description}</small>
+                        </span>
+                        <b>{skill.multiplierLabel}</b>
+                      </div>
+                      <div className="damage-table" role="table">
+                        <div className="damage-table-head" role="row">
+                          <span role="columnheader">反应</span>
+                          <span role="columnheader">未暴击</span>
+                          <span role="columnheader">暴击</span>
+                          <span role="columnheader">期望</span>
+                        </div>
+                        {skill.variants.map((variant) => (
+                          <div
+                            className={`damage-row reaction-${variant.reaction}`}
+                            key={variant.reaction}
+                            role="row"
+                          >
+                            <span role="cell">{variant.label}</span>
+                            <span role="cell">
+                              {formatNumber(variant.nonCrit)}
+                            </span>
+                            <strong role="cell">
+                              {formatNumber(variant.crit)}
+                            </strong>
+                            <span role="cell">
+                              {formatNumber(variant.expected)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="damage-empty">
+                  自定义角色暂无代表技能数据；最终面板仍可正常计算。
+                </div>
+              )}
+
+              {damageResult ? (
+                <p className="damage-formula-note">
+                  防御倍率{" "}
+                  {(damageResult.defenseMultiplier * 100).toFixed(1)}% ·
+                  有效抗性 {damageResult.effectiveResistance.toFixed(1)}% ·
+                  抗性倍率{" "}
+                  {(damageResult.resistanceMultiplier * 100).toFixed(1)}%
+                </p>
+              ) : null}
+            </section>
+
             <div className="result-note">
               <span>ⓘ</span>
               <p>
-                最终面板为理论计算值，仅供参考；
+                技能伤害为理论单目标值；
                 <br />
-                已计入当前武器与圣遗物套装自身效果；暂不计队友效果、敌方抗性与角色技能动态增益。
+                已计入角色自身机制、武器与套装效果，暂不计队友效果、命座与敌人防御降低。
               </p>
             </div>
 
@@ -1010,10 +1400,12 @@ export default function Home() {
               <li>选择角色、武器和圣遗物套装，并设置触发条件。</li>
               <li>把游戏内圣遗物详情页的绿色加成合计录入对应字段。</li>
               <li>按需填写战技、爆发等额外伤害加成。</li>
-              <li>点击“计算最终面板”，右侧或下方会生成结果。</li>
+              <li>点击计算后，在结果区调整天赋等级、敌人等级与抗性。</li>
+              <li>代表技能会同时显示未暴击、暴击和暴击期望伤害。</li>
             </ol>
             <div className="formula-box">
-              最终面板 = 基础属性 + 武器属性/特效 + 圣遗物属性/套装效果
+              技能伤害 = 技能基础值 × 增伤 × 防御倍率 × 抗性倍率 ×
+              暴击/反应倍率
             </div>
             <button className="modal-primary" onClick={() => setHelpOpen(false)}>
               开始录入
