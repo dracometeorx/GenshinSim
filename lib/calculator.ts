@@ -125,6 +125,13 @@ function oneDecimal(value: number) {
   return Math.round(value * 10) / 10;
 }
 
+function refinementIndex(input: BuildInput) {
+  return Math.min(
+    4,
+    Math.max(0, Math.round(finite(input.weapon.refinement)) - 1),
+  );
+}
+
 /**
  * 计算基础面板、当前武器自身的被动与圣遗物套装效果：
  * - 基础属性、角色突破属性、武器基础攻击/副属性、圣遗物合计值。
@@ -199,6 +206,7 @@ export function calculateFinalPanel(input: BuildInput): FinalPanel {
     finite(input.character.baseAtk) + finite(input.weapon.baseAtk);
   const baseDef = finite(input.character.baseDef);
   let flatAtkFromWeapon = 0;
+  const refinement = refinementIndex(input);
 
   switch (input.weapon.id) {
     case "mistsplitter": {
@@ -206,24 +214,38 @@ export function calculateFinalPanel(input: BuildInput): FinalPanel {
         3,
         Math.max(0, Number(passive.mistsplitterStacks) || 0),
       );
-      totals.elementalDmg += 12 + [0, 8, 16, 28][stacks];
+      const baseBonus = [12, 15, 18, 21, 24][refinement];
+      const stackBonus = [
+        [0, 8, 16, 28],
+        [0, 10, 20, 35],
+        [0, 12, 24, 42],
+        [0, 14, 28, 49],
+        [0, 16, 32, 56],
+      ][refinement][stacks];
+      totals.elementalDmg += baseBonus + stackBonus;
       break;
     }
     case "homa": {
-      totals.hpPct += 20;
+      const hpBonus = [20, 25, 30, 35, 40][refinement];
+      const atkRatio = [0.8, 1, 1.2, 1.4, 1.6][refinement];
+      const lowHpRatio = [1, 1.2, 1.4, 1.6, 1.8][refinement];
+      totals.hpPct += hpBonus;
       const passiveHp =
         baseHp * (1 + totals.hpPct / 100) + finite(input.artifact.flatHp);
-      const lowHpBonus = passive.homaHpState === "below50" ? 1 : 0;
-      flatAtkFromWeapon += passiveHp * ((0.8 + lowHpBonus) / 100);
+      const activeRatio =
+        atkRatio +
+        (passive.homaHpState === "below50" ? lowHpRatio : 0);
+      flatAtkFromWeapon += passiveHp * (activeRatio / 100);
       break;
     }
     case "engulfing": {
       if (passive.engulfingBurst === "active") {
-        totals.energyRecharge += 30;
+        totals.energyRecharge += [30, 35, 40, 45, 50][refinement];
       }
       totals.atkPct += Math.min(
-        80,
-        Math.max(0, totals.energyRecharge - 100) * 0.28,
+        [80, 90, 100, 110, 120][refinement],
+        Math.max(0, totals.energyRecharge - 100) *
+          [0.28, 0.35, 0.42, 0.49, 0.56][refinement],
       );
       break;
     }

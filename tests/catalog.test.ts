@@ -38,6 +38,11 @@ test("exports every weapon preset with a unique id", () => {
     weapons.map(({ weaponType }) => weaponType),
     ["sword", "polearm", "polearm", "catalyst", "any"],
   );
+  assert.ok(
+    weapons
+      .filter(({ id }) => ["mistsplitter", "homa", "engulfing"].includes(id))
+      .every(({ passive }) => passive.refinementDescriptions?.length === 5),
+  );
 });
 
 test("only exposes weapons compatible with each character", () => {
