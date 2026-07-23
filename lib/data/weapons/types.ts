@@ -1,7 +1,8 @@
-import type { WeaponBase } from "../../calculator.ts";
+import type { WeaponBase, WeaponType } from "../../calculator.ts";
 
 export type WeaponPreset = WeaponBase & {
   id: string;
+  weaponType: WeaponType;
   secondaryLabel: string;
   passive: {
     name: string;
