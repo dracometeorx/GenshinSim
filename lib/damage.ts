@@ -9,7 +9,9 @@ import { getArtifactModifiers } from "./data/artifacts/index.ts";
 export interface DamageSettings {
   enemyLevel: number;
   enemyResistance: number;
-  talentLevel: number;
+  normalTalentLevel: number;
+  skillTalentLevel: number;
+  burstTalentLevel: number;
   selections: Record<string, string>;
 }
 
@@ -39,7 +41,9 @@ export interface DamageCalculationResult {
 export const defaultDamageSettings: DamageSettings = {
   enemyLevel: 105,
   enemyResistance: 10,
-  talentLevel: 10,
+  normalTalentLevel: 10,
+  skillTalentLevel: 10,
+  burstTalentLevel: 10,
   selections: {
     ayakaDashBonus: "active",
     hutaoHpState: "below50",
@@ -166,15 +170,15 @@ function buildTargets(
     case "ayaka": {
       const skill = talentValue(
         profile.skillMultipliers,
-        settings.talentLevel,
+        settings.skillTalentLevel,
       );
       const cut = talentValue(
         profile.burstCutMultipliers,
-        settings.talentLevel,
+        settings.burstTalentLevel,
       );
       const bloom = talentValue(
         profile.burstBloomMultipliers,
-        settings.talentLevel,
+        settings.burstTalentLevel,
       );
       const dashBonus =
         getSelection(profile, settings, "ayakaDashBonus") === "active"
@@ -207,11 +211,11 @@ function buildTargets(
     case "hutao": {
       const charged = talentValue(
         profile.chargedMultipliers,
-        settings.talentLevel,
+        settings.normalTalentLevel,
       );
       const skillRatio = talentValue(
         profile.skillHpToAtkRatios,
-        settings.talentLevel,
+        settings.skillTalentLevel,
       );
       const lowHp =
         getSelection(profile, settings, "hutaoHpState") === "below50";
@@ -219,7 +223,7 @@ function buildTargets(
         lowHp
           ? profile.lowHpBurstMultipliers
           : profile.burstMultipliers,
-        settings.talentLevel,
+        settings.burstTalentLevel,
       );
       const baseAtk =
         Math.max(0, build.character.baseAtk) +
@@ -254,11 +258,11 @@ function buildTargets(
     case "raiden": {
       const burst = talentValue(
         profile.burstMultipliers,
-        settings.talentLevel,
+        settings.burstTalentLevel,
       );
       const resolvePerStack = talentValue(
         profile.resolvePerStackMultipliers,
-        settings.talentLevel,
+        settings.burstTalentLevel,
       );
       const resolveStacks = clamp(
         Number(
@@ -270,9 +274,9 @@ function buildTargets(
       const eyeActive =
         getSelection(profile, settings, "raidenEyeState") === "active";
       const eyeBonus = eyeActive
-        ? talentValue(
+          ? talentValue(
             profile.eyeBurstBonusPerEnergy,
-            settings.talentLevel,
+            settings.skillTalentLevel,
           ) *
           profile.burstEnergyCost *
           100
@@ -297,11 +301,11 @@ function buildTargets(
     case "nahida": {
       const atkMultiplier = talentValue(
         profile.triKarmaAtkMultipliers,
-        settings.talentLevel,
+        settings.skillTalentLevel,
       );
       const emMultiplier = talentValue(
         profile.triKarmaEmMultipliers,
-        settings.talentLevel,
+        settings.skillTalentLevel,
       );
       const overTwoHundred = Math.max(
         0,

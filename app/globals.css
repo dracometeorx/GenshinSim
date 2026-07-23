@@ -1014,9 +1014,54 @@ a:focus-visible {
 
 .damage-settings {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   margin-top: 11px;
+}
+
+.damage-setting-group {
+  display: grid;
+  gap: 9px;
+  padding: 10px;
+  border: 1px solid #dce7f4;
+  border-radius: 10px;
+  background: #fbfdff;
+}
+
+.damage-setting-group > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.damage-setting-group > header strong {
+  color: #314765;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.damage-setting-group > header small {
+  color: var(--faint);
+  font-size: 8px;
+  font-weight: 650;
+}
+
+.talent-level-settings {
+  display: grid;
+  gap: 7px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.character-condition-settings,
+.enemy-setting-fields {
+  display: grid;
+  gap: 7px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.character-condition-settings {
+  padding-top: 9px;
+  border-top: 1px solid #e6edf6;
 }
 
 .damage-settings label {
@@ -1174,6 +1219,11 @@ a:focus-visible {
   color: var(--text);
   font-size: 11px;
   font-weight: 900;
+}
+
+.damage-row .damage-expected {
+  color: var(--primary);
+  font-weight: 950;
 }
 
 .damage-row.reaction-vaporize span:first-child,
@@ -1488,8 +1538,7 @@ a:focus-visible {
     padding-left: 14px;
   }
 
-  .artifact-content,
-  .advanced-content {
+  .artifact-content {
     padding-right: 14px;
     padding-left: 14px;
   }
@@ -1523,22 +1572,8 @@ a:focus-visible {
     width: 100%;
   }
 
-  .mini-grid,
-  .custom-weapon-row {
-    grid-template-columns: 1fr;
-  }
-
-  .mini-grid .stat-field,
-  .custom-weapon-row .stat-field {
-    align-items: center;
-    gap: 8px;
-    grid-template-columns: 1fr minmax(126px, 1.2fr);
-  }
-
-  .select-field {
-    align-items: center;
-    gap: 8px;
-    grid-template-columns: 1fr minmax(126px, 1.2fr);
+  .talent-level-settings {
+    grid-template-columns: repeat(3, minmax(76px, 1fr));
   }
 
   .result-panel {
