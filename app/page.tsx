@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   artifactSets,
   getArtifactSet,
@@ -27,6 +27,16 @@ import {
   calculateRepresentativeDamage,
   defaultDamageSettings,
 } from "../lib/damage";
+import {
+  BuildPlan,
+  BuildPlanSnapshot,
+  buildPlansSchemaVersion,
+  buildPlansStorageKey,
+  createBuildPlan,
+  createBuildPlanSnapshot,
+  legacyBuildPlansStorageKey,
+  parseBuildPlanStore,
+} from "../lib/build-plans";
 
 const elements: Array<{ key: ElementKey; label: string; icon: string }> = [
   { key: "cryo", label: "冰元素", icon: "❄" },
@@ -139,8 +149,8 @@ function formatNumber(value: number, digits = 0) {
   });
 }
 
-const storageKey = "genshin-panel-build-v6";
-const previousStorageKeys = [
+const legacyStorageKeys = [
+  "genshin-panel-build-v6",
   "genshin-panel-build-v5",
   "genshin-panel-build-v4",
   "genshin-panel-build-v3",
@@ -218,6 +228,95 @@ function getWeaponPassiveSelections(
   return { [control.key]: value };
 }
 
+function normalizeDamageSettings(
+  persisted?: PersistedDamageSettings,
+): DamageSettings {
+  const legacyTalentLevel = Math.min(
+    10,
+    Math.max(
+      1,
+      Number(persisted?.talentLevel) ||
+        defaultDamageSettings.normalTalentLevel,
+    ),
+  );
+  return {
+    enemyLevel:
+      persisted?.enemyLevel ?? defaultDamageSettings.enemyLevel,
+    enemyResistance:
+      persisted?.enemyResistance ??
+      defaultDamageSettings.enemyResistance,
+    normalTalentLevel:
+      persisted?.normalTalentLevel ?? legacyTalentLevel,
+    skillTalentLevel:
+      persisted?.skillTalentLevel ?? legacyTalentLevel,
+    burstTalentLevel:
+      persisted?.burstTalentLevel ?? legacyTalentLevel,
+    selections: {
+      ...defaultDamageSettings.selections,
+      ...persisted?.selections,
+    },
+  };
+}
+
+function clampRefinement(value: number) {
+  return Math.min(5, Math.max(1, Math.round(Number(value) || 1)));
+}
+
+type RestoredPlanState = {
+  build: BuildInput;
+  characterId: string;
+  weaponId: string;
+  damageSettings: DamageSettings;
+};
+
+function restorePlanSnapshot(
+  snapshot: BuildPlanSnapshot,
+): RestoredPlanState {
+  const character =
+    characters.find((item) => item.id === snapshot.characterId) ??
+    characters[0];
+  const requestedWeapon = weapons.find(
+    (item) => item.id === snapshot.weaponId,
+  );
+  const weaponPreset =
+    requestedWeapon &&
+    isWeaponCompatible(character.weaponType, requestedWeapon)
+      ? requestedWeapon
+      : getPreferredWeapon(character);
+  const damageSettings = normalizeDamageSettings(
+    snapshot.damageSettings,
+  );
+  const weapon = {
+    ...weaponPreset,
+    refinement: clampRefinement(snapshot.weaponRefinement),
+  };
+  const build: BuildInput = {
+    element:
+      character.id === "custom" ? snapshot.element : character.element,
+    character,
+    weapon,
+    weaponPassiveSelections: getWeaponPassiveSelections(
+      weaponPreset,
+      character,
+      damageSettings,
+      snapshot.weaponPassiveSelections,
+    ),
+    artifactSetId: snapshot.artifactSetId ?? "none",
+    artifactSetPieces: snapshot.artifactSetPieces ?? 0,
+    artifactSetSelections: {
+      ...(snapshot.artifactSetSelections ?? {}),
+    },
+    artifact: { ...snapshot.artifact },
+    talentBonuses: { ...snapshot.talentBonuses },
+  };
+  return {
+    build,
+    characterId: character.id,
+    weaponId: weaponPreset.id,
+    damageSettings,
+  };
+}
+
 export default function Home() {
   const [build, setBuild] = useState<BuildInput>(defaultBuild);
   const [panel, setPanel] = useState<FinalPanel>(() =>
@@ -229,6 +328,10 @@ export default function Home() {
   }));
   const [characterId, setCharacterId] = useState("ayaka");
   const [weaponId, setWeaponId] = useState("mistsplitter");
+  const [plans, setPlans] = useState<BuildPlan[]>([]);
+  const plansRef = useRef<BuildPlan[]>([]);
+  const activePlanIdsRef = useRef<Record<string, string>>({});
+  const [activePlanId, setActivePlanId] = useState("");
   const [activeTalent, setActiveTalent] =
     useState<keyof BuildInput["talentBonuses"]>("skill");
   const [artifactOpen, setArtifactOpen] = useState(true);
@@ -237,15 +340,75 @@ export default function Home() {
   const [updatedAt, setUpdatedAt] = useState("示例数据");
   const [hydrated, setHydrated] = useState(false);
 
+  function applyRestoredPlan(state: RestoredPlanState) {
+    setBuild(state.build);
+    setPanel(calculateFinalPanel(state.build));
+    setCharacterId(state.characterId);
+    setWeaponId(state.weaponId);
+    setDamageSettings(state.damageSettings);
+  }
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const sourceKey = [storageKey, ...previousStorageKeys].find((key) =>
+      const currentStoreRaw = window.localStorage.getItem(
+        buildPlansStorageKey,
+      );
+      const legacyStoreRaw = window.localStorage.getItem(
+        legacyBuildPlansStorageKey,
+      );
+      const storedPlans = parseBuildPlanStore(
+        currentStoreRaw,
+      ) ?? parseBuildPlanStore(legacyStoreRaw);
+
+      if (storedPlans) {
+        const activeCharacterId = storedPlans.activeCharacterId;
+        const requestedActivePlanId =
+          storedPlans.activePlanIds[activeCharacterId];
+        const activePlan =
+          storedPlans.plans.find(
+            (plan) =>
+              plan.id === requestedActivePlanId &&
+              plan.snapshot.characterId === activeCharacterId,
+          ) ??
+          storedPlans.plans.find(
+            (plan) =>
+              plan.snapshot.characterId === activeCharacterId,
+          ) ??
+          storedPlans.plans[0];
+        applyRestoredPlan(restorePlanSnapshot(activePlan.snapshot));
+        plansRef.current = storedPlans.plans;
+        activePlanIdsRef.current = storedPlans.activePlanIds;
+        setPlans(storedPlans.plans);
+        setActivePlanId(activePlan.id);
+        if (!currentStoreRaw && legacyStoreRaw) {
+          window.localStorage.setItem(
+            buildPlansStorageKey,
+            JSON.stringify(storedPlans),
+          );
+          window.localStorage.removeItem(legacyBuildPlansStorageKey);
+          setUpdatedAt("已按角色迁移方案");
+        } else {
+          setUpdatedAt("已恢复角色方案");
+        }
+        setHydrated(true);
+        return;
+      }
+
+      let initialState: RestoredPlanState = {
+        build: defaultBuild,
+        characterId: "ayaka",
+        weaponId: "mistsplitter",
+        damageSettings: normalizeDamageSettings(),
+      };
+      let migrated = false;
+      const sourceKey = legacyStorageKeys.find((key) =>
         window.localStorage.getItem(key),
       );
       const persisted = sourceKey
         ? window.localStorage.getItem(sourceKey)
         : null;
-      if (persisted) {
+
+      if (persisted && sourceKey) {
         try {
           const parsed = JSON.parse(persisted) as {
             build: BuildInput | LegacyBuildInput;
@@ -256,35 +419,9 @@ export default function Home() {
           const restoredBuild = sourceKey === "genshin-panel-build-v1"
             ? migrateLegacyBuild(parsed.build as LegacyBuildInput)
             : (parsed.build as BuildInput);
-          const legacyTalentLevel = Math.min(
-            10,
-            Math.max(
-              1,
-              Number(parsed.damageSettings?.talentLevel) ||
-                defaultDamageSettings.normalTalentLevel,
-            ),
+          const restoredDamageSettings = normalizeDamageSettings(
+            parsed.damageSettings,
           );
-          const restoredDamageSettings: DamageSettings = {
-            enemyLevel:
-              parsed.damageSettings?.enemyLevel ??
-              defaultDamageSettings.enemyLevel,
-            enemyResistance:
-              parsed.damageSettings?.enemyResistance ??
-              defaultDamageSettings.enemyResistance,
-            normalTalentLevel:
-              parsed.damageSettings?.normalTalentLevel ??
-              legacyTalentLevel,
-            skillTalentLevel:
-              parsed.damageSettings?.skillTalentLevel ??
-              legacyTalentLevel,
-            burstTalentLevel:
-              parsed.damageSettings?.burstTalentLevel ??
-              legacyTalentLevel,
-            selections: {
-              ...defaultDamageSettings.selections,
-              ...parsed.damageSettings?.selections,
-            },
-          };
           const restoredCharacter =
             characters.find(
               (character) => character.id === parsed.characterId,
@@ -311,13 +448,15 @@ export default function Home() {
             restoredBuild.weapon.name === compatibleWeapon.name;
           const normalizedBuild: BuildInput = {
             ...restoredBuild,
-            character:
-              restoredBuild.character.name === restoredCharacter.name
-                ? restoredBuild.character
-                : restoredCharacter,
-            weapon: keepRestoredWeapon
-              ? restoredBuild.weapon
-              : compatibleWeapon,
+            character: restoredCharacter,
+            weapon: {
+              ...compatibleWeapon,
+              refinement: clampRefinement(
+                keepRestoredWeapon
+                  ? restoredBuild.weapon.refinement
+                  : compatibleWeapon.refinement,
+              ),
+            },
             element:
               restoredCharacter.id === "custom"
                 ? restoredBuild.element
@@ -335,43 +474,88 @@ export default function Home() {
             artifactSetSelections:
               restoredBuild.artifactSetSelections ?? {},
           };
-          setBuild(normalizedBuild);
-          setPanel(calculateFinalPanel(normalizedBuild));
-          setCharacterId(restoredCharacter.id);
-          setWeaponId(compatibleWeapon.id);
-          setDamageSettings(restoredDamageSettings);
-          setUpdatedAt(
-            sourceKey === storageKey ? "已恢复" : "已迁移旧版数据",
-          );
-          if (sourceKey !== storageKey) {
-            previousStorageKeys.forEach((key) =>
-              window.localStorage.removeItem(key),
-            );
-          }
+          initialState = {
+            build: normalizedBuild,
+            characterId: restoredCharacter.id,
+            weaponId: compatibleWeapon.id,
+            damageSettings: restoredDamageSettings,
+          };
+          migrated = true;
         } catch {
-          window.localStorage.removeItem(storageKey);
-          previousStorageKeys.forEach((key) =>
-            window.localStorage.removeItem(key),
-          );
+          window.localStorage.removeItem(sourceKey);
         }
       }
+
+      const initialPlan = createBuildPlan(
+        createBuildPlanSnapshot(initialState),
+        `${initialState.build.character.name}方案 1`,
+      );
+      applyRestoredPlan(initialState);
+      plansRef.current = [initialPlan];
+      activePlanIdsRef.current = {
+        [initialState.characterId]: initialPlan.id,
+      };
+      setPlans([initialPlan]);
+      setActivePlanId(initialPlan.id);
+      setUpdatedAt(migrated ? "已迁移为角色方案" : "已创建默认方案");
+      legacyStorageKeys.forEach((key) =>
+        window.localStorage.removeItem(key),
+      );
       setHydrated(true);
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || !activePlanId) return;
+    const snapshot = createBuildPlanSnapshot({
+      build,
+      characterId,
+      weaponId,
+      damageSettings,
+    });
+    const activePlan = plansRef.current.find(
+      (plan) => plan.id === activePlanId,
+    );
+    if (
+      !activePlan ||
+      activePlan.snapshot.characterId !== characterId
+    ) {
+      return;
+    }
+    const now = new Date().toISOString();
+    const nextPlans = plansRef.current.map((plan) =>
+      plan.id === activePlanId
+        ? {
+            ...plan,
+            updatedAt: now,
+            snapshot,
+          }
+        : plan,
+    );
+    if (!nextPlans.some((plan) => plan.id === activePlanId)) return;
+    plansRef.current = nextPlans;
+    activePlanIdsRef.current = {
+      ...activePlanIdsRef.current,
+      [characterId]: activePlanId,
+    };
     window.localStorage.setItem(
-      storageKey,
+      buildPlansStorageKey,
       JSON.stringify({
-        build,
-        characterId,
-        weaponId,
-        damageSettings,
+        schemaVersion: buildPlansSchemaVersion,
+        activeCharacterId: characterId,
+        activePlanIds: activePlanIdsRef.current,
+        plans: nextPlans,
       }),
     );
-  }, [build, characterId, damageSettings, hydrated, weaponId]);
+  }, [
+    activePlanId,
+    build,
+    characterId,
+    damageSettings,
+    hydrated,
+    weaponId,
+  ]);
 
   const activeElement = useMemo(
     () => elements.find((element) => element.key === build.element) ?? elements[0],
@@ -384,6 +568,13 @@ export default function Home() {
   const selectedCharacter = useMemo(
     () => characters.find((item) => item.id === characterId),
     [characterId],
+  );
+  const characterPlans = useMemo(
+    () =>
+      plans.filter(
+        (plan) => plan.snapshot.characterId === characterId,
+      ),
+    [characterId, plans],
   );
   const compatibleWeapons = useMemo(
     () =>
@@ -409,32 +600,217 @@ export default function Home() {
     [build, damageSettings, panel, selectedCharacter],
   );
 
+  function persistPlans(
+    nextPlans: BuildPlan[],
+    nextActivePlanId: string,
+    nextCharacterId: string,
+  ) {
+    const nextActivePlan = nextPlans.find(
+      (plan) =>
+        plan.id === nextActivePlanId &&
+        plan.snapshot.characterId === nextCharacterId,
+    );
+    if (!nextActivePlan) return;
+    const nextActivePlanIds = {
+      ...activePlanIdsRef.current,
+      [nextCharacterId]: nextActivePlanId,
+    };
+    activePlanIdsRef.current = nextActivePlanIds;
+    window.localStorage.setItem(
+      buildPlansStorageKey,
+      JSON.stringify({
+        schemaVersion: buildPlansSchemaVersion,
+        activeCharacterId: nextCharacterId,
+        activePlanIds: nextActivePlanIds,
+        plans: nextPlans,
+      }),
+    );
+  }
+
+  function saveActivePlanSnapshot() {
+    const activePlan = plansRef.current.find(
+      (plan) => plan.id === activePlanId,
+    );
+    if (
+      !activePlan ||
+      activePlan.snapshot.characterId !== characterId
+    ) {
+      return plansRef.current;
+    }
+    const snapshot = createBuildPlanSnapshot({
+      build,
+      characterId,
+      weaponId,
+      damageSettings,
+    });
+    const now = new Date().toISOString();
+    const nextPlans = plansRef.current.map((plan) =>
+      plan.id === activePlanId
+        ? { ...plan, updatedAt: now, snapshot }
+        : plan,
+    );
+    plansRef.current = nextPlans;
+    setPlans(nextPlans);
+    persistPlans(nextPlans, activePlanId, characterId);
+    return nextPlans;
+  }
+
+  function choosePlan(id: string) {
+    const plan = plansRef.current.find((item) => item.id === id);
+    if (
+      !plan ||
+      plan.snapshot.characterId !== characterId ||
+      plan.id === activePlanId
+    ) {
+      return;
+    }
+    applyRestoredPlan(restorePlanSnapshot(plan.snapshot));
+    setActivePlanId(plan.id);
+    persistPlans(plansRef.current, plan.id, characterId);
+    setUpdatedAt(`已切换到「${plan.name}」`);
+  }
+
+  function createNewPlan() {
+    const characterPlanCount = plansRef.current.filter(
+      (plan) => plan.snapshot.characterId === characterId,
+    ).length;
+    const suggestedName = `${build.character.name}方案 ${
+      characterPlanCount + 1
+    }`;
+    const requestedName = window.prompt("新方案名称", suggestedName);
+    if (requestedName === null) return;
+    const plan = createBuildPlan(
+      createBuildPlanSnapshot({
+        build,
+        characterId,
+        weaponId,
+        damageSettings,
+      }),
+      requestedName.trim() || suggestedName,
+    );
+    const nextPlans = [...plansRef.current, plan];
+    plansRef.current = nextPlans;
+    setPlans(nextPlans);
+    setActivePlanId(plan.id);
+    persistPlans(nextPlans, plan.id, characterId);
+    setUpdatedAt(`已新建「${plan.name}」`);
+  }
+
+  function renameActivePlan() {
+    const activePlan = plansRef.current.find(
+      (plan) => plan.id === activePlanId,
+    );
+    if (!activePlan) return;
+    const requestedName = window.prompt("重命名方案", activePlan.name);
+    const name = requestedName?.trim();
+    if (!name || name === activePlan.name) return;
+    const now = new Date().toISOString();
+    const nextPlans = plansRef.current.map((plan) =>
+      plan.id === activePlanId
+        ? { ...plan, name, updatedAt: now }
+        : plan,
+    );
+    plansRef.current = nextPlans;
+    setPlans(nextPlans);
+    persistPlans(nextPlans, activePlanId, characterId);
+    setUpdatedAt(`已重命名为「${name}」`);
+  }
+
+  function deleteActivePlan() {
+    const currentCharacterPlans = plansRef.current.filter(
+      (plan) => plan.snapshot.characterId === characterId,
+    );
+    if (currentCharacterPlans.length <= 1) return;
+    const activePlan = plansRef.current.find(
+      (plan) => plan.id === activePlanId,
+    );
+    if (
+      !activePlan ||
+      !window.confirm(`确定删除方案「${activePlan.name}」吗？`)
+    ) {
+      return;
+    }
+    const nextPlans = plansRef.current.filter(
+      (plan) => plan.id !== activePlanId,
+    );
+    const nextActivePlan = nextPlans.find(
+      (plan) => plan.snapshot.characterId === characterId,
+    );
+    if (!nextActivePlan) return;
+    applyRestoredPlan(restorePlanSnapshot(nextActivePlan.snapshot));
+    plansRef.current = nextPlans;
+    setPlans(nextPlans);
+    setActivePlanId(nextActivePlan.id);
+    persistPlans(nextPlans, nextActivePlan.id, characterId);
+    setUpdatedAt(`已删除「${activePlan.name}」`);
+  }
+
   function chooseCharacter(id: string) {
     const character = characters.find((item) => item.id === id);
-    if (!character) return;
+    if (!character || id === characterId) return;
+    const savedPlans = saveActivePlanSnapshot();
+    const requestedPlanId = activePlanIdsRef.current[id];
+    const existingPlan =
+      savedPlans.find(
+        (plan) =>
+          plan.id === requestedPlanId &&
+          plan.snapshot.characterId === id,
+      ) ??
+      savedPlans.find(
+        (plan) => plan.snapshot.characterId === id,
+      );
+    if (existingPlan) {
+      applyRestoredPlan(restorePlanSnapshot(existingPlan.snapshot));
+      setActivePlanId(existingPlan.id);
+      persistPlans(savedPlans, existingPlan.id, id);
+      setUpdatedAt(`已切换到「${existingPlan.name}」`);
+      return;
+    }
+
     const currentWeapon = weapons.find((item) => item.id === weaponId);
     const nextWeapon =
       currentWeapon &&
       isWeaponCompatible(character.weaponType, currentWeapon)
         ? currentWeapon
         : getPreferredWeapon(character);
-    setCharacterId(id);
-    setWeaponId(nextWeapon.id);
-    setBuild((current) => {
-      const weaponChanged = currentWeapon?.id !== nextWeapon.id;
-      return {
-        ...current,
+    const weaponChanged = currentWeapon?.id !== nextWeapon.id;
+    const nextDamageSettings = {
+      ...damageSettings,
+      selections: { ...damageSettings.selections },
+    };
+    const nextBuild: BuildInput = {
+      ...build,
+      character,
+      weapon: weaponChanged ? { ...nextWeapon } : { ...build.weapon },
+      weaponPassiveSelections: getWeaponPassiveSelections(
+        nextWeapon,
         character,
-        weapon: weaponChanged ? nextWeapon : current.weapon,
-        weaponPassiveSelections: getWeaponPassiveSelections(
-          nextWeapon,
-          character,
-          damageSettings,
-          weaponChanged ? undefined : current.weaponPassiveSelections,
-        ),
-        element: character.element,
-      };
-    });
+        nextDamageSettings,
+        weaponChanged ? undefined : build.weaponPassiveSelections,
+      ),
+      element:
+        character.id === "custom" ? build.element : character.element,
+      artifact: { ...build.artifact },
+      artifactSetSelections: { ...build.artifactSetSelections },
+      talentBonuses: { ...build.talentBonuses },
+    };
+    const nextState = {
+      build: nextBuild,
+      characterId: id,
+      weaponId: nextWeapon.id,
+      damageSettings: nextDamageSettings,
+    };
+    const plan = createBuildPlan(
+      createBuildPlanSnapshot(nextState),
+      `${character.name}方案 1`,
+    );
+    const nextPlans = [...savedPlans, plan];
+    plansRef.current = nextPlans;
+    setPlans(nextPlans);
+    applyRestoredPlan(nextState);
+    setActivePlanId(plan.id);
+    persistPlans(nextPlans, plan.id, id);
+    setUpdatedAt(`已创建「${plan.name}」`);
   }
 
   function chooseWeapon(id: string) {
@@ -455,6 +831,17 @@ export default function Home() {
         selectedCharacter,
         damageSettings,
       ),
+    }));
+  }
+
+  function updateWeaponRefinement(value: string) {
+    const refinement = clampRefinement(Number(value));
+    setBuild((current) => ({
+      ...current,
+      weapon: {
+        ...current.weapon,
+        refinement,
+      },
     }));
   }
 
@@ -553,19 +940,34 @@ export default function Home() {
   }
 
   function reset() {
-    setBuild(defaultBuild);
-    setPanel(calculateFinalPanel(defaultBuild));
-    setDamageSettings({
+    const character = selectedCharacter ?? characters[0];
+    const weapon = getPreferredWeapon(character);
+    const resetDamageSettings: DamageSettings = {
       ...defaultDamageSettings,
       selections: { ...defaultDamageSettings.selections },
-    });
-    setCharacterId("ayaka");
-    setWeaponId("mistsplitter");
-    setUpdatedAt("已重置");
-    window.localStorage.removeItem(storageKey);
-    previousStorageKeys.forEach((key) =>
-      window.localStorage.removeItem(key),
-    );
+    };
+    const resetBuild: BuildInput = {
+      ...defaultBuild,
+      character: { ...character },
+      weapon: { ...weapon },
+      element:
+        character.id === "custom" ? build.element : character.element,
+      weaponPassiveSelections: getWeaponPassiveSelections(
+        weapon,
+        character,
+        resetDamageSettings,
+      ),
+      artifactSetSelections: {
+        ...defaultBuild.artifactSetSelections,
+      },
+      artifact: { ...defaultBuild.artifact },
+      talentBonuses: { ...defaultBuild.talentBonuses },
+    };
+    setBuild(resetBuild);
+    setPanel(calculateFinalPanel(resetBuild));
+    setDamageSettings(resetDamageSettings);
+    setWeaponId(weapon.id);
+    setUpdatedAt("当前方案已重置");
   }
 
   async function copyResult() {
@@ -628,7 +1030,7 @@ export default function Home() {
           <span className="brand-mark">✦</span>
           <span>
             <strong>原神伤害计算器</strong>
-            <small>面板与技能伤害 · v0.5</small>
+            <small>面板与技能伤害 · v0.6</small>
           </span>
         </a>
         <nav className="top-actions" aria-label="页面操作">
@@ -674,10 +1076,12 @@ export default function Home() {
         <div className="layout-grid">
           <section className="input-column" aria-label="面板输入">
             <div className="selection-grid">
-              <article className="selection-card">
+              <article className="selection-card character-card">
                 <div className="card-kicker">
                   <span>角色</span>
-                  <span className="status-dot">已载入</span>
+                  <span className="status-dot">
+                    {hydrated ? "方案自动保存" : "方案载入中"}
+                  </span>
                 </div>
                 <div className={`round-icon element-${build.element}`}>
                   {activeElement.icon}
@@ -705,6 +1109,53 @@ export default function Home() {
                       "使用当前基础属性"}
                   </p>
                 </div>
+                <div className="plan-picker">
+                  <label>
+                    <span>角色方案</span>
+                    <select
+                      aria-label="选择角色方案"
+                      value={activePlanId}
+                      disabled={!hydrated || characterPlans.length === 0}
+                      onChange={(event) => choosePlan(event.target.value)}
+                    >
+                      {characterPlans.map((plan) => (
+                        <option key={plan.id} value={plan.id}>
+                          {plan.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="plan-actions" aria-label="方案操作">
+                    <button
+                      type="button"
+                      onClick={createNewPlan}
+                      disabled={!hydrated}
+                      title="复制当前配置为新方案"
+                    >
+                      ＋ 新建
+                    </button>
+                    <button
+                      type="button"
+                      onClick={renameActivePlan}
+                      disabled={!hydrated}
+                      title="重命名当前方案"
+                    >
+                      重命名
+                    </button>
+                    <button
+                      type="button"
+                      onClick={deleteActivePlan}
+                      disabled={!hydrated || characterPlans.length <= 1}
+                      title={
+                        characterPlans.length <= 1
+                          ? "至少保留一个方案"
+                          : "删除当前方案"
+                      }
+                    >
+                      删除
+                    </button>
+                  </div>
+                </div>
               </article>
 
               <article className="selection-card">
@@ -725,21 +1176,43 @@ export default function Home() {
                       </option>
                     ))}
                   </select>
-                  <p>
-                    {selectedWeapon?.level ?? build.weapon.level} 级
-                    <span>·</span>
-                    {selectedWeapon
-                      ? weaponTypeLabels[selectedWeapon.weaponType]
-                      : "武器类型未设置"}
-                    <span>·</span>
-                    {selectedWeapon?.secondaryLabel ?? "使用当前副属性"}
-                  </p>
+                  <div className="weapon-meta-row">
+                    <p>
+                      {selectedWeapon?.level ?? build.weapon.level} 级
+                      <span>·</span>
+                      {selectedWeapon
+                        ? weaponTypeLabels[selectedWeapon.weaponType]
+                        : "武器类型未设置"}
+                      <span>·</span>
+                      {selectedWeapon?.secondaryLabel ?? "使用当前副属性"}
+                    </p>
+                    <label className="refinement-picker">
+                      <span>精炼</span>
+                      <select
+                        aria-label="武器精炼等级"
+                        value={build.weapon.refinement}
+                        onChange={(event) =>
+                          updateWeaponRefinement(event.target.value)
+                        }
+                      >
+                        {[1, 2, 3, 4, 5].map((refinement) => (
+                          <option key={refinement} value={refinement}>
+                            {refinement} 阶
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
                 </div>
                 {selectedWeapon ? (
                   <div className="weapon-passive">
                     <div className="weapon-passive-copy">
                       <strong>{selectedWeapon.passive.name}</strong>
-                      <small>{selectedWeapon.passive.description}</small>
+                      <small>
+                        {selectedWeapon.passive.refinementDescriptions?.[
+                          clampRefinement(build.weapon.refinement) - 1
+                        ] ?? selectedWeapon.passive.description}
+                      </small>
                     </div>
                     {selectedWeapon.passive.control ? (
                       <label className="passive-select">
@@ -1329,7 +1802,12 @@ export default function Home() {
             <span className="modal-icon">✦</span>
             <h2 id="help-title">如何录入</h2>
             <ol>
-              <li>选择角色、武器和圣遗物套装，并设置触发条件。</li>
+              <li>
+                在角色卡片中新建或切换方案；当前输入会自动保存在本机。
+              </li>
+              <li>
+                选择角色、武器、精炼等级和圣遗物套装，并设置触发条件。
+              </li>
               <li>把游戏内圣遗物详情页的绿色加成合计录入对应字段。</li>
               <li>按需填写战技、爆发等额外伤害加成。</li>
               <li>点击计算后，在结果区调整天赋等级、敌人等级与抗性。</li>

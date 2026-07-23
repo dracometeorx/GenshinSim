@@ -87,6 +87,20 @@ test("applies Mistsplitter stacks to elemental damage", () => {
   assert.equal(panel.elementalDmg, 86.6);
 });
 
+test("scales Mistsplitter bonuses with refinement", () => {
+  const panel = calculateFinalPanel({
+    ...build,
+    weapon: {
+      ...build.weapon,
+      id: "mistsplitter",
+      refinement: 5,
+    },
+    weaponPassiveSelections: { mistsplitterStacks: "3" },
+  });
+
+  assert.equal(panel.elementalDmg, 126.6);
+});
+
 test("applies Staff of Homa HP and conditional ATK bonuses", () => {
   const panel = calculateFinalPanel({
     ...build,
@@ -103,6 +117,23 @@ test("applies Staff of Homa HP and conditional ATK bonuses", () => {
   assert.equal(panel.atk, 2364);
 });
 
+test("scales Staff of Homa bonuses with refinement", () => {
+  const panel = calculateFinalPanel({
+    ...build,
+    weapon: {
+      ...build.weapon,
+      id: "homa",
+      refinement: 5,
+      secondaryStat: "critDmg",
+      secondaryValue: 66.2,
+    },
+    weaponPassiveSelections: { homaHpState: "below50" },
+  });
+
+  assert.equal(panel.hp, 28200);
+  assert.equal(panel.atk, 2859);
+});
+
 test("applies Engulfing Lightning burst ER before its ATK conversion", () => {
   const panel = calculateFinalPanel({
     ...build,
@@ -117,6 +148,23 @@ test("applies Engulfing Lightning burst ER before its ATK conversion", () => {
 
   assert.equal(panel.energyRecharge, 205.1);
   assert.equal(panel.atk, 2165);
+});
+
+test("scales Engulfing Lightning bonuses with refinement", () => {
+  const panel = calculateFinalPanel({
+    ...build,
+    weapon: {
+      ...build.weapon,
+      id: "engulfing",
+      refinement: 5,
+      secondaryStat: "energyRecharge",
+      secondaryValue: 55.1,
+    },
+    weaponPassiveSelections: { engulfingBurst: "active" },
+  });
+
+  assert.equal(panel.energyRecharge, 225.1);
+  assert.equal(panel.atk, 2531);
 });
 
 test("applies Blizzard Strayer damage and conditional CRIT Rate", () => {

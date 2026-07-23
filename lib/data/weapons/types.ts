@@ -7,6 +7,7 @@ export type WeaponPreset = WeaponBase & {
   passive: {
     name: string;
     description: string;
+    refinementDescriptions?: [string, string, string, string, string];
     teammateDependent?: boolean;
     control?: {
       key: string;
