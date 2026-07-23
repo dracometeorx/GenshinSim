@@ -170,7 +170,10 @@ export function calculateFinalPanel(input: BuildInput): FinalPanel {
     input.artifactSetPieces,
     input.artifactSetSelections,
   )) {
-    if (modifier.kind === "damageBonus") {
+    if (
+      modifier.kind === "damageBonus" ||
+      modifier.kind === "reactionBonus"
+    ) {
       continue;
     }
     if (modifier.kind === "burstFromEnergyRecharge") {

@@ -8,6 +8,7 @@ import {
   calculateResistanceMultiplier,
   defaultDamageSettings,
 } from "../lib/damage.ts";
+import { calculateFinalPanel } from "../lib/calculator.ts";
 import { hutao } from "../lib/data/characters/hutao.ts";
 import { nahida } from "../lib/data/characters/nahida.ts";
 
@@ -84,7 +85,7 @@ test("calculates Hu Tao skill-enhanced charged attack reaction variants", () => 
   assert.equal(plain.crit, plain.nonCrit * 2);
 });
 
-test("applies Crimson Witch bonuses in final damage instead of the panel", () => {
+test("applies Crimson Witch stacks in the reaction bonus layer", () => {
   const baseBuild: BuildInput = {
     element: "pyro",
     character: hutao,
@@ -112,35 +113,66 @@ test("applies Crimson Witch bonuses in final damage instead of the panel", () =>
     panel,
     settings,
   ).skills[0];
-  const withWitch = calculateRepresentativeDamage(
+  const twoPieceBuild: BuildInput = {
+    ...baseBuild,
+    artifactSetId: "crimson-witch",
+    artifactSetPieces: 2,
+  };
+  const fourPieceBuild: BuildInput = {
+    ...baseBuild,
+    artifactSetId: "crimson-witch",
+    artifactSetPieces: 4,
+    artifactSetSelections: { crimsonWitchStacks: "3" },
+  };
+  const twoPiecePanel = calculateFinalPanel(twoPieceBuild);
+  const fourPiecePanel = calculateFinalPanel(fourPieceBuild);
+  const withTwoPiece = calculateRepresentativeDamage(
     hutao,
-    {
-      ...baseBuild,
-      artifactSetId: "crimson-witch",
-      artifactSetPieces: 4,
-      artifactSetSelections: { crimsonWitchStacks: "3" },
-    },
-    panel,
+    twoPieceBuild,
+    { ...panel, elementalDmg: twoPiecePanel.elementalDmg },
+    settings,
+  ).skills[0];
+  const withFourPiece = calculateRepresentativeDamage(
+    hutao,
+    fourPieceBuild,
+    { ...panel, elementalDmg: fourPiecePanel.elementalDmg },
     settings,
   ).skills[0];
   const basePlain = withoutSet.variants.find(
     ({ reaction }) => reaction === "none",
   );
-  const witchPlain = withWitch.variants.find(
+  const twoPiecePlain = withTwoPiece.variants.find(
     ({ reaction }) => reaction === "none",
   );
-  const witchVaporize = withWitch.variants.find(
+  const fourPiecePlain = withFourPiece.variants.find(
+    ({ reaction }) => reaction === "none",
+  );
+  const twoPieceVaporize = withTwoPiece.variants.find(
+    ({ reaction }) => reaction === "vaporize",
+  );
+  const fourPieceVaporize = withFourPiece.variants.find(
     ({ reaction }) => reaction === "vaporize",
   );
 
   assert.ok(basePlain);
-  assert.ok(witchPlain);
-  assert.ok(witchVaporize);
+  assert.ok(twoPiecePlain);
+  assert.ok(fourPiecePlain);
+  assert.ok(twoPieceVaporize);
+  assert.ok(fourPieceVaporize);
   assert.ok(
-    Math.abs(witchPlain.nonCrit / basePlain.nonCrit - 1.375) < 0.001,
+    Math.abs(twoPiecePlain.nonCrit / basePlain.nonCrit - 1.15) < 0.001,
   );
   assert.ok(
-    Math.abs(witchVaporize.nonCrit / witchPlain.nonCrit - 1.725) < 0.001,
+    Math.abs(fourPiecePlain.nonCrit / twoPiecePlain.nonCrit - 1) < 0.001,
+  );
+  assert.ok(
+    Math.abs(twoPieceVaporize.nonCrit / twoPiecePlain.nonCrit - 1.5) <
+      0.001,
+  );
+  assert.ok(
+    Math.abs(
+      fourPieceVaporize.nonCrit / fourPiecePlain.nonCrit - 2.0625,
+    ) < 0.001,
   );
 });
 

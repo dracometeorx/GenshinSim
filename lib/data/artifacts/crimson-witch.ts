@@ -8,7 +8,8 @@ export const crimsonWitch: ArtifactSetPreset = {
     description: "获得 15% 火元素伤害加成。",
     modifiers: [
       {
-        kind: "damageBonus",
+        kind: "stat",
+        stat: "elementalDmg",
         value: 15,
         element: "pyro",
       },
@@ -16,44 +17,52 @@ export const crimsonWitch: ArtifactSetPreset = {
   },
   fourPiece: {
     description:
-      "施放元素战技后，二件套效果提高 50%，最多叠加 3 次；同时提高相关火元素反应伤害。",
-    panelNote: "火伤与反应增幅仅用于最终技能伤害，不写入最终面板。",
+      "蒸发、融化反应加成提高 15%；施放元素战技后可额外叠加反应加成，最多 3 层。",
+    modifiers: [
+      {
+        kind: "reactionBonus",
+        value: 15,
+        reactions: ["vaporize", "melt"],
+      },
+    ],
+    panelNote:
+      "二件套火伤写入面板；四件套反应加成计入元素精通所在的反应倍率层。",
     control: {
       key: "crimsonWitchStacks",
       label: "魔女套层数",
       defaultValue: "0",
       options: [
-        { value: "0", label: "0 层" },
+        { value: "0", label: "0 层 · 反应加成 15%" },
         {
           value: "1",
-          label: "1 层",
+          label: "1 层 · 反应加成 22.5%",
           modifiers: [
             {
-              kind: "damageBonus",
+              kind: "reactionBonus",
               value: 7.5,
-              element: "pyro",
+              reactions: ["vaporize", "melt"],
             },
           ],
         },
         {
           value: "2",
-          label: "2 层",
+          label: "2 层 · 反应加成 30%",
           modifiers: [
             {
-              kind: "damageBonus",
+              kind: "reactionBonus",
               value: 15,
-              element: "pyro",
+              reactions: ["vaporize", "melt"],
             },
           ],
         },
         {
           value: "3",
-          label: "3 层",
+          label: "3 层 · 反应加成 37.5%",
           modifiers: [
             {
-              kind: "damageBonus",
+              kind: "reactionBonus",
               value: 22.5,
-              element: "pyro",
+              reactions: ["vaporize", "melt"],
             },
           ],
         },
