@@ -1,26 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { characters } from "../lib/data/characters";
+import { weapons } from "../lib/data/weapons";
 import {
   BuildInput,
-  CharacterBase,
   ElementKey,
   FinalPanel,
   SecondaryStatKey,
-  WeaponBase,
   calculateFinalPanel,
 } from "../lib/calculator";
-
-type CharacterPreset = CharacterBase & {
-  id: string;
-  element: ElementKey;
-  ascensionLabel: string;
-};
-
-type WeaponPreset = WeaponBase & {
-  id: string;
-  secondaryLabel: string;
-};
 
 const elements: Array<{ key: ElementKey; label: string; icon: string }> = [
   { key: "cryo", label: "冰元素", icon: "❄" },
@@ -30,122 +19,6 @@ const elements: Array<{ key: ElementKey; label: string; icon: string }> = [
   { key: "anemo", label: "风元素", icon: "✤" },
   { key: "geo", label: "岩元素", icon: "◇" },
   { key: "dendro", label: "草元素", icon: "♧" },
-];
-
-const characters: CharacterPreset[] = [
-  {
-    id: "ayaka",
-    name: "神里绫华",
-    level: 90,
-    baseHp: 12858,
-    baseAtk: 342,
-    baseDef: 784,
-    ascensionStat: "critDmg",
-    ascensionValue: 38.4,
-    ascensionLabel: "暴击伤害 +38.4%",
-    element: "cryo",
-  },
-  {
-    id: "hutao",
-    name: "胡桃",
-    level: 90,
-    baseHp: 15552,
-    baseAtk: 106,
-    baseDef: 876,
-    ascensionStat: "critDmg",
-    ascensionValue: 38.4,
-    ascensionLabel: "暴击伤害 +38.4%",
-    element: "pyro",
-  },
-  {
-    id: "raiden",
-    name: "雷电将军",
-    level: 90,
-    baseHp: 12907,
-    baseAtk: 337,
-    baseDef: 789,
-    ascensionStat: "energyRecharge",
-    ascensionValue: 32,
-    ascensionLabel: "元素充能效率 +32%",
-    element: "electro",
-  },
-  {
-    id: "nahida",
-    name: "纳西妲",
-    level: 90,
-    baseHp: 10360,
-    baseAtk: 299,
-    baseDef: 630,
-    ascensionStat: "elementalMastery",
-    ascensionValue: 115.2,
-    ascensionLabel: "元素精通 +115.2",
-    element: "dendro",
-  },
-  {
-    id: "custom",
-    name: "自定义角色",
-    level: 90,
-    baseHp: 12000,
-    baseAtk: 300,
-    baseDef: 700,
-    ascensionStat: "none",
-    ascensionValue: 0,
-    ascensionLabel: "无突破属性",
-    element: "anemo",
-  },
-];
-
-const weapons: WeaponPreset[] = [
-  {
-    id: "mistsplitter",
-    name: "雾切之回光",
-    level: 90,
-    refinement: 1,
-    baseAtk: 674,
-    secondaryStat: "critDmg",
-    secondaryValue: 44.1,
-    secondaryLabel: "暴击伤害 +44.1%",
-  },
-  {
-    id: "homa",
-    name: "护摩之杖",
-    level: 90,
-    refinement: 1,
-    baseAtk: 608,
-    secondaryStat: "critDmg",
-    secondaryValue: 66.2,
-    secondaryLabel: "暴击伤害 +66.2%",
-  },
-  {
-    id: "engulfing",
-    name: "薙草之稻光",
-    level: 90,
-    refinement: 1,
-    baseAtk: 608,
-    secondaryStat: "energyRecharge",
-    secondaryValue: 55.1,
-    secondaryLabel: "元素充能效率 +55.1%",
-  },
-  {
-    id: "dreams",
-    name: "千夜浮梦",
-    level: 90,
-    refinement: 1,
-    baseAtk: 542,
-    secondaryStat: "elementalMastery",
-    secondaryValue: 265,
-    secondaryLabel: "元素精通 +265",
-  },
-  {
-    id: "custom",
-    name: "自定义武器",
-    level: 90,
-    refinement: 1,
-    baseAtk: 600,
-    secondaryStat: "none",
-    secondaryValue: 0,
-    secondaryLabel: "无副属性",
-  },
 ];
 
 const defaultBuild: BuildInput = {
