@@ -132,7 +132,7 @@ test("applies Blizzard Strayer damage and conditional CRIT Rate", () => {
   assert.equal(panel.critRate, 85);
 });
 
-test("applies Crimson Witch stacks to Pyro damage", () => {
+test("keeps Crimson Witch damage-only bonuses out of the panel", () => {
   const panel = calculateFinalPanel({
     ...build,
     element: "pyro",
@@ -141,7 +141,7 @@ test("applies Crimson Witch stacks to Pyro damage", () => {
     artifactSetSelections: { crimsonWitchStacks: "3" },
   });
 
-  assert.equal(panel.elementalDmg, 84.1);
+  assert.equal(panel.elementalDmg, 46.6);
 });
 
 test("converts final Energy Recharge into Emblem burst damage", () => {

@@ -1,8 +1,10 @@
 import type { WeaponPreset } from "./types.ts";
+import { hpStateOptions } from "../common.ts";
 
 export const homa: WeaponPreset = {
   id: "homa",
   name: "护摩之杖",
+  weaponType: "polearm",
   level: 90,
   refinement: 1,
   baseAtk: 608,
@@ -16,10 +18,7 @@ export const homa: WeaponPreset = {
       key: "homaHpState",
       label: "当前生命值",
       defaultValue: "above50",
-      options: [
-        { value: "above50", label: "不低于 50%" },
-        { value: "below50", label: "低于 50%" },
-      ],
+      options: hpStateOptions,
     },
   },
 };

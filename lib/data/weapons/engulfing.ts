@@ -3,6 +3,7 @@ import type { WeaponPreset } from "./types.ts";
 export const engulfing: WeaponPreset = {
   id: "engulfing",
   name: "薙草之稻光",
+  weaponType: "polearm",
   level: 90,
   refinement: 1,
   baseAtk: 608,

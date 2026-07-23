@@ -3,6 +3,7 @@ import type { WeaponPreset } from "./types.ts";
 export const customWeapon: WeaponPreset = {
   id: "custom",
   name: "自定义武器",
+  weaponType: "any",
   level: 90,
   refinement: 1,
   baseAtk: 600,

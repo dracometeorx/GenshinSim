@@ -31,6 +31,12 @@ export type ArtifactModifier =
       element?: ArtifactElementKey;
     }
   | {
+      kind: "damageBonus";
+      value: number;
+      element?: ArtifactElementKey;
+      category?: "skill" | "burst" | "normal" | "charged" | "plunge";
+    }
+  | {
       kind: "burstFromEnergyRecharge";
       ratio: number;
       max: number;

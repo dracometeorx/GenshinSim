@@ -3,6 +3,7 @@ import type { WeaponPreset } from "./types.ts";
 export const mistsplitter: WeaponPreset = {
   id: "mistsplitter",
   name: "雾切之回光",
+  weaponType: "sword",
   level: 90,
   refinement: 1,
   baseAtk: 674,
