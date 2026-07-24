@@ -2,6 +2,7 @@ import type {
   ElementKey,
   TalentBonuses,
 } from "../../calculator.ts";
+import type { TeamBuffDefinition } from "../../team-types.ts";
 
 export type ArtifactElementKey = ElementKey;
 
@@ -74,4 +75,5 @@ export type ArtifactSetPreset = {
   shortName: string;
   twoPiece: ArtifactSetEffect;
   fourPiece: ArtifactSetEffect;
+  teamBuffs?: readonly TeamBuffDefinition[];
 };

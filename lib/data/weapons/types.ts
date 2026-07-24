@@ -3,6 +3,7 @@ import type {
   DamageEffect,
   PanelEffect,
 } from "../../effects.ts";
+import type { TeamBuffDefinition } from "../../team-types.ts";
 
 export type RefinementValues = [number, number, number, number, number];
 
@@ -15,6 +16,7 @@ export type WeaponPreset = WeaponBase & {
     description: string;
     panelEffects?: readonly PanelEffect[];
     damageEffects?: readonly DamageEffect[];
+    teamBuffs?: readonly TeamBuffDefinition[];
     refinementDescriptions?: [string, string, string, string, string];
     teammateDependent?: boolean;
     utilityOnly?: boolean;

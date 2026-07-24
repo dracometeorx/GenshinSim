@@ -91,9 +91,14 @@ export function getDamageSelectionsForCharacter(character: CharacterPreset) {
 export function calculateDefenseMultiplier(
   characterLevel: number,
   enemyLevel: number,
+  defenseReductionPercent = 0,
+  defenseIgnorePercent = 0,
 ) {
   const attacker = clamp(characterLevel, 1, 200) + 100;
-  const defender = clamp(enemyLevel, 1, 200) + 100;
+  const defender =
+    (clamp(enemyLevel, 1, 200) + 100) *
+    (1 - clamp(defenseReductionPercent, 0, 100) / 100) *
+    (1 - clamp(defenseIgnorePercent, 0, 100) / 100);
   return attacker / (attacker + defender);
 }
 
@@ -185,12 +190,14 @@ function buildTargets(
   build: BuildInput,
   panel: FinalPanel,
   settings: DamageSettings,
+  constellation: number,
 ): DamageTarget[] {
   const profile = character.damageProfile;
   if (!profile) return [];
 
   return profile.evaluateTargets({
     build,
+    constellation,
     panel,
     settings,
     selection: (key) => getSelection(profile, settings, key),
@@ -203,7 +210,7 @@ function buildTargets(
 /**
  * 计算角色代表技能的单目标伤害。
  * 包含角色自身机制、当前武器/套装面板、分类增伤、双暴、敌人防御和抗性；
- * 不包含队友增益、命座、敌人防御降低或独立易伤。
+ * 调用方可通过 damageEffects 传入命座、队友增益与敌人减防/减抗。
  */
 export function calculateRepresentativeDamage(
   character: CharacterPreset,
@@ -211,13 +218,10 @@ export function calculateRepresentativeDamage(
   panel: FinalPanel,
   settings: DamageSettings,
   artifactModifiers: readonly ArtifactModifier[] = [],
-  weaponDamageEffects: readonly DamageEffect[] = [],
+  damageEffects: readonly DamageEffect[] = [],
+  constellation = 0,
 ): DamageCalculationResult {
-  const defenseMultiplier = calculateDefenseMultiplier(
-    build.character.level,
-    settings.enemyLevel,
-  );
-  const resistanceReduction = artifactModifiers.reduce(
+  const artifactResistanceReduction = artifactModifiers.reduce(
     (total, modifier) =>
       modifier.kind === "enemyResistanceReduction" &&
       modifier.element === build.element
@@ -225,20 +229,17 @@ export function calculateRepresentativeDamage(
         : total,
     0,
   );
-  const effectiveResistance =
-    settings.enemyResistance - resistanceReduction;
-  const resistanceMultiplier = calculateResistanceMultiplier(
-    effectiveResistance,
-  );
-
-  const skills = buildTargets(
+  const targets = buildTargets(
     character,
     build,
     panel,
     settings,
-  ).map((target) => {
-    const weaponModifiers = evaluateDamageEffects(
-      weaponDamageEffects,
+    constellation,
+  );
+  const targetsWithModifiers = targets.map((target) => ({
+    target,
+    modifiers: evaluateDamageEffects(
+      damageEffects,
       {
         build,
         panel,
@@ -249,127 +250,222 @@ export function calculateRepresentativeDamage(
         ),
         weaponSelections: build.weaponPassiveSelections ?? {},
       },
-    );
-    const artifactDamageBonus = artifactModifiers.reduce(
-      (total, modifier) => {
-        if (modifier.kind !== "damageBonus") return total;
-        if (modifier.element && modifier.element !== build.element) {
-          return total;
-        }
-        if (modifier.category && modifier.category !== target.category) {
-          return total;
-        }
-        return total + Math.max(0, modifier.value);
-      },
-      0,
-    );
-    const weaponDamageBonus = weaponModifiers.reduce(
-      (total, modifier) =>
-        modifier.stat === "damageBonus"
-          ? total + Math.max(0, modifier.value)
-          : total,
-      0,
-    );
-    const damageBonus =
-      panel.elementalDmg +
-      panel.talentBonuses[target.category] +
-      artifactDamageBonus +
-      weaponDamageBonus +
-      (target.extraDamageBonus ?? 0);
-    const weaponCritRate = weaponModifiers.reduce(
-      (total, modifier) =>
-        modifier.stat === "critRate"
-          ? total + Math.max(0, modifier.value)
-          : total,
-      0,
-    );
-    const weaponCritDmg = weaponModifiers.reduce(
-      (total, modifier) =>
-        modifier.stat === "critDmg"
-          ? total + Math.max(0, modifier.value)
-          : total,
-      0,
-    );
-    const baseCritRate = clamp(
-      panel.critRate +
-        weaponCritRate +
-        (target.extraCritRate ?? 0),
-      0,
-      100,
-    );
-    const critDmg = Math.max(
-      0,
-      panel.critDmg +
-        weaponCritDmg +
-        (target.extraCritDmg ?? 0),
-    );
+    ),
+  }));
+  const firstTargetModifiers =
+    targetsWithModifiers[0]?.modifiers.filter(
+      (modifier) => !modifier.reactions?.length,
+    ) ?? [];
+  const defenseReduction = firstTargetModifiers.reduce(
+    (total, modifier) =>
+      modifier.stat === "enemyDefenseReduction"
+        ? total + Math.max(0, modifier.value)
+        : total,
+    0,
+  );
+  const defenseIgnore = firstTargetModifiers.reduce(
+    (total, modifier) =>
+      modifier.stat === "enemyDefenseIgnore"
+        ? total + Math.max(0, modifier.value)
+        : total,
+    0,
+  );
+  const defenseMultiplier = calculateDefenseMultiplier(
+    build.character.level,
+    settings.enemyLevel,
+    defenseReduction,
+    defenseIgnore,
+  );
+  const commonResistanceReduction = firstTargetModifiers.reduce(
+    (total, modifier) =>
+      modifier.stat === "enemyResistanceReduction" &&
+      (!modifier.element || modifier.element === build.element)
+        ? total + Math.max(0, modifier.value)
+        : total,
+    0,
+  );
+  const effectiveResistance =
+    settings.enemyResistance -
+    artifactResistanceReduction -
+    commonResistanceReduction;
+  const resistanceMultiplier = calculateResistanceMultiplier(
+    effectiveResistance,
+  );
 
-    return {
-      id: target.id,
-      name: target.name,
-      description: target.description,
-      multiplierLabel: target.multiplierLabel,
-      variants: target.reactions.map((reaction) => {
-        let baseDamage = target.baseDamage;
-        let reactionMultiplier = 1;
-        const incompatibleCritRate =
-          reaction === "melt" &&
-          build.artifactSetId === "blizzard-strayer" &&
-          build.artifactSetPieces === 4
-            ? artifactModifiers.reduce(
-                (total, modifier) =>
-                  modifier.kind === "stat" &&
-                  modifier.stat === "critRate"
-                    ? total + Math.max(0, modifier.value)
-                    : total,
-                0,
-              )
-            : 0;
-        const critRate = clamp(
-          baseCritRate - incompatibleCritRate,
-          0,
-          100,
-        );
-        if (reaction === "vaporize" || reaction === "melt") {
-          const reactionBonus = artifactModifiers.reduce(
-            (total, modifier) => {
-              if (modifier.kind !== "reactionBonus") return total;
-              if (!modifier.reactions.includes(reaction)) return total;
-              return total + Math.max(0, modifier.value) / 100;
-            },
+  const skills = targetsWithModifiers.map(
+    ({ target, modifiers: targetModifiers }) => {
+      const artifactDamageBonus = artifactModifiers.reduce(
+        (total, modifier) => {
+          if (modifier.kind !== "damageBonus") return total;
+          if (modifier.element && modifier.element !== build.element) {
+            return total;
+          }
+          if (
+            modifier.category &&
+            modifier.category !== target.category
+          ) {
+            return total;
+          }
+          return total + Math.max(0, modifier.value);
+        },
+        0,
+      );
+
+      return {
+        id: target.id,
+        name: target.name,
+        description: target.description,
+        multiplierLabel: target.multiplierLabel,
+        variants: target.reactions.map((reaction) => {
+          const modifiers = targetModifiers.filter(
+            (modifier) =>
+              !modifier.reactions?.length ||
+              modifier.reactions.includes(reaction),
+          );
+          const effectDamageBonus = modifiers.reduce(
+            (total, modifier) =>
+              modifier.stat === "damageBonus"
+                ? total + Math.max(0, modifier.value)
+                : total,
             0,
           );
-          reactionMultiplier = amplifyingReactionMultiplier(
-            reaction,
-            build.element,
-            panel.elementalMastery,
-            reactionBonus,
+          const damageBonus =
+            panel.elementalDmg +
+            panel.talentBonuses[target.category] +
+            artifactDamageBonus +
+            effectDamageBonus +
+            (target.extraDamageBonus ?? 0);
+          const effectCritRate = modifiers.reduce(
+            (total, modifier) =>
+              modifier.stat === "critRate"
+                ? total + Math.max(0, modifier.value)
+                : total,
+            0,
           );
-        } else if (reaction === "spread") {
-          baseDamage += calculateSpreadBonus(
-            panel.elementalMastery,
+          const effectCritDmg = modifiers.reduce(
+            (total, modifier) =>
+              modifier.stat === "critDmg"
+                ? total + Math.max(0, modifier.value)
+                : total,
+            0,
+          );
+          const baseCritRate = clamp(
+            panel.critRate +
+              effectCritRate +
+              (target.extraCritRate ?? 0),
+            0,
+            100,
+          );
+          const critDmg = Math.max(
+            0,
+            panel.critDmg +
+              effectCritDmg +
+              (target.extraCritDmg ?? 0),
+          );
+          let baseDamage = target.baseDamage;
+          let reactionMultiplier = 1;
+          const baseDamageMultiplier = modifiers.reduce(
+            (total, modifier) =>
+              modifier.stat === "baseDamageMultiplier"
+                ? total + Math.max(0, modifier.value)
+                : total,
+            0,
+          );
+          baseDamage *= 1 + baseDamageMultiplier / 100;
+          const incompatibleCritRate =
+            reaction === "melt" &&
+            build.artifactSetId === "blizzard-strayer" &&
+            build.artifactSetPieces === 4
+              ? artifactModifiers.reduce(
+                  (total, modifier) =>
+                    modifier.kind === "stat" &&
+                    modifier.stat === "critRate"
+                      ? total + Math.max(0, modifier.value)
+                      : total,
+                  0,
+                )
+              : 0;
+          const critRate = clamp(
+            baseCritRate - incompatibleCritRate,
+            0,
+            100,
+          );
+          const variantDefenseReduction = modifiers.reduce(
+            (total, modifier) =>
+              modifier.stat === "enemyDefenseReduction"
+                ? total + Math.max(0, modifier.value)
+                : total,
+            0,
+          );
+          const variantDefenseIgnore = modifiers.reduce(
+            (total, modifier) =>
+              modifier.stat === "enemyDefenseIgnore"
+                ? total + Math.max(0, modifier.value)
+                : total,
+            0,
+          );
+          const variantDefenseMultiplier = calculateDefenseMultiplier(
             build.character.level,
+            settings.enemyLevel,
+            variantDefenseReduction,
+            variantDefenseIgnore,
           );
-        }
+          const variantResistanceReduction = modifiers.reduce(
+            (total, modifier) =>
+              modifier.stat === "enemyResistanceReduction" &&
+              (!modifier.element ||
+                modifier.element === build.element)
+                ? total + Math.max(0, modifier.value)
+                : total,
+            0,
+          );
+          const variantResistanceMultiplier =
+            calculateResistanceMultiplier(
+              settings.enemyResistance -
+                artifactResistanceReduction -
+                variantResistanceReduction,
+            );
+          if (reaction === "vaporize" || reaction === "melt") {
+            const reactionBonus = artifactModifiers.reduce(
+              (total, modifier) => {
+                if (modifier.kind !== "reactionBonus") return total;
+                if (!modifier.reactions.includes(reaction)) return total;
+                return total + Math.max(0, modifier.value) / 100;
+              },
+              0,
+            );
+            reactionMultiplier = amplifyingReactionMultiplier(
+              reaction,
+              build.element,
+              panel.elementalMastery,
+              reactionBonus,
+            );
+          } else if (reaction === "spread") {
+            baseDamage += calculateSpreadBonus(
+              panel.elementalMastery,
+              build.character.level,
+            );
+          }
 
-        const nonCrit =
-          baseDamage *
-          reactionMultiplier *
-          (1 + damageBonus / 100) *
-          defenseMultiplier *
-          resistanceMultiplier;
-        return {
-          reaction,
-          label: reactionLabel(reaction),
-          nonCrit: roundDamage(nonCrit),
-          crit: roundDamage(nonCrit * (1 + critDmg / 100)),
-          expected: roundDamage(
-            nonCrit * (1 + (critRate / 100) * (critDmg / 100)),
-          ),
-        };
-      }),
-    };
-  });
+          const nonCrit =
+            baseDamage *
+            reactionMultiplier *
+            (1 + damageBonus / 100) *
+            variantDefenseMultiplier *
+            variantResistanceMultiplier;
+          return {
+            reaction,
+            label: reactionLabel(reaction),
+            nonCrit: roundDamage(nonCrit),
+            crit: roundDamage(nonCrit * (1 + critDmg / 100)),
+            expected: roundDamage(
+              nonCrit * (1 + (critRate / 100) * (critDmg / 100)),
+            ),
+          };
+        }),
+      };
+    },
+  );
 
   return {
     skills,

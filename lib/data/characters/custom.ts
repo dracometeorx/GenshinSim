@@ -13,4 +13,5 @@ export const customCharacter: CharacterPreset = {
   element: "anemo",
   weaponType: "any",
   defaultWeaponId: "custom",
+  burstEnergyCost: 60,
 };

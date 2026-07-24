@@ -5,10 +5,21 @@ import type {
   TalentBonuses,
 } from "./calculator.ts";
 import type { DamageSettings } from "./damage.ts";
+import { clampConstellation } from "./constellations.ts";
+import {
+  cloneTeamConfiguration,
+  createEmptyTeamConfiguration,
+  type TeamConfiguration,
+} from "./team-types.ts";
 
-export const buildPlansStorageKey = "genshin-build-plans-v2";
-export const legacyBuildPlansStorageKey = "genshin-build-plans-v1";
-export const buildPlansSchemaVersion = 2;
+export const buildPlansStorageKey = "genshin-build-plans-v3";
+export const legacyBuildPlansStorageKeys = [
+  "genshin-build-plans-v2",
+  "genshin-build-plans-v1",
+] as const;
+export const legacyBuildPlansStorageKey =
+  legacyBuildPlansStorageKeys[0];
+export const buildPlansSchemaVersion = 3;
 
 export interface BuildPlanSnapshot {
   element: ElementKey;
@@ -22,6 +33,8 @@ export interface BuildPlanSnapshot {
   artifact: ArtifactStats;
   talentBonuses: TalentBonuses;
   damageSettings: DamageSettings;
+  constellation: number;
+  team: TeamConfiguration;
 }
 
 export interface BuildPlan {
@@ -52,11 +65,15 @@ export function createBuildPlanSnapshot({
   characterId,
   weaponId,
   damageSettings,
+  constellation = 0,
+  team = createEmptyTeamConfiguration(),
 }: {
   build: BuildInput;
   characterId: string;
   weaponId: string;
   damageSettings: DamageSettings;
+  constellation?: number;
+  team?: TeamConfiguration;
 }): BuildPlanSnapshot {
   return {
     element: build.element,
@@ -77,6 +94,8 @@ export function createBuildPlanSnapshot({
       ...damageSettings,
       selections: cloneSelections(damageSettings.selections),
     },
+    constellation: clampConstellation(constellation),
+    team: cloneTeamConfiguration(team),
   };
 }
 
@@ -98,6 +117,8 @@ export function cloneBuildPlanSnapshot(
       ...snapshot.damageSettings,
       selections: cloneSelections(snapshot.damageSettings.selections),
     },
+    constellation: clampConstellation(snapshot.constellation),
+    team: cloneTeamConfiguration(snapshot.team),
   };
 }
 
@@ -132,6 +153,33 @@ function isStringRecord(value: unknown): value is Record<string, string> {
   );
 }
 
+function isBooleanRecord(
+  value: unknown,
+): value is Record<string, boolean> {
+  return (
+    isRecord(value) &&
+    Object.values(value).every((item) => typeof item === "boolean")
+  );
+}
+
+function isTeamConfiguration(value: unknown) {
+  if (!isRecord(value)) return false;
+  if (
+    !Array.isArray(value.slots) ||
+    value.slots.length !== 3 ||
+    !isBooleanRecord(value.buffToggles)
+  ) {
+    return false;
+  }
+  return value.slots.every(
+    (slot) =>
+      isRecord(slot) &&
+      (slot.characterId === null ||
+        typeof slot.characterId === "string") &&
+      (slot.planId === null || typeof slot.planId === "string"),
+  );
+}
+
 function hasNumericKeys(
   value: unknown,
   keys: readonly string[],
@@ -157,6 +205,13 @@ function isSnapshot(value: unknown): value is BuildPlanSnapshot {
     ![0, 2, 4].includes(Number(value.artifactSetPieces)) ||
     !isStringRecord(value.weaponPassiveSelections) ||
     !isStringRecord(value.artifactSetSelections)
+  ) {
+    return false;
+  }
+  if (
+    (value.constellation !== undefined &&
+      typeof value.constellation !== "number") ||
+    (value.team !== undefined && !isTeamConfiguration(value.team))
   ) {
     return false;
   }
@@ -205,7 +260,7 @@ export function parseBuildPlanStore(raw: string | null): BuildPlanStore | null {
     const parsed: unknown = JSON.parse(raw);
     if (
       !isRecord(parsed) ||
-      ![1, buildPlansSchemaVersion].includes(
+      ![1, 2, buildPlansSchemaVersion].includes(
         Number(parsed.schemaVersion),
       ) ||
       !Array.isArray(parsed.plans)

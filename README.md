@@ -11,9 +11,13 @@
 - 圣遗物：冰风迷途的勇士、炽烈的炎之魔女、追忆之注连、绝缘之旗印、深林的记忆。
 - 精炼：除不带可精炼被动的目录项外，内置武器均提供 1–5 阶数据。
 - 反应：蒸发、融化和蔓激化；同一技能同时给出不反应结果。
-- 方案：按角色隔离的多个本地方案，可新建、重命名、切换、删除和重置。
+- 命座：每个角色方案独立保存 C0–C6；已实现会改变当前面板或代表技能结果的目录命座。
+- 队伍：当前角色可配置三名队友并引用队友方案；技能、武器、圣遗物和元素共鸣增益均有独立开关。
+- 方案：按角色隔离的多个本地方案，可新建、重命名、切换、删除和重置；队伍配置随当前角色方案保存。
 
-本阶段不计算队伍轮转、队友增益、命座、元素附着时间轴、多目标或敌人防御降低。代表技能不是完整循环模拟。
+当前队伍增益目录包括胡桃退场暴击、雷电将军恶曜之眼与 C4、纳西妲精通共享与 C2、神里绫华 C4、千夜浮梦队友精通、队友深林四件套，以及火/水/冰/岩/草元素共鸣。开关表示该增益的触发条件已经满足。
+
+本阶段不计算队伍轮转、增益持续时间、元素附着时间轴、多目标、治疗/护盾量或能量循环。西风长枪产球、雷元素共鸣产球、风元素共鸣冷却/体力等不改变当前单次代表伤害的效果不会生成增益开关。代表技能不是完整循环模拟。
 
 ## 计算约定
 
@@ -22,6 +26,7 @@
 - 静态面板、当前条件下的战斗面板（`panel` 为战斗面板别名）；
 - 代表技能的各反应伤害；
 - 防御倍率、有效抗性与抗性倍率；
+- 当前命座、有效天赋等级及队伍增益清单；
 - 条件冲突或输入归一化警告。
 
 页面、复制数据和系统分享均使用同一个 `CalculationResult`，不会各自重复计算。
@@ -56,12 +61,13 @@
 
 ## 方案存储
 
-方案保存在浏览器 `localStorage`，当前键名为 `genshin-build-plans-v2`，数据版本为 v2。
+方案保存在浏览器 `localStorage`，当前键名为 `genshin-build-plans-v3`，数据版本为 v3。
 
 - 快照只保存目录 ID 和用户输入，恢复时重新读取当前角色、武器和套装预设。
-- v1 全局方案会迁移为按角色隔离的 v2 方案。
+- v3 在每个角色方案中加入命座、三个队友方案引用和增益开关。
+- v1 全局方案和 v2 按角色方案会迁移为 v3；缺失字段默认使用 C0 与空队伍。
 - 更早的单方案存档键（v1–v6）会尽力迁移。
-- 未知目录 ID、非法条件值和越界数字会回退或钳制到合法值。
+- 未知目录 ID、无效队友/方案引用、非法条件值和越界数字会回退或钳制到合法值。
 - 损坏 JSON 会被忽略并使用默认方案。
 
 本项目没有数据库或账号同步。浏览器拒绝 localStorage、剪贴板或分享操作时，页面会显示可见提示。
@@ -77,15 +83,18 @@ lib/
   calculation.ts                  统一计算入口
   calculator.ts                   面板与分阶段 modifier
   effects.ts                      共享 effect 上下文、阶段与 modifier 契约
+  constellations.ts               命座钳制、天赋等级与效果解析
+  team-types.ts                   队友方案与可开关增益契约
+  team.ts                         队友方案解析、共鸣与增益汇总
   damage-types.ts                 角色代表技能 evaluator 契约
   damage.ts                       反应、防御、抗性与伤害编排
-  build-plans.ts                  v2 持久化格式
+  build-plans.ts                  v3 持久化格式
   build-plan-runtime.ts           目录恢复、迁移与输入归一化
   data/                            角色、武器、圣遗物声明式目录
 tests/                             公式、目录、迁移、reducer 与 UI 工具测试
 ```
 
-武器和角色文件拥有各自的 `panelEffects`、`damageEffects` 与代表技能 evaluator；共享引擎只负责 `additive → conversion` 的执行顺序、汇总和取整。这样新增目录项不需要修改 `calculator.ts` 或 `damage.ts` 的角色/武器分支。静态面板排除需要战斗条件的效果，战斗面板使用当前武器、角色和套装条件；限定特定伤害分类的武器加成由伤害层按目标汇总。
+武器和角色文件拥有各自的 `panelEffects`、`damageEffects`、`teamBuffs` 与代表技能 evaluator；圣遗物文件也可以声明 `teamBuffs`。共享引擎只负责 `additive → conversion` 的执行顺序、汇总和取整。这样新增目录项不需要修改 `calculator.ts` 或 `damage.ts` 的角色/武器分支。静态面板排除需要战斗条件的效果，战斗面板使用当前武器、角色、套装、命座与队伍条件；限定特定伤害分类或反应的加成由伤害层按目标汇总。
 
 ## 新增角色、武器或套装
 
@@ -93,12 +102,13 @@ tests/                             公式、目录、迁移、reducer 与 UI 工
 
 1. 在 `lib/data/characters/` 添加角色基础属性、武器类型、默认武器和技能倍率。
 2. 在 `lib/data/characters/index.ts` 注册预设。
-3. 面板被动写入该角色的 `panelEffects`；代表技能直接通过该角色的 `damageProfile.evaluateTargets` 实现。只有新的执行阶段才需要扩展共享 effect 契约。
-4. 添加目录唯一性、面板与黄金伤害测试。
+3. 面板被动写入该角色的 `panelEffects`；代表技能直接通过该角色的 `damageProfile.evaluateTargets` 实现；命座写入 `constellations`。
+4. 能增益当前角色或队友的技能/命座写入 `teamBuffs`，通过 `appliesToSelf`、`appliesToTeammates` 和 `minConstellation` 描述适用范围。
+5. 添加目录唯一性、面板、命座与黄金伤害测试。
 
 新增武器：
 
-1. 在 `lib/data/weapons/` 添加基础属性、精炼描述、条件控件和该武器自己的 `panelEffects` / `damageEffects`。
+1. 在 `lib/data/weapons/` 添加基础属性、精炼描述、条件控件和该武器自己的 `panelEffects` / `damageEffects` / `teamBuffs`。
 2. 在 `lib/data/weapons/index.ts` 注册预设。
 3. 普通面板加成使用 `additive`，生命/充能等派生转换使用 `conversion`；只对特定技能分类生效的增伤或双暴使用 `damageEffects`，不要在 `calculator.ts` 或 `damage.ts` 增加武器 ID 分支。
 4. 对 1–5 阶添加表驱动测试，并验证恢复时的精炼钳制。
@@ -107,7 +117,8 @@ tests/                             公式、目录、迁移、reducer 与 UI 工
 
 1. 在 `lib/data/artifacts/` 使用 `stat`、`damageBonus`、`reactionBonus`、`enemyResistanceReduction` 等分阶段 modifier 描述效果。
 2. 在 `lib/data/artifacts/index.ts` 注册预设。
-3. 条件值必须在恢复阶段归一化，并补充面板与伤害层测试。
+3. 可作用于当前角色的队友套装效果写入 `teamBuffs`；同名效果不能叠加时设置 `stackingGroup`。
+4. 条件值必须在恢复阶段归一化，并补充面板、队伍与伤害层测试。
 
 ## 本地开发与验收
 

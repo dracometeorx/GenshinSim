@@ -40,6 +40,7 @@ export interface DamageTarget {
 
 export interface CharacterDamageContext {
   build: BuildInput;
+  constellation: number;
   panel: FinalPanel;
   settings: DamageSettings;
   selection(key: string): string;
