@@ -17,9 +17,9 @@
 
 ## 计算约定
 
-统一入口 `calculateBuild(request)` 接收方案输入、已解析角色预设和敌人设置，并返回：
+统一入口 `calculateBuild(request)` 接收方案输入、已解析角色/武器/套装预设和敌人设置，并返回：
 
-- 最终角色面板；
+- 静态面板、当前条件下的战斗面板（`panel` 为战斗面板别名）；
 - 代表技能的各反应伤害；
 - 防御倍率、有效抗性与抗性倍率；
 - 条件冲突或输入归一化警告。
@@ -76,14 +76,16 @@ app/
 lib/
   calculation.ts                  统一计算入口
   calculator.ts                   面板与分阶段 modifier
-  damage.ts                       代表技能、反应、防御与抗性
+  effects.ts                      共享 effect 上下文、阶段与 modifier 契约
+  damage-types.ts                 角色代表技能 evaluator 契约
+  damage.ts                       反应、防御、抗性与伤害编排
   build-plans.ts                  v2 持久化格式
   build-plan-runtime.ts           目录恢复、迁移与输入归一化
   data/                            角色、武器、圣遗物声明式目录
 tests/                             公式、目录、迁移、reducer 与 UI 工具测试
 ```
 
-简单武器和套装效果通过声明式 modifier/effect 表达。胡桃、雷电将军、神里绫华和纳西妲的动态技能机制由 `damage.ts` 中的 typed evaluator 注册表处理。
+武器和角色文件拥有各自的 `panelEffects` 与代表技能 evaluator；共享引擎只负责 `additive → conversion` 的执行顺序、汇总和取整。这样新增目录项不需要修改 `calculator.ts` 或 `damage.ts` 的角色/武器分支。静态面板排除需要战斗条件的效果，战斗面板使用当前武器、角色和套装条件。
 
 ## 新增角色、武器或套装
 
@@ -91,14 +93,14 @@ tests/                             公式、目录、迁移、reducer 与 UI 工
 
 1. 在 `lib/data/characters/` 添加角色基础属性、武器类型、默认武器和技能倍率。
 2. 在 `lib/data/characters/index.ts` 注册预设。
-3. 若需要动态技能机制，为 `CharacterDamageProfile` 增加有判别字段的类型，并在 evaluator 注册表实现代表技能。
+3. 面板被动写入该角色的 `panelEffects`；代表技能直接通过该角色的 `damageProfile.evaluateTargets` 实现。只有新的执行阶段才需要扩展共享 effect 契约。
 4. 添加目录唯一性、面板与黄金伤害测试。
 
 新增武器：
 
-1. 在 `lib/data/weapons/` 添加基础属性、精炼描述、条件控件和声明式 `effect`。
+1. 在 `lib/data/weapons/` 添加基础属性、精炼描述、条件控件和该武器自己的 `panelEffects`。
 2. 在 `lib/data/weapons/index.ts` 注册预设。
-3. 只有确实无法声明表达的机制才扩展 typed effect union。
+3. 普通加成使用 `additive`，生命/充能等派生转换使用 `conversion`；不要在 `calculator.ts` 增加武器 ID 分支。
 4. 对 1–5 阶添加表驱动测试，并验证恢复时的精炼钳制。
 
 新增套装：

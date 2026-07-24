@@ -4,15 +4,51 @@ import test from "node:test";
 import type { BuildInput, FinalPanel } from "../lib/calculator.ts";
 import {
   calculateDefenseMultiplier,
-  calculateRepresentativeDamage,
+  calculateRepresentativeDamage as calculateResolvedDamage,
   calculateResistanceMultiplier,
   calculateSpreadBonus,
   defaultDamageSettings,
   getReactionLevelMultiplier,
 } from "../lib/damage.ts";
-import { calculateFinalPanel } from "../lib/calculator.ts";
+import {
+  calculateFinalPanel as calculateResolvedPanel,
+} from "../lib/calculator.ts";
+import {
+  getArtifactModifiers,
+} from "../lib/data/artifacts/index.ts";
+import type { CharacterPreset } from "../lib/data/characters/types.ts";
+import type { DamageSettings } from "../lib/damage.ts";
 import { hutao } from "../lib/data/characters/hutao.ts";
 import { nahida } from "../lib/data/characters/nahida.ts";
+
+function calculateRepresentativeDamage(
+  character: CharacterPreset,
+  build: BuildInput,
+  resolvedPanel: FinalPanel,
+  settings: DamageSettings,
+) {
+  return calculateResolvedDamage(
+    character,
+    build,
+    resolvedPanel,
+    settings,
+    getArtifactModifiers(
+      build.artifactSetId,
+      build.artifactSetPieces,
+      build.artifactSetSelections,
+    ),
+  );
+}
+
+function calculateFinalPanel(build: BuildInput) {
+  return calculateResolvedPanel(build, {
+    artifactModifiers: getArtifactModifiers(
+      build.artifactSetId,
+      build.artifactSetPieces,
+      build.artifactSetSelections,
+    ),
+  });
+}
 
 const artifact: BuildInput["artifact"] = {
   flatHp: 0,

@@ -1,36 +1,7 @@
 import type { WeaponBase, WeaponType } from "../../calculator.ts";
+import type { PanelEffect } from "../../effects.ts";
 
 export type RefinementValues = [number, number, number, number, number];
-
-export type WeaponEffect =
-  | {
-      kind: "elementalDamageByStacks";
-      controlKey: string;
-      baseBonus: RefinementValues;
-      stackBonus: [
-        [number, number, number, number],
-        [number, number, number, number],
-        [number, number, number, number],
-        [number, number, number, number],
-        [number, number, number, number],
-      ];
-    }
-  | {
-      kind: "hpToAttack";
-      controlKey: string;
-      activeValue: string;
-      hpBonus: RefinementValues;
-      baseRatio: RefinementValues;
-      activeRatio: RefinementValues;
-    }
-  | {
-      kind: "energyRechargeToAttack";
-      controlKey: string;
-      activeValue: string;
-      activeEnergyRecharge: RefinementValues;
-      attackRatio: RefinementValues;
-      attackCap: RefinementValues;
-    };
 
 export type WeaponPreset = WeaponBase & {
   id: string;
@@ -39,7 +10,7 @@ export type WeaponPreset = WeaponBase & {
   passive: {
     name: string;
     description: string;
-    effect?: WeaponEffect;
+    panelEffects?: readonly PanelEffect[];
     refinementDescriptions?: [string, string, string, string, string];
     teammateDependent?: boolean;
     control?: {

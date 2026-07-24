@@ -37,15 +37,28 @@ export function getArtifactModifiers(
   pieces: 0 | 2 | 4 | undefined,
   selections: Record<string, string> | undefined,
 ): ArtifactModifier[] {
+  return resolveArtifactModifiers(
+    getArtifactSet(artifactSetId),
+    pieces,
+    selections,
+    true,
+  );
+}
+
+export function resolveArtifactModifiers(
+  artifactSet: ArtifactSetPreset,
+  pieces: 0 | 2 | 4 | undefined,
+  selections: Record<string, string> | undefined,
+  includeConditional: boolean,
+): ArtifactModifier[] {
   if (!pieces) return [];
 
-  const artifactSet = getArtifactSet(artifactSetId);
   const modifiers = [...(artifactSet.twoPiece.modifiers ?? [])];
   if (pieces !== 4) return modifiers;
 
   modifiers.push(...(artifactSet.fourPiece.modifiers ?? []));
   const control = artifactSet.fourPiece.control;
-  if (!control) return modifiers;
+  if (!control || !includeConditional) return modifiers;
 
   const value = selections?.[control.key] ?? control.defaultValue;
   const option = control.options.find((item) => item.value === value);

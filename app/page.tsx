@@ -111,9 +111,17 @@ export default function Home() {
       calculateBuild({
         build,
         character: selectedCharacter ?? characters[0],
+        weapon: selectedWeapon ?? weapons[0],
+        artifactSet: selectedArtifactSet,
         settings: damageSettings,
       }),
-    [build, damageSettings, selectedCharacter],
+    [
+      build,
+      damageSettings,
+      selectedArtifactSet,
+      selectedCharacter,
+      selectedWeapon,
+    ],
   );
 
   function createNewPlan() {

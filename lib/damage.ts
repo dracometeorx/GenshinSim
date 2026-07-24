@@ -1,19 +1,16 @@
-import type { BuildInput, FinalPanel, TalentBonuses } from "./calculator.ts";
+import type { BuildInput, FinalPanel } from "./calculator.ts";
 import type {
   CharacterDamageProfile,
   CharacterPreset,
-  DamageReaction,
 } from "./data/characters/types.ts";
-import { getArtifactModifiers } from "./data/artifacts/index.ts";
+import type { ArtifactModifier } from "./data/artifacts/types.ts";
+import type {
+  DamageReaction,
+  DamageSettings,
+  DamageTarget,
+} from "./damage-types.ts";
 
-export interface DamageSettings {
-  enemyLevel: number;
-  enemyResistance: number;
-  normalTalentLevel: number;
-  skillTalentLevel: number;
-  burstTalentLevel: number;
-  selections: Record<string, string>;
-}
+export type { DamageSettings } from "./damage-types.ts";
 
 export interface DamageVariantResult {
   reaction: DamageReaction;
@@ -52,24 +49,14 @@ export const defaultDamageSettings: DamageSettings = {
   },
 };
 
-type DamageTarget = {
-  id: string;
-  name: string;
-  description: string;
-  multiplierLabel: string;
-  baseDamage: number;
-  category: keyof TalentBonuses;
-  reactions: DamageReaction[];
-  extraDamageBonus?: number;
-  extraCritRate?: number;
-  extraCritDmg?: number;
-};
-
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
 }
 
-function talentValue(values: number[], talentLevel: number) {
+function talentValue(
+  values: readonly number[],
+  talentLevel: number,
+) {
   const index = clamp(Math.round(talentLevel), 1, values.length) - 1;
   return values[index] ?? values[values.length - 1] ?? 0;
 }
@@ -188,200 +175,6 @@ function roundDamage(value: number) {
   return Math.max(0, Math.round(value));
 }
 
-type DamageProfileKind = CharacterDamageProfile["kind"];
-type DamageProfileFor<K extends DamageProfileKind> = Extract<
-  CharacterDamageProfile,
-  { kind: K }
->;
-type CharacterDamageEvaluator<K extends DamageProfileKind> = (
-  profile: DamageProfileFor<K>,
-  build: BuildInput,
-  panel: FinalPanel,
-  settings: DamageSettings,
-) => DamageTarget[];
-
-const characterDamageEvaluators = {
-  ayaka(
-    profile: DamageProfileFor<"ayaka">,
-    _build: BuildInput,
-    panel: FinalPanel,
-    settings: DamageSettings,
-  ) {
-      const skill = talentValue(
-        profile.skillMultipliers,
-        settings.skillTalentLevel,
-      );
-      const cut = talentValue(
-        profile.burstCutMultipliers,
-        settings.burstTalentLevel,
-      );
-      const bloom = talentValue(
-        profile.burstBloomMultipliers,
-        settings.burstTalentLevel,
-      );
-      const dashBonus =
-        getSelection(profile, settings, "ayakaDashBonus") === "active"
-          ? 18
-          : 0;
-      return [
-        {
-          id: "ayaka-skill",
-          name: "神里流·冰华",
-          description: "元素战技单次命中；融化按冰触发的 1.5 倍基础倍率计算。",
-          multiplierLabel: `${percent(skill)} 攻击力`,
-          baseDamage: panel.atk * skill,
-          category: "skill",
-          reactions: ["none", "melt"],
-          extraDamageBonus: dashBonus,
-        },
-        {
-          id: "ayaka-burst",
-          name: "神里流·霜灭（完整命中）",
-          description: "按 19 次切割与 1 次绽放全部命中计算，不假设每段触发融化。",
-          multiplierLabel: `19 × ${percent(cut)} + ${percent(bloom)}`,
-          baseDamage: panel.atk * (cut * 19 + bloom),
-          category: "burst",
-          reactions: ["none"],
-          extraDamageBonus: dashBonus,
-        },
-      ];
-  },
-  hutao(
-    profile: DamageProfileFor<"hutao">,
-    build: BuildInput,
-    panel: FinalPanel,
-    settings: DamageSettings,
-  ) {
-      const charged = talentValue(
-        profile.chargedMultipliers,
-        settings.normalTalentLevel,
-      );
-      const skillRatio = talentValue(
-        profile.skillHpToAtkRatios,
-        settings.skillTalentLevel,
-      );
-      const lowHp =
-        getSelection(profile, settings, "hutaoHpState") === "below50";
-      const burst = talentValue(
-        lowHp
-          ? profile.lowHpBurstMultipliers
-          : profile.burstMultipliers,
-        settings.burstTalentLevel,
-      );
-      const baseAtk =
-        Math.max(0, build.character.baseAtk) +
-        Math.max(0, build.weapon.baseAtk);
-      const skillAtkBonus = Math.min(panel.hp * skillRatio, baseAtk * 4);
-      const effectiveAtk = panel.atk + skillAtkBonus;
-      const lowHpPyroBonus = lowHp ? 33 : 0;
-      return [
-        {
-          id: "hutao-charged",
-          name: "蝶引来生·重击",
-          description: `元素战技开启后攻击力 ${Math.round(effectiveAtk).toLocaleString("zh-CN")}；已计入生命转攻击与 400% 基础攻击上限。`,
-          multiplierLabel: `${percent(charged)} 攻击力`,
-          baseDamage: effectiveAtk * charged,
-          category: "charged",
-          reactions: ["none", "vaporize", "melt"],
-          extraDamageBonus: lowHpPyroBonus,
-        },
-        {
-          id: "hutao-burst",
-          name: lowHp ? "安神秘法（低血量）" : "安神秘法",
-          description: "按元素战技持续期间施放计算，使用同一生命状态与生命转攻击。",
-          multiplierLabel: `${percent(burst)} 攻击力`,
-          baseDamage: effectiveAtk * burst,
-          category: "burst",
-          reactions: ["none", "vaporize", "melt"],
-          extraDamageBonus: lowHpPyroBonus,
-        },
-      ];
-  },
-  raiden(
-    profile: DamageProfileFor<"raiden">,
-    _build: BuildInput,
-    panel: FinalPanel,
-    settings: DamageSettings,
-  ) {
-      const burst = talentValue(
-        profile.burstMultipliers,
-        settings.burstTalentLevel,
-      );
-      const resolvePerStack = talentValue(
-        profile.resolvePerStackMultipliers,
-        settings.burstTalentLevel,
-      );
-      const resolveStacks = clamp(
-        Number(
-          getSelection(profile, settings, "raidenResolveStacks"),
-        ),
-        0,
-        60,
-      );
-      const eyeActive =
-        getSelection(profile, settings, "raidenEyeState") === "active";
-      const eyeBonus = eyeActive
-          ? talentValue(
-            profile.eyeBurstBonusPerEnergy,
-            settings.skillTalentLevel,
-          ) *
-          profile.burstEnergyCost *
-          100
-        : 0;
-      const energyBonus =
-        Math.max(0, panel.energyRecharge - 100) * 0.4;
-      const combinedMultiplier = burst + resolvePerStack * resolveStacks;
-      return [
-        {
-          id: "raiden-burst",
-          name: "梦想一刀",
-          description: `按 ${resolveStacks} 层愿力计算；已计入超出 100% 充能转雷伤${eyeActive ? "与恶曜之眼爆发增伤" : ""}。`,
-          multiplierLabel: `${percent(burst)} + ${resolveStacks} × ${percent(resolvePerStack)}`,
-          baseDamage: panel.atk * combinedMultiplier,
-          category: "burst",
-          reactions: ["none"],
-          extraDamageBonus: energyBonus + eyeBonus,
-        },
-      ];
-  },
-  nahida(
-    profile: DamageProfileFor<"nahida">,
-    _build: BuildInput,
-    panel: FinalPanel,
-    settings: DamageSettings,
-  ) {
-      const atkMultiplier = talentValue(
-        profile.triKarmaAtkMultipliers,
-        settings.skillTalentLevel,
-      );
-      const emMultiplier = talentValue(
-        profile.triKarmaEmMultipliers,
-        settings.skillTalentLevel,
-      );
-      const overTwoHundred = Math.max(
-        0,
-        panel.elementalMastery - 200,
-      );
-      return [
-        {
-          id: "nahida-tri-karma",
-          name: "灭净三业",
-          description: "按攻击力与元素精通双倍率计算；蔓激化加入当前角色等级对应的反应基础值。",
-          multiplierLabel: `${percent(atkMultiplier)} 攻击力 + ${percent(emMultiplier)} 精通`,
-          baseDamage:
-            panel.atk * atkMultiplier +
-            panel.elementalMastery * emMultiplier,
-          category: "skill",
-          reactions: ["none", "spread"],
-          extraDamageBonus: Math.min(80, overTwoHundred * 0.1),
-          extraCritRate: Math.min(24, overTwoHundred * 0.03),
-        },
-      ];
-  },
-} satisfies {
-  [K in DamageProfileKind]: CharacterDamageEvaluator<K>;
-};
-
 function buildTargets(
   character: CharacterPreset,
   build: BuildInput,
@@ -391,37 +184,16 @@ function buildTargets(
   const profile = character.damageProfile;
   if (!profile) return [];
 
-  switch (profile.kind) {
-    case "ayaka":
-      return characterDamageEvaluators.ayaka(
-        profile,
-        build,
-        panel,
-        settings,
-      );
-    case "hutao":
-      return characterDamageEvaluators.hutao(
-        profile,
-        build,
-        panel,
-        settings,
-      );
-    case "raiden":
-      return characterDamageEvaluators.raiden(
-        profile,
-        build,
-        panel,
-        settings,
-      );
-    case "nahida":
-      return characterDamageEvaluators.nahida(
-        profile,
-        build,
-        panel,
-        settings,
-      );
-    }
-  }
+  return profile.evaluateTargets({
+    build,
+    panel,
+    settings,
+    selection: (key) => getSelection(profile, settings, key),
+    talentValue,
+    clamp,
+    percent,
+  });
+}
 
 /**
  * 计算角色代表技能的单目标伤害。
@@ -433,15 +205,11 @@ export function calculateRepresentativeDamage(
   build: BuildInput,
   panel: FinalPanel,
   settings: DamageSettings,
+  artifactModifiers: readonly ArtifactModifier[] = [],
 ): DamageCalculationResult {
   const defenseMultiplier = calculateDefenseMultiplier(
     build.character.level,
     settings.enemyLevel,
-  );
-  const artifactModifiers = getArtifactModifiers(
-    build.artifactSetId,
-    build.artifactSetPieces,
-    build.artifactSetSelections,
   );
   const resistanceReduction = artifactModifiers.reduce(
     (total, modifier) =>

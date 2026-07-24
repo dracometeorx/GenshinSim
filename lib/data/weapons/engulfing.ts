@@ -1,5 +1,9 @@
 import type { WeaponPreset } from "./types.ts";
 
+const activeEnergyRecharge = [30, 35, 40, 45, 50] as const;
+const attackRatio = [0.28, 0.35, 0.42, 0.49, 0.56] as const;
+const attackCap = [80, 90, 100, 110, 120] as const;
+
 export const engulfing: WeaponPreset = {
   id: "engulfing",
   name: "薙草之稻光",
@@ -13,14 +17,36 @@ export const engulfing: WeaponPreset = {
   passive: {
     name: "非时之梦·常世灶食",
     description: "基于超出 100% 的元素充能效率提高攻击力（28%，至多 80%）；施放爆发后充能提高 30%。",
-    effect: {
-      kind: "energyRechargeToAttack",
-      controlKey: "engulfingBurst",
-      activeValue: "active",
-      activeEnergyRecharge: [30, 35, 40, 45, 50],
-      attackRatio: [0.28, 0.35, 0.42, 0.49, 0.56],
-      attackCap: [80, 90, 100, 110, 120],
-    },
+    panelEffects: [
+      {
+        id: "engulfing-burst-energy-recharge",
+        stage: "additive",
+        conditional: true,
+        evaluate: ({ refinementIndex, weaponSelections }) =>
+          weaponSelections.engulfingBurst === "active"
+            ? [
+                {
+                  stat: "energyRecharge",
+                  value: activeEnergyRecharge[refinementIndex],
+                },
+              ]
+            : [],
+      },
+      {
+        id: "engulfing-energy-recharge-to-attack",
+        stage: "conversion",
+        evaluate: ({ panel, refinementIndex }) => [
+          {
+            stat: "atkPct",
+            value: Math.min(
+              attackCap[refinementIndex],
+              Math.max(0, panel.energyRecharge - 100) *
+                attackRatio[refinementIndex],
+            ),
+          },
+        ],
+      },
+    ],
     refinementDescriptions: [
       "基于超出 100% 的元素充能效率提高攻击力（28%，至多 80%）；施放爆发后充能提高 30%。",
       "基于超出 100% 的元素充能效率提高攻击力（35%，至多 90%）；施放爆发后充能提高 35%。",

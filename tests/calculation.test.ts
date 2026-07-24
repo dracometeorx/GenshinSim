@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { calculateBuild } from "../lib/calculation.ts";
+import {
+  calculateBuild as calculateResolvedBuild,
+  type CalculationRequest,
+} from "../lib/calculation.ts";
 import {
   createResultPayload,
   createShareText,
@@ -9,7 +12,22 @@ import {
 import type { BuildInput } from "../lib/calculator.ts";
 import { defaultDamageSettings } from "../lib/damage.ts";
 import { ayaka } from "../lib/data/characters/ayaka.ts";
+import { hutao } from "../lib/data/characters/hutao.ts";
+import { raiden } from "../lib/data/characters/raiden.ts";
+import { engulfing } from "../lib/data/weapons/engulfing.ts";
+import { homa } from "../lib/data/weapons/homa.ts";
 import { mistsplitter } from "../lib/data/weapons/mistsplitter.ts";
+import { getArtifactSet } from "../lib/data/artifacts/index.ts";
+
+function calculateBuild(
+  request: Omit<CalculationRequest, "weapon" | "artifactSet">,
+) {
+  return calculateResolvedBuild({
+    ...request,
+    weapon: mistsplitter,
+    artifactSet: getArtifactSet(request.build.artifactSetId),
+  });
+}
 
 const build: BuildInput = {
   element: "cryo",
@@ -49,6 +67,86 @@ test("derives panel and damage from one request", () => {
   assert.equal(result.panel.critRate, 45);
   assert.ok(result.skills.length > 0);
   assert.equal(result.defenseMultiplier, 190 / 395);
+});
+
+test("separates static panel from selected combat conditions", () => {
+  const result = calculateResolvedBuild({
+    build: {
+      ...build,
+      weaponPassiveSelections: { mistsplitterStacks: "3" },
+    },
+    character: ayaka,
+    weapon: mistsplitter,
+    artifactSet: getArtifactSet(build.artifactSetId),
+    settings: defaultDamageSettings,
+  });
+
+  assert.equal(result.panel, result.combatPanel);
+  assert.equal(result.staticPanel.critRate, 5);
+  assert.equal(result.combatPanel.critRate, 45);
+  assert.equal(result.staticPanel.elementalDmg, 27);
+  assert.equal(result.combatPanel.elementalDmg, 73);
+});
+
+test("applies Hu Tao panel passives from the character preset", () => {
+  const hutaoBuild: BuildInput = {
+    ...build,
+    element: "pyro",
+    character: hutao,
+    weapon: homa,
+    weaponPassiveSelections: { homaHpState: "below50" },
+    artifactSetId: "none",
+    artifactSetPieces: 0,
+    artifactSetSelections: {},
+  };
+  const result = calculateResolvedBuild({
+    build: hutaoBuild,
+    character: hutao,
+    weapon: homa,
+    artifactSet: getArtifactSet("none"),
+    settings: {
+      ...defaultDamageSettings,
+      selections: {
+        ...defaultDamageSettings.selections,
+        hutaoHpState: "below50",
+      },
+    },
+  });
+
+  assert.equal(result.staticPanel.elementalDmg, 0);
+  assert.equal(result.combatPanel.elementalDmg, 33);
+  assert.ok(result.combatPanel.atk > result.staticPanel.atk);
+  assert.ok(
+    result.skills[0].description.includes(
+      result.combatPanel.atk.toLocaleString("zh-CN"),
+    ),
+  );
+});
+
+test("runs additive weapon effects before character conversions", () => {
+  const raidenBuild: BuildInput = {
+    ...build,
+    element: "electro",
+    character: raiden,
+    weapon: engulfing,
+    weaponPassiveSelections: { engulfingBurst: "active" },
+    artifactSetId: "none",
+    artifactSetPieces: 0,
+    artifactSetSelections: {},
+  };
+  const result = calculateResolvedBuild({
+    build: raidenBuild,
+    character: raiden,
+    weapon: engulfing,
+    artifactSet: getArtifactSet("none"),
+    settings: defaultDamageSettings,
+  });
+
+  assert.equal(result.staticPanel.energyRecharge, 187.1);
+  assert.equal(result.combatPanel.energyRecharge, 217.1);
+  assert.equal(result.staticPanel.elementalDmg, 34.8);
+  assert.equal(result.combatPanel.elementalDmg, 46.8);
+  assert.ok(result.combatPanel.atk > result.staticPanel.atk);
 });
 
 test("uses the resolved catalog character when request fields disagree", () => {

@@ -1,5 +1,14 @@
 import type { WeaponPreset } from "./types.ts";
 
+const baseBonus = [12, 15, 18, 21, 24] as const;
+const stackBonus = [
+  [0, 8, 16, 28],
+  [0, 10, 20, 35],
+  [0, 12, 24, 42],
+  [0, 14, 28, 49],
+  [0, 16, 32, 56],
+] as const;
+
 export const mistsplitter: WeaponPreset = {
   id: "mistsplitter",
   name: "雾切之回光",
@@ -13,18 +22,38 @@ export const mistsplitter: WeaponPreset = {
   passive: {
     name: "雾切御腰物",
     description: "获得 12% 元素伤害加成，并根据巴印层数额外获得 0% / 8% / 16% / 28%。",
-    effect: {
-      kind: "elementalDamageByStacks",
-      controlKey: "mistsplitterStacks",
-      baseBonus: [12, 15, 18, 21, 24],
-      stackBonus: [
-        [0, 8, 16, 28],
-        [0, 10, 20, 35],
-        [0, 12, 24, 42],
-        [0, 14, 28, 49],
-        [0, 16, 32, 56],
-      ],
-    },
+    panelEffects: [
+      {
+        id: "mistsplitter-elemental-base",
+        stage: "additive",
+        evaluate: ({ refinementIndex }) => [
+          {
+            stat: "elementalDmg",
+            value: baseBonus[refinementIndex],
+          },
+        ],
+      },
+      {
+        id: "mistsplitter-emblem-stacks",
+        stage: "additive",
+        conditional: true,
+        evaluate: ({ refinementIndex, weaponSelections }) => {
+          const stacks = Math.min(
+            3,
+            Math.max(
+              0,
+              Number(weaponSelections.mistsplitterStacks) || 0,
+            ),
+          );
+          return [
+            {
+              stat: "elementalDmg",
+              value: stackBonus[refinementIndex][stacks],
+            },
+          ];
+        },
+      },
+    ],
     refinementDescriptions: [
       "获得 12% 元素伤害加成，并根据巴印层数额外获得 0% / 8% / 16% / 28%。",
       "获得 15% 元素伤害加成，并根据巴印层数额外获得 0% / 10% / 20% / 35%。",

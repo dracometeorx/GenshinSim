@@ -8,7 +8,10 @@ import {
   type DamageCalculationResult,
   type DamageSettings,
 } from "./damage.ts";
+import { resolveArtifactModifiers } from "./data/artifacts/index.ts";
+import type { ArtifactSetPreset } from "./data/artifacts/types.ts";
 import type { CharacterPreset } from "./data/characters/types.ts";
+import type { WeaponPreset } from "./data/weapons/types.ts";
 
 export type CalculationWarningCode =
   | "INCOMPATIBLE_BLIZZARD_MELT_CONDITION"
@@ -22,11 +25,16 @@ export interface CalculationWarning {
 export interface CalculationRequest {
   build: BuildInput;
   character: CharacterPreset;
+  weapon: WeaponPreset;
+  artifactSet: ArtifactSetPreset;
   settings: DamageSettings;
 }
 
 export interface CalculationResult extends DamageCalculationResult {
+  /** Current selected combat conditions; kept as the main display/export panel. */
   panel: FinalPanel;
+  staticPanel: FinalPanel;
+  combatPanel: FinalPanel;
   warnings: CalculationWarning[];
 }
 
@@ -40,6 +48,8 @@ export interface CalculationResult extends DamageCalculationResult {
 export function calculateBuild({
   build,
   character,
+  weapon,
+  artifactSet,
   settings,
 }: CalculationRequest): CalculationResult {
   const warnings: CalculationWarning[] = [];
@@ -53,11 +63,26 @@ export function calculateBuild({
     build.character.ascensionValue !== character.ascensionValue;
   const elementMismatch =
     character.id !== "custom" && build.element !== character.element;
+  const resolvedCharacter =
+    character.id === "custom" ? build.character : character;
+  const resolvedWeapon: BuildInput["weapon"] =
+    weapon.id === "custom"
+      ? build.weapon
+      : {
+          ...weapon,
+          level: build.weapon.level,
+          refinement: Math.min(
+            5,
+            Math.max(1, Math.round(build.weapon.refinement)),
+          ),
+        };
   const normalizedBuild: BuildInput = {
     ...build,
-    character,
+    character: resolvedCharacter,
+    weapon: resolvedWeapon,
     element:
       character.id === "custom" ? build.element : character.element,
+    artifactSetId: artifactSet.id,
   };
 
   if (characterMismatch || elementMismatch) {
@@ -67,12 +92,40 @@ export function calculateBuild({
     });
   }
 
-  const panel = calculateFinalPanel(normalizedBuild);
+  const panelEffects = [
+    ...(weapon.passive.panelEffects ?? []),
+    ...(character.panelEffects ?? []),
+  ];
+  const staticArtifactModifiers = resolveArtifactModifiers(
+    artifactSet,
+    normalizedBuild.artifactSetPieces,
+    normalizedBuild.artifactSetSelections,
+    false,
+  );
+  const combatArtifactModifiers = resolveArtifactModifiers(
+    artifactSet,
+    normalizedBuild.artifactSetPieces,
+    normalizedBuild.artifactSetSelections,
+    true,
+  );
+  const staticPanel = calculateFinalPanel(normalizedBuild, {
+    artifactModifiers: staticArtifactModifiers,
+    panelEffects,
+    damageSettings: settings,
+    includeConditionalEffects: false,
+  });
+  const combatPanel = calculateFinalPanel(normalizedBuild, {
+    artifactModifiers: combatArtifactModifiers,
+    panelEffects,
+    damageSettings: settings,
+    includeConditionalEffects: true,
+  });
   const damage = calculateRepresentativeDamage(
     character,
     normalizedBuild,
-    panel,
+    combatPanel,
     settings,
+    combatArtifactModifiers,
   );
 
   const hasMeltVariant = damage.skills.some((skill) =>
@@ -81,7 +134,7 @@ export function calculateBuild({
   const blizzardState =
     normalizedBuild.artifactSetSelections?.blizzardEnemyState;
   if (
-    normalizedBuild.artifactSetId === "blizzard-strayer" &&
+    artifactSet.id === "blizzard-strayer" &&
     normalizedBuild.artifactSetPieces === 4 &&
     hasMeltVariant &&
     (blizzardState === "cryo" || blizzardState === "frozen")
@@ -95,7 +148,9 @@ export function calculateBuild({
 
   return {
     ...damage,
-    panel,
+    panel: combatPanel,
+    staticPanel,
+    combatPanel,
     warnings,
   };
 }

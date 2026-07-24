@@ -1,8 +1,26 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { calculateFinalPanel } from "../lib/calculator.ts";
+import {
+  calculateFinalPanel as calculateResolvedPanel,
+} from "../lib/calculator.ts";
 import type { BuildInput } from "../lib/calculator.ts";
+import {
+  getArtifactModifiers,
+} from "../lib/data/artifacts/index.ts";
+import { weapons } from "../lib/data/weapons/index.ts";
+
+function calculateFinalPanel(input: BuildInput) {
+  const weapon = weapons.find((item) => item.id === input.weapon.id);
+  return calculateResolvedPanel(input, {
+    artifactModifiers: getArtifactModifiers(
+      input.artifactSetId,
+      input.artifactSetPieces,
+      input.artifactSetSelections,
+    ),
+    panelEffects: weapon?.passive.panelEffects,
+  });
+}
 
 const build: BuildInput = {
   element: "hydro",
