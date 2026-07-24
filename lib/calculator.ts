@@ -2,6 +2,7 @@ import type { ArtifactModifier } from "./data/artifacts/types.ts";
 import type { DamageSettings } from "./damage-types.ts";
 import {
   evaluatePanelEffects,
+  getRefinementIndex,
   type PanelEffect,
   type PanelModifier,
 } from "./effects.ts";
@@ -133,13 +134,6 @@ function addSecondary(
 
 function oneDecimal(value: number) {
   return Math.round(value * 10) / 10;
-}
-
-function refinementIndex(input: BuildInput) {
-  return Math.min(
-    4,
-    Math.max(0, Math.round(finite(input.weapon.refinement)) - 1),
-  );
 }
 
 const defaultPanelDamageSettings: DamageSettings = {
@@ -306,7 +300,7 @@ export function calculateFinalPanel(
     baseAtk,
     baseDef,
     panel,
-    refinementIndex: refinementIndex(input),
+    refinementIndex: getRefinementIndex(input.weapon.refinement),
     weaponSelections: input.weaponPassiveSelections ?? {},
     damageSelections: damageSettings.selections,
     damageSettings,

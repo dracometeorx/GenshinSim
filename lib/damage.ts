@@ -9,6 +9,11 @@ import type {
   DamageSettings,
   DamageTarget,
 } from "./damage-types.ts";
+import {
+  evaluateDamageEffects,
+  getRefinementIndex,
+  type DamageEffect,
+} from "./effects.ts";
 
 export type { DamageSettings } from "./damage-types.ts";
 
@@ -206,6 +211,7 @@ export function calculateRepresentativeDamage(
   panel: FinalPanel,
   settings: DamageSettings,
   artifactModifiers: readonly ArtifactModifier[] = [],
+  weaponDamageEffects: readonly DamageEffect[] = [],
 ): DamageCalculationResult {
   const defenseMultiplier = calculateDefenseMultiplier(
     build.character.level,
@@ -231,6 +237,19 @@ export function calculateRepresentativeDamage(
     panel,
     settings,
   ).map((target) => {
+    const weaponModifiers = evaluateDamageEffects(
+      weaponDamageEffects,
+      {
+        build,
+        panel,
+        target,
+        settings,
+        refinementIndex: getRefinementIndex(
+          build.weapon.refinement,
+        ),
+        weaponSelections: build.weaponPassiveSelections ?? {},
+      },
+    );
     const artifactDamageBonus = artifactModifiers.reduce(
       (total, modifier) => {
         if (modifier.kind !== "damageBonus") return total;
@@ -244,19 +263,45 @@ export function calculateRepresentativeDamage(
       },
       0,
     );
+    const weaponDamageBonus = weaponModifiers.reduce(
+      (total, modifier) =>
+        modifier.stat === "damageBonus"
+          ? total + Math.max(0, modifier.value)
+          : total,
+      0,
+    );
     const damageBonus =
       panel.elementalDmg +
       panel.talentBonuses[target.category] +
       artifactDamageBonus +
+      weaponDamageBonus +
       (target.extraDamageBonus ?? 0);
+    const weaponCritRate = weaponModifiers.reduce(
+      (total, modifier) =>
+        modifier.stat === "critRate"
+          ? total + Math.max(0, modifier.value)
+          : total,
+      0,
+    );
+    const weaponCritDmg = weaponModifiers.reduce(
+      (total, modifier) =>
+        modifier.stat === "critDmg"
+          ? total + Math.max(0, modifier.value)
+          : total,
+      0,
+    );
     const baseCritRate = clamp(
-      panel.critRate + (target.extraCritRate ?? 0),
+      panel.critRate +
+        weaponCritRate +
+        (target.extraCritRate ?? 0),
       0,
       100,
     );
     const critDmg = Math.max(
       0,
-      panel.critDmg + (target.extraCritDmg ?? 0),
+      panel.critDmg +
+        weaponCritDmg +
+        (target.extraCritDmg ?? 0),
     );
 
     return {

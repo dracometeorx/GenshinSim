@@ -256,3 +256,44 @@ test("normalizes unknown catalog ids, conditions, and numeric ranges", () => {
   );
   assert.equal(restored.build.character.name, "神里绫华");
 });
+
+test("normalizes and restores new weapon and artifact conditions", () => {
+  const snapshot = createBuildPlanSnapshot({
+    build,
+    characterId: "hutao",
+    weaponId: "homa",
+    damageSettings,
+  });
+  const normalized = normalizeBuildPlanSnapshot({
+    ...snapshot,
+    weaponId: "dragons-bane",
+    weaponRefinement: 3,
+    weaponPassiveSelections: {
+      dragonsBaneEnemyState: "invalid",
+    },
+    artifactSetId: "shimenawa",
+    artifactSetPieces: 4,
+    artifactSetSelections: {
+      shimenawaState: "invalid",
+    },
+  });
+  const restored = restorePlanSnapshot(normalized);
+
+  assert.equal(normalized.weaponId, "dragons-bane");
+  assert.equal(normalized.weaponRefinement, 3);
+  assert.deepEqual(normalized.weaponPassiveSelections, {
+    dragonsBaneEnemyState: "affected",
+  });
+  assert.equal(normalized.artifactSetId, "shimenawa");
+  assert.equal(normalized.artifactSetPieces, 4);
+  assert.deepEqual(normalized.artifactSetSelections, {
+    shimenawaState: "active",
+  });
+  assert.equal(restored.build.weapon.name, "匣里灭辰");
+  assert.deepEqual(restored.build.weaponPassiveSelections, {
+    dragonsBaneEnemyState: "affected",
+  });
+  assert.deepEqual(restored.build.artifactSetSelections, {
+    shimenawaState: "active",
+  });
+});

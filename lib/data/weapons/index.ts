@@ -1,8 +1,12 @@
 import { customWeapon } from "./custom.ts";
+import { deathmatch } from "./deathmatch.ts";
+import { dragonsBane } from "./dragons-bane.ts";
 import { dreams } from "./dreams.ts";
 import { engulfing } from "./engulfing.ts";
+import { favoniusLance } from "./favonius-lance.ts";
 import { homa } from "./homa.ts";
 import { mistsplitter } from "./mistsplitter.ts";
+import { theCatch } from "./the-catch.ts";
 import type { WeaponPreset } from "./types.ts";
 import type { WeaponType } from "../../calculator.ts";
 
@@ -12,6 +16,10 @@ export const weapons: WeaponPreset[] = [
   mistsplitter,
   homa,
   engulfing,
+  theCatch,
+  deathmatch,
+  dragonsBane,
+  favoniusLance,
   dreams,
   customWeapon,
 ];

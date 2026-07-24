@@ -181,14 +181,17 @@ export function CharacterWeaponSelection({
             ) : (
               <span
                 className={
-                  selectedWeapon.passive.teammateDependent
+                  selectedWeapon.passive.teammateDependent ||
+                  selectedWeapon.passive.utilityOnly
                     ? "passive-badge excluded"
                     : "passive-badge"
                 }
               >
-                {selectedWeapon.passive.teammateDependent
-                  ? "队友效果暂不计算"
-                  : "无条件选项"}
+                {selectedWeapon.passive.utilityOnly
+                  ? "产球效果暂不模拟"
+                  : selectedWeapon.passive.teammateDependent
+                    ? "队友效果暂不计算"
+                    : "无条件选项"}
               </span>
             )}
           </div>
