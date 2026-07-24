@@ -4,6 +4,10 @@ import { useMemo, useState } from "react";
 import { ArtifactInput } from "./components/artifact-input";
 import { CharacterWeaponSelection } from "./components/character-weapon-selection";
 import { HelpModal } from "./components/help-modal";
+import {
+  PlanDialog,
+  type PlanDialogState,
+} from "./components/plan-dialog";
 import { ResultPanel } from "./components/result-panel";
 import { useBuildPlans } from "./hooks/use-build-plans";
 import { copyText, shareOrCopy } from "../lib/browser-actions";
@@ -67,6 +71,8 @@ export default function Home() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [operationNotice, setOperationNotice] = useState("");
+  const [planDialog, setPlanDialog] =
+    useState<PlanDialogState | null>(null);
 
   const activeElement = useMemo(
     () =>
@@ -117,18 +123,13 @@ export default function Home() {
     const suggestedName = `${build.character.name}方案 ${
       characterPlanCount + 1
     }`;
-    const requestedName = window.prompt("新方案名称", suggestedName);
-    if (requestedName === null) return;
-    createPlan(requestedName.trim() || suggestedName);
+    setPlanDialog({ kind: "create", value: suggestedName });
   }
 
   function renameActivePlan() {
     const activePlan = plans.find((plan) => plan.id === activePlanId);
     if (!activePlan) return;
-    const requestedName = window.prompt("重命名方案", activePlan.name);
-    const name = requestedName?.trim();
-    if (!name || name === activePlan.name) return;
-    renamePlan(name);
+    setPlanDialog({ kind: "rename", value: activePlan.name });
   }
 
   function deleteActivePlan() {
@@ -137,13 +138,17 @@ export default function Home() {
     );
     if (currentCharacterPlans.length <= 1) return;
     const activePlan = plans.find((plan) => plan.id === activePlanId);
-    if (
-      !activePlan ||
-      !window.confirm(`确定删除方案「${activePlan.name}」吗？`)
-    ) {
-      return;
-    }
-    deletePlan();
+    if (!activePlan) return;
+    setPlanDialog({ kind: "delete", value: activePlan.name });
+  }
+
+  function confirmPlanDialog() {
+    if (!planDialog) return;
+    const value = planDialog.value.trim();
+    if (planDialog.kind === "create" && value) createPlan(value);
+    if (planDialog.kind === "rename" && value) renamePlan(value);
+    if (planDialog.kind === "delete") deletePlan();
+    setPlanDialog(null);
   }
 
   function chooseWeapon(id: string) {
@@ -442,6 +447,18 @@ export default function Home() {
 
       {helpOpen ? (
         <HelpModal onClose={() => setHelpOpen(false)} />
+      ) : null}
+      {planDialog ? (
+        <PlanDialog
+          dialog={planDialog}
+          onCancel={() => setPlanDialog(null)}
+          onConfirm={confirmPlanDialog}
+          onValueChange={(value) =>
+            setPlanDialog((current) =>
+              current ? { ...current, value } : current,
+            )
+          }
+        />
       ) : null}
     </main>
   );
