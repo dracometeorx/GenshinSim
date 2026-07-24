@@ -9,6 +9,7 @@ import {
   getArtifactModifiers,
 } from "../lib/data/artifacts/index.ts";
 import { weapons } from "../lib/data/weapons/index.ts";
+import { deathmatch } from "../lib/data/weapons/deathmatch.ts";
 
 function calculateFinalPanel(input: BuildInput) {
   const weapon = weapons.find((item) => item.id === input.weapon.id);
@@ -241,6 +242,34 @@ test("uses every Engulfing Lightning refinement tier", () => {
   });
 });
 
+test("applies every Deathmatch refinement and enemy-count state", () => {
+  const singleAtk = [1935, 1980, 2025, 2071, 2116];
+  const multipleAtk = [1875, 1905, 1935, 1965, 1995];
+  const multipleDef = [1312, 1340, 1368, 1396, 1424];
+
+  singleAtk.forEach((atk, index) => {
+    const refinement = index + 1;
+    const singlePanel = calculateFinalPanel({
+      ...build,
+      weapon: { ...deathmatch, refinement },
+      weaponPassiveSelections: {
+        deathmatchEnemyCount: "single",
+      },
+    });
+    const multiplePanel = calculateFinalPanel({
+      ...build,
+      weapon: { ...deathmatch, refinement },
+      weaponPassiveSelections: {
+        deathmatchEnemyCount: "multiple",
+      },
+    });
+
+    assert.equal(singlePanel.atk, atk);
+    assert.equal(multiplePanel.atk, multipleAtk[index]);
+    assert.equal(multiplePanel.def, multipleDef[index]);
+  });
+});
+
 test("applies Blizzard Strayer damage and conditional CRIT Rate", () => {
   const panel = calculateFinalPanel({
     ...build,
@@ -274,6 +303,27 @@ test("adds Crimson Witch stacks to the two-piece Pyro bonus", () => {
     });
     assert.equal(fourPiecePanel.elementalDmg, expected);
   }
+});
+
+test("applies Shimenawa ATK without writing its conditional damage to panel", () => {
+  const twoPiecePanel = calculateFinalPanel({
+    ...build,
+    artifactSetId: "shimenawa",
+    artifactSetPieces: 2,
+  });
+  const fourPiecePanel = calculateFinalPanel({
+    ...build,
+    artifactSetId: "shimenawa",
+    artifactSetPieces: 4,
+    artifactSetSelections: { shimenawaState: "active" },
+  });
+
+  assert.equal(twoPiecePanel.atk, 2332);
+  assert.equal(fourPiecePanel.atk, 2332);
+  assert.deepEqual(
+    fourPiecePanel.talentBonuses,
+    build.talentBonuses,
+  );
 });
 
 test("converts final Energy Recharge into Emblem burst damage", () => {

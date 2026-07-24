@@ -17,6 +17,7 @@ import { raiden } from "../lib/data/characters/raiden.ts";
 import { engulfing } from "../lib/data/weapons/engulfing.ts";
 import { homa } from "../lib/data/weapons/homa.ts";
 import { mistsplitter } from "../lib/data/weapons/mistsplitter.ts";
+import { theCatch } from "../lib/data/weapons/the-catch.ts";
 import { getArtifactSet } from "../lib/data/artifacts/index.ts";
 
 function calculateBuild(
@@ -67,6 +68,23 @@ test("derives panel and damage from one request", () => {
   assert.equal(result.panel.critRate, 45);
   assert.ok(result.skills.length > 0);
   assert.equal(result.defenseMultiplier, 190 / 395);
+});
+
+test("does not calculate Melt for Ayaka's representative skill", () => {
+  const result = calculateBuild({
+    build,
+    character: ayaka,
+    settings: defaultDamageSettings,
+  });
+  const skill = result.skills.find(
+    (item) => item.id === "ayaka-skill",
+  );
+
+  assert.deepEqual(
+    skill?.variants.map(({ reaction }) => reaction),
+    ["none"],
+  );
+  assert.equal(result.warnings.length, 0);
 });
 
 test("separates static panel from selected combat conditions", () => {
@@ -176,13 +194,30 @@ test("uses the resolved catalog character when request fields disagree", () => {
   );
 });
 
-test("excludes incompatible Blizzard crit rate from Melt expectation", () => {
-  const result = calculateBuild({
-    build,
-    character: ayaka,
-    settings: defaultDamageSettings,
+test("excludes incompatible Blizzard crit rate from Hu Tao Melt expectation", () => {
+  const hutaoBuild: BuildInput = {
+    ...build,
+    element: "pyro",
+    character: hutao,
+    weapon: homa,
+    weaponPassiveSelections: { homaHpState: "below50" },
+  };
+  const result = calculateResolvedBuild({
+    build: hutaoBuild,
+    character: hutao,
+    weapon: homa,
+    artifactSet: getArtifactSet("blizzard-strayer"),
+    settings: {
+      ...defaultDamageSettings,
+      selections: {
+        ...defaultDamageSettings.selections,
+        hutaoHpState: "below50",
+      },
+    },
   });
-  const skill = result.skills.find((item) => item.id === "ayaka-skill");
+  const skill = result.skills.find(
+    (item) => item.id === "hutao-charged",
+  );
   const plain = skill?.variants.find((variant) => variant.reaction === "none");
   const melt = skill?.variants.find((variant) => variant.reaction === "melt");
 
@@ -203,6 +238,61 @@ test("excludes incompatible Blizzard crit rate from Melt expectation", () => {
     Math.abs(melt.expected / melt.nonCrit - (1 + 0.05 * critFactor)) <
       0.002,
   );
+});
+
+test("applies every The Catch refinement to burst damage and CRIT rate", () => {
+  const catchBuild: BuildInput = {
+    ...build,
+    element: "electro",
+    character: raiden,
+    weapon: theCatch,
+    artifactSetId: "none",
+    artifactSetPieces: 0,
+    artifactSetSelections: {},
+  };
+  const settings = {
+    ...defaultDamageSettings,
+    selections: {
+      ...defaultDamageSettings.selections,
+      raidenEyeState: "inactive",
+      raidenResolveStacks: "0",
+    },
+  };
+  const calculateAtRefinement = (refinement: number) =>
+    calculateResolvedBuild({
+      build: {
+        ...catchBuild,
+        weapon: { ...theCatch, refinement },
+      },
+      character: raiden,
+      weapon: theCatch,
+      artifactSet: getArtifactSet("none"),
+      settings,
+    }).skills[0].variants[0];
+  const variants = [1, 2, 3, 4, 5].map(calculateAtRefinement);
+  const burstDamageBonuses = [16, 20, 24, 28, 32];
+  const burstCritRates = [6, 7.5, 9, 10.5, 12];
+
+  variants.forEach((variant, index) => {
+    const expectedCritFactor =
+      1 + ((5 + burstCritRates[index]) / 100) * 0.5;
+    const expectedDamageRatio =
+      (1.312 + burstDamageBonuses[index] / 100) /
+      (1.312 + burstDamageBonuses[0] / 100);
+
+    assert.ok(
+      Math.abs(
+        variant.expected / variant.nonCrit -
+          expectedCritFactor,
+      ) < 0.002,
+    );
+    assert.ok(
+      Math.abs(
+        variant.nonCrit / variants[0].nonCrit -
+          expectedDamageRatio,
+      ) < 0.002,
+    );
+  });
 });
 
 test("exports panel and damage from the same recalculation", () => {

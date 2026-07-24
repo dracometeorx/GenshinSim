@@ -68,11 +68,11 @@ export const ayaka: CharacterPreset = {
         {
           id: "ayaka-skill",
           name: "神里流·冰华",
-          description: "元素战技单次命中；融化按冰触发的 1.5 倍基础倍率计算。",
+          description: "元素战技单次命中，不考虑融化反应。",
           multiplierLabel: `${percent(skill)} 攻击力`,
           baseDamage: panel.atk * skill,
           category: "skill",
-          reactions: ["none", "melt"],
+          reactions: ["none"],
         },
         {
           id: "ayaka-burst",

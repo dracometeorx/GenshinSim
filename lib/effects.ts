@@ -3,7 +3,10 @@ import type {
   FinalPanel,
   TalentBonuses,
 } from "./calculator.ts";
-import type { DamageSettings } from "./damage-types.ts";
+import type {
+  DamageSettings,
+  DamageTarget,
+} from "./damage-types.ts";
 
 export type PanelEffectStage = "additive" | "conversion";
 
@@ -54,6 +57,37 @@ export interface PanelEffect {
   evaluate(context: PanelEffectContext): readonly PanelModifier[];
 }
 
+export type DamageEffectStat =
+  | "damageBonus"
+  | "critRate"
+  | "critDmg";
+
+export interface DamageEffectModifier {
+  stat: DamageEffectStat;
+  value: number;
+}
+
+export interface DamageEffectContext {
+  build: BuildInput;
+  panel: Readonly<FinalPanel>;
+  target: Readonly<DamageTarget>;
+  settings: Readonly<DamageSettings>;
+  refinementIndex: number;
+  weaponSelections: Readonly<Record<string, string>>;
+}
+
+export interface DamageEffect {
+  id: string;
+  evaluate(context: DamageEffectContext): readonly DamageEffectModifier[];
+}
+
+export function getRefinementIndex(refinement: number) {
+  const value = Number.isFinite(refinement)
+    ? Math.round(refinement)
+    : 1;
+  return Math.min(4, Math.max(0, value - 1));
+}
+
 export function evaluatePanelEffects(
   effects: readonly PanelEffect[],
   stage: PanelEffectStage,
@@ -66,6 +100,15 @@ export function evaluatePanelEffects(
         effect.stage === stage &&
         (includeConditional || !effect.conditional),
     )
+    .flatMap((effect) => effect.evaluate(context))
+    .filter((modifier) => Number.isFinite(modifier.value));
+}
+
+export function evaluateDamageEffects(
+  effects: readonly DamageEffect[],
+  context: DamageEffectContext,
+) {
+  return effects
     .flatMap((effect) => effect.evaluate(context))
     .filter((modifier) => Number.isFinite(modifier.value));
 }

@@ -126,6 +126,7 @@ export function calculateBuild({
     combatPanel,
     settings,
     combatArtifactModifiers,
+    weapon.passive.damageEffects ?? [],
   );
 
   const hasMeltVariant = damage.skills.some((skill) =>

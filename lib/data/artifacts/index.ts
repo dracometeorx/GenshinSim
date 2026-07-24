@@ -3,6 +3,7 @@ import { crimsonWitch } from "./crimson-witch.ts";
 import { deepwood } from "./deepwood.ts";
 import { emblem } from "./emblem.ts";
 import { noArtifactSet } from "./none.ts";
+import { shimenawa } from "./shimenawa.ts";
 import type {
   ArtifactModifier,
   ArtifactSetPreset,
@@ -19,6 +20,7 @@ export const artifactSets: ArtifactSetPreset[] = [
   noArtifactSet,
   blizzardStrayer,
   crimsonWitch,
+  shimenawa,
   emblem,
   deepwood,
 ];

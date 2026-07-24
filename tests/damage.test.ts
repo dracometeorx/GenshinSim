@@ -20,6 +20,8 @@ import type { CharacterPreset } from "../lib/data/characters/types.ts";
 import type { DamageSettings } from "../lib/damage.ts";
 import { hutao } from "../lib/data/characters/hutao.ts";
 import { nahida } from "../lib/data/characters/nahida.ts";
+import { dragonsBane } from "../lib/data/weapons/dragons-bane.ts";
+import { weapons } from "../lib/data/weapons/index.ts";
 
 function calculateRepresentativeDamage(
   character: CharacterPreset,
@@ -37,6 +39,8 @@ function calculateRepresentativeDamage(
       build.artifactSetPieces,
       build.artifactSetSelections,
     ),
+    weapons.find(({ id }) => id === build.weapon.id)?.passive
+      .damageEffects ?? [],
   );
 }
 
@@ -208,6 +212,106 @@ test("uses separate normal, skill, and burst talent levels", () => {
     highNormal.skills[0].variants[0].nonCrit,
     lowBurst.skills[0].variants[0].nonCrit,
   );
+});
+
+test("applies Shimenawa only to normal, charged, and plunge categories", () => {
+  const shimenawaBuild: BuildInput = {
+    element: "pyro",
+    character: hutao,
+    weapon: {
+      name: "测试长柄武器",
+      level: 90,
+      refinement: 1,
+      baseAtk: 608,
+      secondaryStat: "none",
+      secondaryValue: 0,
+    },
+    artifactSetId: "shimenawa",
+    artifactSetPieces: 4,
+    artifactSetSelections: { shimenawaState: "active" },
+    artifact,
+    talentBonuses,
+  };
+  const settings = {
+    ...defaultDamageSettings,
+    selections: {
+      ...defaultDamageSettings.selections,
+      hutaoHpState: "above50",
+    },
+  };
+  const active = calculateRepresentativeDamage(
+    hutao,
+    shimenawaBuild,
+    panel,
+    settings,
+  );
+  const inactive = calculateRepresentativeDamage(
+    hutao,
+    {
+      ...shimenawaBuild,
+      artifactSetSelections: { shimenawaState: "inactive" },
+    },
+    panel,
+    settings,
+  );
+
+  assert.ok(
+    Math.abs(
+      active.skills[0].variants[0].nonCrit /
+        inactive.skills[0].variants[0].nonCrit -
+        1.5,
+    ) < 0.002,
+  );
+  assert.equal(
+    active.skills[1].variants[0].nonCrit,
+    inactive.skills[1].variants[0].nonCrit,
+  );
+});
+
+test("applies every Dragon's Bane refinement against affected enemies", () => {
+  const expectedRatios = [1.2, 1.24, 1.28, 1.32, 1.36];
+  const settings = {
+    ...defaultDamageSettings,
+    selections: {
+      ...defaultDamageSettings.selections,
+      hutaoHpState: "above50",
+    },
+  };
+
+  expectedRatios.forEach((expectedRatio, index) => {
+    const baseBuild: BuildInput = {
+      element: "pyro",
+      character: hutao,
+      weapon: { ...dragonsBane, refinement: index + 1 },
+      weaponPassiveSelections: {
+        dragonsBaneEnemyState: "none",
+      },
+      artifact,
+      talentBonuses,
+    };
+    const inactive = calculateRepresentativeDamage(
+      hutao,
+      baseBuild,
+      panel,
+      settings,
+    ).skills[0].variants[0];
+    const active = calculateRepresentativeDamage(
+      hutao,
+      {
+        ...baseBuild,
+        weaponPassiveSelections: {
+          dragonsBaneEnemyState: "affected",
+        },
+      },
+      panel,
+      settings,
+    ).skills[0].variants[0];
+
+    assert.ok(
+      Math.abs(active.nonCrit / inactive.nonCrit - expectedRatio) <
+        0.002,
+    );
+  });
 });
 
 test("applies Crimson Witch stacks to Pyro damage, not reaction bonus", () => {

@@ -31,17 +31,96 @@ test("exports every character preset with a unique id", () => {
 test("exports every weapon preset with a unique id", () => {
   assert.deepEqual(
     weapons.map(({ id }) => id),
-    ["mistsplitter", "homa", "engulfing", "dreams", "custom"],
+    [
+      "mistsplitter",
+      "homa",
+      "engulfing",
+      "the-catch",
+      "deathmatch",
+      "dragons-bane",
+      "favonius-lance",
+      "dreams",
+      "custom",
+    ],
   );
   assert.equal(new Set(weapons.map(({ id }) => id)).size, weapons.length);
   assert.deepEqual(
     weapons.map(({ weaponType }) => weaponType),
-    ["sword", "polearm", "polearm", "catalyst", "any"],
+    [
+      "sword",
+      "polearm",
+      "polearm",
+      "polearm",
+      "polearm",
+      "polearm",
+      "polearm",
+      "catalyst",
+      "any",
+    ],
   );
   assert.ok(
     weapons
-      .filter(({ id }) => ["mistsplitter", "homa", "engulfing"].includes(id))
+      .filter(({ id }) => id !== "custom" && id !== "dreams")
       .every(({ passive }) => passive.refinementDescriptions?.length === 5),
+  );
+});
+
+test("uses the level-90 stats for the newly supported polearms", () => {
+  assert.deepEqual(
+    weapons
+      .filter(({ id }) =>
+        [
+          "the-catch",
+          "deathmatch",
+          "dragons-bane",
+          "favonius-lance",
+        ].includes(id),
+      )
+      .map(
+        ({
+          id,
+          level,
+          baseAtk,
+          secondaryStat,
+          secondaryValue,
+        }) => ({
+          id,
+          level,
+          baseAtk,
+          secondaryStat,
+          secondaryValue,
+        }),
+      ),
+    [
+      {
+        id: "the-catch",
+        level: 90,
+        baseAtk: 510,
+        secondaryStat: "energyRecharge",
+        secondaryValue: 45.9,
+      },
+      {
+        id: "deathmatch",
+        level: 90,
+        baseAtk: 454,
+        secondaryStat: "critRate",
+        secondaryValue: 36.8,
+      },
+      {
+        id: "dragons-bane",
+        level: 90,
+        baseAtk: 454,
+        secondaryStat: "elementalMastery",
+        secondaryValue: 221,
+      },
+      {
+        id: "favonius-lance",
+        level: 90,
+        baseAtk: 565,
+        secondaryStat: "energyRecharge",
+        secondaryValue: 30.6,
+      },
+    ],
   );
 });
 
@@ -59,7 +138,15 @@ test("only exposes weapons compatible with each character", () => {
   );
   assert.deepEqual(
     getCompatibleWeapons(hutao.weaponType).map(({ id }) => id),
-    ["homa", "engulfing", "custom"],
+    [
+      "homa",
+      "engulfing",
+      "the-catch",
+      "deathmatch",
+      "dragons-bane",
+      "favonius-lance",
+      "custom",
+    ],
   );
   assert.equal(
     isWeaponCompatible(hutao.weaponType, mistsplitter),
@@ -85,6 +172,7 @@ test("exports every artifact set preset with a unique id", () => {
       "none",
       "blizzard-strayer",
       "crimson-witch",
+      "shimenawa",
       "emblem",
       "deepwood",
     ],
