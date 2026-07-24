@@ -29,6 +29,12 @@ export type CharacterPreset = CharacterBase & {
   moonsign?: boolean;
   /** Some characters, such as Columbina, raise the party Moonsign by more. */
   moonsignLevels?: number;
+  /**
+   * The character has completed Witch's Homework and is a Hexerei character.
+   * A party containing at least two such characters enables Hexerei:
+   * Secret Rite.
+   */
+  hexerei?: boolean;
   panelEffects?: readonly PanelEffect[];
   damageProfile?: CharacterDamageProfile;
   teamBuffs?: readonly TeamBuffDefinition[];

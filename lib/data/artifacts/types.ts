@@ -61,6 +61,9 @@ export type ArtifactMoonsignLevel = "none" | "nascent" | "ascendant";
 
 export interface ArtifactModifierContext {
   moonsignLevel: ArtifactMoonsignLevel;
+  witchHomeworkCompleted: boolean;
+  hexereiSecretRite: boolean;
+  characterElement: ElementKey;
   selections: Readonly<Record<string, string>>;
 }
 

@@ -62,6 +62,7 @@ export interface PanelEffect {
 
 export type DamageEffectStat =
   | "damageBonus"
+  | "amplifyingReactionBonus"
   | "critRate"
   | "critDmg"
   | "baseDamageMultiplier"

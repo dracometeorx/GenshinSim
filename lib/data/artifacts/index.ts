@@ -7,6 +7,10 @@ import { shimenawa } from "./shimenawa.ts";
 import { silkenMoonsSerenade } from "./silken-moons-serenade.ts";
 import { nightOfSkysUnveiling } from "./night-of-skys-unveiling.ts";
 import { aubadeOfMorningstarAndMoon } from "./aubade-of-morningstar-and-moon.ts";
+import { aDayCarvedFromRisingWinds } from "./a-day-carved-from-rising-winds.ts";
+import { celestialGift } from "./celestial-gift.ts";
+import { tenacityOfTheMillelith } from "./tenacity-of-the-millelith.ts";
+import { viridescentVenerer } from "./viridescent-venerer.ts";
 import type {
   ArtifactModifierContext,
   ArtifactModifier,
@@ -31,6 +35,10 @@ export const artifactSets: ArtifactSetPreset[] = [
   silkenMoonsSerenade,
   nightOfSkysUnveiling,
   aubadeOfMorningstarAndMoon,
+  aDayCarvedFromRisingWinds,
+  celestialGift,
+  viridescentVenerer,
+  tenacityOfTheMillelith,
 ];
 
 export function getArtifactSet(
@@ -68,6 +76,10 @@ export function resolveArtifactModifiers(
 
   const resolvedContext: ArtifactModifierContext = {
     moonsignLevel: context.moonsignLevel ?? "none",
+    witchHomeworkCompleted:
+      context.witchHomeworkCompleted ?? false,
+    hexereiSecretRite: context.hexereiSecretRite ?? false,
+    characterElement: context.characterElement ?? "anemo",
     selections: selections ?? {},
   };
   const modifiers = [

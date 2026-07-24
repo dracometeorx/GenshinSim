@@ -518,6 +518,7 @@ test("evaluates all seven signature weapons from refinement 1 through 5", () => 
             source: {
               characterId: "test-source",
               moonsign: true,
+              hexerei: false,
               constellation: 0,
               element: "geo",
               panel: effectPanel,
@@ -532,12 +533,15 @@ test("evaluates all seven signature weapons from refinement 1 through 5", () => 
               element: "geo",
               burstEnergyCost: 60,
               moonsign: true,
+              hexerei: false,
             },
             party: {
               highestElementalMastery: 0,
               elements: ["geo"],
               moonsignCount: 2,
               moonsignLevel: "ascendant",
+              hexereiCount: 0,
+              hexereiSecretRite: false,
             },
           }),
         )

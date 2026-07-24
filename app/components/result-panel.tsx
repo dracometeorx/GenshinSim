@@ -87,9 +87,15 @@ export function ResultPanel({
           </span>
         </div>
         <span className="theory-badge">
-          {calculation.moonsign.level === "none"
-            ? "理论值"
-            : `${moonsignLabels[calculation.moonsign.level]} · 理论值`}
+          {[
+            calculation.moonsign.level === "none"
+              ? null
+              : moonsignLabels[calculation.moonsign.level],
+            calculation.hexerei.secretRite ? "魔导·秘仪" : null,
+            "理论值",
+          ]
+            .filter(Boolean)
+            .join(" · ")}
         </span>
       </div>
 

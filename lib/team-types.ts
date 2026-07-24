@@ -27,6 +27,7 @@ export type TeamBuffModifier =
       kind: "damage";
       stat:
         | "damageBonus"
+        | "amplifyingReactionBonus"
         | "critRate"
         | "critDmg"
         | "baseDamageMultiplier"
@@ -47,9 +48,10 @@ export type TeamBuffModifier =
 
 export interface TeamBuffEvaluationContext {
   source: {
-      characterId: string;
-      moonsign: boolean;
-      constellation: number;
+    characterId: string;
+    moonsign: boolean;
+    hexerei: boolean;
+    constellation: number;
     element: ElementKey;
     panel: Readonly<FinalPanel>;
     settings: Readonly<DamageSettings>;
@@ -62,12 +64,15 @@ export interface TeamBuffEvaluationContext {
     element: ElementKey;
     burstEnergyCost: number;
     moonsign: boolean;
+    hexerei: boolean;
   };
   party: {
     highestElementalMastery: number;
     elements: readonly ElementKey[];
     moonsignCount: number;
     moonsignLevel: "none" | "nascent" | "ascendant";
+    hexereiCount: number;
+    hexereiSecretRite: boolean;
   };
 }
 

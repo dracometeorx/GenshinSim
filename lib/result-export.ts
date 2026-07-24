@@ -25,6 +25,12 @@ export function createResultPayload({
         : result.moonsign.level === "nascent"
           ? `初辉（${result.moonsign.count} 级）`
           : "无",
+    魔导:
+      result.hexerei.count > 0
+        ? `${result.hexerei.count} 名${
+            result.hexerei.secretRite ? "（魔导·秘仪）" : ""
+          }`
+        : "无",
     武器: `${build.weapon.name} Lv.${build.weapon.level}`,
     圣遗物套装:
       build.artifactSetPieces && build.artifactSetPieces > 0

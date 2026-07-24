@@ -220,6 +220,7 @@ function buildTargets(
   settings: DamageSettings,
   constellation: number,
   moonsignLevel: "none" | "nascent" | "ascendant",
+  hexereiSecretRite: boolean,
 ): DamageTarget[] {
   const profile = character.damageProfile;
   if (!profile) return [];
@@ -228,6 +229,7 @@ function buildTargets(
     build,
     constellation,
     moonsignLevel,
+    hexereiSecretRite,
     panel,
     settings,
     selection: (key) => getSelection(profile, settings, key),
@@ -251,6 +253,7 @@ export function calculateRepresentativeDamage(
   damageEffects: readonly DamageEffect[] = [],
   constellation = 0,
   moonsignLevel: "none" | "nascent" | "ascendant" = "none",
+  hexereiSecretRite = false,
 ): DamageCalculationResult {
   const artifactResistanceReduction = artifactModifiers.reduce(
     (total, modifier) =>
@@ -267,6 +270,7 @@ export function calculateRepresentativeDamage(
     settings,
     constellation,
     moonsignLevel,
+    hexereiSecretRite,
   );
   const targetsWithModifiers = targets.map((target) => ({
     target,
@@ -497,6 +501,12 @@ export function calculateRepresentativeDamage(
                 if (!modifier.reactions.includes(reaction)) return total;
                 return total + Math.max(0, modifier.value) / 100;
               },
+              0,
+            ) + modifiers.reduce(
+              (total, modifier) =>
+                modifier.stat === "amplifyingReactionBonus"
+                  ? total + Math.max(0, modifier.value) / 100
+                  : total,
               0,
             );
             reactionMultiplier = amplifyingReactionMultiplier(

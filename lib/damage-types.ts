@@ -68,6 +68,7 @@ export interface CharacterDamageContext {
   build: BuildInput;
   constellation: number;
   moonsignLevel: "none" | "nascent" | "ascendant";
+  hexereiSecretRite: boolean;
   panel: FinalPanel;
   settings: DamageSettings;
   selection(key: string): string;

@@ -67,6 +67,21 @@ export function deriveMoonsignState(
   return { count, level };
 }
 
+export function deriveHexereiState(
+  target: CharacterPreset,
+  members: readonly Pick<CalculationTeamMember, "character">[],
+) {
+  const uniqueCharacters = new Map(
+    [target, ...members.map(({ character }) => character)].map(
+      (character) => [character.id, character],
+    ),
+  );
+  const count = [...uniqueCharacters.values()].filter(
+    (character) => character.hexerei,
+  ).length;
+  return { count, secretRite: count >= 2 };
+}
+
 export function createTeamCalculationInput(
   configuration: TeamConfiguration,
   plans: readonly BuildPlan[],
@@ -118,6 +133,7 @@ export function createTeamCalculationInput(
 function calculateStandalonePanel(
   member: Omit<CalculationTeamMember, "slot" | "planId">,
   moonsignLevel: MoonsignLevel,
+  hexereiSecretRite: boolean,
 ) {
   const constellationState = getConstellationCalculationState(
     member.character,
@@ -130,7 +146,12 @@ function calculateStandalonePanel(
       member.build.artifactSetPieces,
       member.build.artifactSetSelections,
       true,
-      { moonsignLevel },
+      {
+        moonsignLevel,
+        witchHomeworkCompleted: Boolean(member.character.hexerei),
+        hexereiSecretRite,
+        characterElement: member.character.element,
+      },
     ),
     panelEffects: [
       ...(member.weapon.passive.panelEffects ?? []),
@@ -212,12 +233,15 @@ function createContext(
     elements: readonly BuildInput["element"][];
     moonsignCount: number;
     moonsignLevel: MoonsignLevel;
+    hexereiCount: number;
+    hexereiSecretRite: boolean;
   },
 ): TeamBuffEvaluationContext {
   return {
     source: {
       characterId: source.character.id,
       moonsign: getCharacterMoonsignLevels(source.character) > 0,
+      hexerei: Boolean(source.character.hexerei),
       constellation: source.constellation,
       element: source.element,
       panel: source.panel,
@@ -231,6 +255,7 @@ function createContext(
       element: target.build.element,
       burstEnergyCost: target.character.burstEnergyCost ?? 60,
       moonsign: getCharacterMoonsignLevels(target.character) > 0,
+      hexerei: Boolean(target.character.hexerei),
     },
     party,
   };
@@ -292,6 +317,7 @@ export function resolveTeamBuffs({
     team?.configuration ?? createEmptyTeamConfiguration();
   const members = team?.members ?? [];
   const moonsign = deriveMoonsignState(target.character, members);
+  const hexerei = deriveHexereiState(target.character, members);
   const sourcePanels = members.map((member) => {
     const constellationState = getConstellationCalculationState(
       member.character,
@@ -300,7 +326,11 @@ export function resolveTeamBuffs({
     );
     return {
       member,
-      panel: calculateStandalonePanel(member, moonsign.level),
+      panel: calculateStandalonePanel(
+        member,
+        moonsign.level,
+        hexerei.secretRite,
+      ),
       settings: constellationState.settings,
     };
   });
@@ -315,6 +345,8 @@ export function resolveTeamBuffs({
     ],
     moonsignCount: moonsign.count,
     moonsignLevel: moonsign.level,
+    hexereiCount: hexerei.count,
+    hexereiSecretRite: hexerei.secretRite,
   };
   const buffs: ResolvedTeamBuff[] = [];
   const targetContext = createContext(
@@ -552,6 +584,10 @@ export function resolveTeamBuffs({
     moonsign: {
       count: party.moonsignCount,
       level: party.moonsignLevel,
+    },
+    hexerei: {
+      count: party.hexereiCount,
+      secretRite: party.hexereiSecretRite,
     },
   };
 }

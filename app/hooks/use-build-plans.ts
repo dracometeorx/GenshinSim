@@ -75,6 +75,7 @@ export type BuildPlansAction =
       update: (draft: BuildPlanDraft) => BuildPlanDraft;
     }
   | { type: "switch-plan"; planId: string }
+  | { type: "open-plan"; planId: string }
   | { type: "switch-character"; characterId: string }
   | {
       type: "set-team-character";
@@ -166,6 +167,27 @@ export function buildPlansReducer(
           activePlanIds: {
             ...state.store.activePlanIds,
             [plan.snapshot.characterId]: plan.id,
+          },
+        },
+      };
+    }
+    case "open-plan": {
+      const plan = state.store.plans.find(
+        (item) => item.id === action.planId,
+      );
+      if (!plan) return state;
+      const draft = restorePlanSnapshot(plan.snapshot);
+      return {
+        ...state,
+        activePlanId: plan.id,
+        draft,
+        status: `已打开「${plan.name}」`,
+        store: {
+          ...state.store,
+          activeCharacterId: draft.characterId,
+          activePlanIds: {
+            ...state.store.activePlanIds,
+            [draft.characterId]: plan.id,
           },
         },
       };
@@ -689,6 +711,8 @@ export function useBuildPlans() {
       }),
     choosePlan: (planId: string) =>
       dispatch({ type: "switch-plan", planId }),
+    openPlan: (planId: string) =>
+      dispatch({ type: "open-plan", planId }),
     chooseCharacter: (characterId: string) =>
       dispatch({ type: "switch-character", characterId }),
     createPlan: (name: string) =>

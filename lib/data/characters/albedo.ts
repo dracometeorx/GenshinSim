@@ -1,0 +1,94 @@
+import type { CharacterPreset } from "./types.ts";
+
+const transientBlossom = [
+  1.336, 1.4362, 1.5364, 1.67, 1.7702, 1.8704, 2.004,
+  2.1376, 2.2712, 2.4048, 2.5384, 2.672, 2.839,
+] as const;
+
+export const albedo: CharacterPreset = {
+  id: "albedo",
+  name: "阿贝多",
+  level: 90,
+  baseHp: 13226,
+  baseAtk: 251,
+  baseDef: 876,
+  ascensionStat: "elementalDmg",
+  ascensionValue: 28.8,
+  ascensionLabel: "岩元素伤害加成 +28.8%",
+  element: "geo",
+  weaponType: "sword",
+  defaultWeaponId: "cinnabar-spindle",
+  burstEnergyCost: 40,
+  hexerei: true,
+  teamBuffs: [
+    {
+      id: "albedo-burst-mastery",
+      name: "瓶中人的天慧",
+      description: "施放元素爆发后，附近队伍角色元素精通提高 125 点。",
+      appliesToSelf: true,
+      evaluate: () => [
+        { kind: "panel", stat: "elementalMastery", value: 125 },
+      ],
+    },
+    {
+      id: "albedo-secret-creation-damage",
+      name: "魔导·秘仪·白芒之书",
+      description:
+        "炼成阳华后按防御力为全队提供至多 12% 伤害加成；炼成瑰银后为魔导角色额外提供至多 30%。",
+      appliesToSelf: true,
+      evaluate: ({ source, target, party }) => {
+        if (!party.hexereiSecretRite) return [];
+        const common = Math.min(12, (source.panel.def / 1000) * 4);
+        const hexerei = target.hexerei
+          ? Math.min(30, (source.panel.def / 1000) * 10)
+          : 0;
+        return [
+          {
+            kind: "damage",
+            stat: "damageBonus",
+            value: common + hexerei,
+          },
+        ];
+      },
+    },
+  ],
+  damageProfile: {
+    kind: "albedo",
+    talentLabel: "创生法·拟造阳华",
+    controls: [
+      {
+        key: "albedoEnemyHp",
+        label: "敌人生命",
+        defaultValue: "below50",
+        options: [
+          { value: "above50", label: "高于 50%" },
+          { value: "below50", label: "低于 50%" },
+        ],
+      },
+    ],
+    evaluateTargets: ({
+      panel,
+      selection,
+      settings,
+      talentValue,
+    }) => {
+      const multiplier =
+        talentValue(transientBlossom, settings.skillTalentLevel) +
+        2.4;
+      return [
+        {
+          id: "albedo-transient-blossom",
+          name: "刹那之花·课业强化",
+          description:
+            "默认计入课业完成后额外 240% 防御力；低于半血时计入白垩色的威压。",
+          multiplierLabel: `${(multiplier * 100).toFixed(1)}% 防御力`,
+          baseDamage: panel.def * multiplier,
+          category: "skill",
+          reactions: ["none"],
+          extraDamageBonus:
+            selection("albedoEnemyHp") === "below50" ? 25 : 0,
+        },
+      ];
+    },
+  },
+};

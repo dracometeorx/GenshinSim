@@ -17,6 +17,7 @@ import type { ArtifactSetPreset } from "./data/artifacts/types.ts";
 import type { CharacterPreset } from "./data/characters/types.ts";
 import type { WeaponPreset } from "./data/weapons/types.ts";
 import {
+  deriveHexereiState,
   deriveMoonsignState,
   resolveTeamBuffs,
   type TeamCalculationInput,
@@ -54,6 +55,10 @@ export interface CalculationResult extends DamageCalculationResult {
   moonsign: {
     count: number;
     level: "none" | "nascent" | "ascendant";
+  };
+  hexerei: {
+    count: number;
+    secretRite: boolean;
   };
   warnings: CalculationWarning[];
 }
@@ -119,6 +124,10 @@ export function calculateBuild({
     character,
     team?.members ?? [],
   );
+  const hexerei = deriveHexereiState(
+    character,
+    team?.members ?? [],
+  );
 
   if (characterMismatch || elementMismatch) {
     warnings.push({
@@ -137,14 +146,24 @@ export function calculateBuild({
     normalizedBuild.artifactSetPieces,
     normalizedBuild.artifactSetSelections,
     false,
-    { moonsignLevel: moonsign.level },
+    {
+      moonsignLevel: moonsign.level,
+      witchHomeworkCompleted: Boolean(character.hexerei),
+      hexereiSecretRite: hexerei.secretRite,
+      characterElement: character.element,
+    },
   );
   const combatArtifactModifiers = resolveArtifactModifiers(
     artifactSet,
     normalizedBuild.artifactSetPieces,
     normalizedBuild.artifactSetSelections,
     true,
-    { moonsignLevel: moonsign.level },
+    {
+      moonsignLevel: moonsign.level,
+      witchHomeworkCompleted: Boolean(character.hexerei),
+      hexereiSecretRite: hexerei.secretRite,
+      characterElement: character.element,
+    },
   );
   const staticPanel = calculateFinalPanel(normalizedBuild, {
     artifactModifiers: staticArtifactModifiers,
@@ -192,6 +211,7 @@ export function calculateBuild({
     ],
     constellation,
     resolvedTeam.moonsign.level,
+    resolvedTeam.hexerei.secretRite,
   );
 
   const hasMeltVariant = damage.skills.some((skill) =>
@@ -231,6 +251,7 @@ export function calculateBuild({
     effectiveSettings,
     teamBuffs: resolvedTeam.buffs,
     moonsign: resolvedTeam.moonsign,
+    hexerei: resolvedTeam.hexerei,
     warnings,
   };
 }

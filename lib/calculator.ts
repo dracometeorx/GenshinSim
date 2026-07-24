@@ -32,7 +32,8 @@ export type SecondaryStatKey =
   | "critRate"
   | "critDmg"
   | "energyRecharge"
-  | "elementalMastery";
+  | "elementalMastery"
+  | "elementalDmg";
 
 export interface CharacterBase {
   name: string;
