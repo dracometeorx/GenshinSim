@@ -7,6 +7,7 @@ import type {
   DamageReaction,
   DamageSettings,
   LunarReactionType,
+  StellarReactionType,
 } from "./damage-types.ts";
 import type { PanelEffectStat } from "./effects.ts";
 
@@ -15,7 +16,8 @@ export type TeamBuffSourceKind =
   | "character"
   | "weapon"
   | "artifact"
-  | "resonance";
+  | "resonance"
+  | "reaction";
 
 export type TeamBuffModifier =
   | {
@@ -36,6 +38,10 @@ export type TeamBuffModifier =
         | "lunarReactionDamageBonus"
         | "lunarAdditiveBaseDamage"
         | "lunarElevation"
+        | "stellarBaseDamageBonus"
+        | "stellarReactionDamageBonus"
+        | "stellarAdditiveBaseDamage"
+        | "stellarElevation"
         | "enemyDefenseReduction"
         | "enemyDefenseIgnore"
         | "enemyResistanceReduction";
@@ -44,6 +50,7 @@ export type TeamBuffModifier =
       element?: ElementKey;
       reactions?: DamageReaction[];
       lunarReactions?: LunarReactionType[];
+      stellarReactions?: StellarReactionType[];
     };
 
 export interface TeamBuffEvaluationContext {
@@ -51,6 +58,8 @@ export interface TeamBuffEvaluationContext {
     characterId: string;
     moonsign: boolean;
     hexerei: boolean;
+    stellarConductEnabler?: boolean;
+    stellarConductRelated?: boolean;
     constellation: number;
     element: ElementKey;
     panel: Readonly<FinalPanel>;
@@ -65,6 +74,8 @@ export interface TeamBuffEvaluationContext {
     burstEnergyCost: number;
     moonsign: boolean;
     hexerei: boolean;
+    stellarConductEnabler?: boolean;
+    stellarConductRelated?: boolean;
   };
   party: {
     highestElementalMastery: number;
@@ -73,6 +84,9 @@ export interface TeamBuffEvaluationContext {
     moonsignLevel: "none" | "nascent" | "ascendant";
     hexereiCount: number;
     hexereiSecretRite: boolean;
+    stellarConductActive?: boolean;
+    stellarConductEnablerCount?: number;
+    stellarElementalPower?: number;
   };
 }
 

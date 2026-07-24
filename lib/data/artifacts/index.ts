@@ -11,6 +11,7 @@ import { aDayCarvedFromRisingWinds } from "./a-day-carved-from-rising-winds.ts";
 import { celestialGift } from "./celestial-gift.ts";
 import { tenacityOfTheMillelith } from "./tenacity-of-the-millelith.ts";
 import { viridescentVenerer } from "./viridescent-venerer.ts";
+import { delusionOfImmolatedShadow } from "./delusion-of-immolated-shadow.ts";
 import type {
   ArtifactModifierContext,
   ArtifactModifier,
@@ -39,6 +40,7 @@ export const artifactSets: ArtifactSetPreset[] = [
   celestialGift,
   viridescentVenerer,
   tenacityOfTheMillelith,
+  delusionOfImmolatedShadow,
 ];
 
 export function getArtifactSet(

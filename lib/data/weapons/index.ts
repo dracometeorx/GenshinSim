@@ -55,6 +55,7 @@ import { makhairaAquamarine } from "./makhaira-aquamarine.ts";
 import { talkingStick } from "./talking-stick.ts";
 import { tidalShadow } from "./tidal-shadow.ts";
 import { serpentSpine } from "./serpent-spine.ts";
+import { aTeaspoonOfTranscendence } from "./a-teaspoon-of-transcendence.ts";
 import type { WeaponPreset } from "./types.ts";
 import type { WeaponType } from "../../calculator.ts";
 
@@ -117,6 +118,7 @@ export const weapons: WeaponPreset[] = [
   talkingStick,
   tidalShadow,
   serpentSpine,
+  aTeaspoonOfTranscendence,
   customWeapon,
 ];
 

@@ -22,6 +22,13 @@ import { sucrose } from "./sucrose.ts";
 import { varka } from "./varka.ts";
 import { venti } from "./venti.ts";
 import { zibai } from "./zibai.ts";
+import { sandrone } from "./sandrone.ts";
+import { qiqi } from "./qiqi.ts";
+import { yaeMiko } from "./yae-miko.ts";
+import { wriothesley } from "./wriothesley.ts";
+import { cyno } from "./cyno.ts";
+import { beidou } from "./beidou.ts";
+import { diona } from "./diona.ts";
 import type { CharacterPreset } from "./types.ts";
 
 export type { CharacterPreset } from "./types.ts";
@@ -38,6 +45,13 @@ export const characters: CharacterPreset[] = [
   nefer,
   linnea,
   zibai,
+  sandrone,
+  qiqi,
+  yaeMiko,
+  wriothesley,
+  cyno,
+  beidou,
+  diona,
   durin,
   venti,
   klee,

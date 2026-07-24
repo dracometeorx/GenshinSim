@@ -16,6 +16,7 @@ export type {
   DamageModel,
   DamageReaction,
   LunarReactionType,
+  StellarReactionType,
 } from "../../damage-types.ts";
 
 export type CharacterPreset = CharacterBase & {
@@ -35,6 +36,8 @@ export type CharacterPreset = CharacterBase & {
    * Secret Rite.
    */
   hexerei?: boolean;
+  /** Enables or directly interacts with the Polestar Field. */
+  stellarConduct?: "enabler" | "related";
   panelEffects?: readonly PanelEffect[];
   damageProfile?: CharacterDamageProfile;
   teamBuffs?: readonly TeamBuffDefinition[];

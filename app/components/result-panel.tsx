@@ -92,6 +92,9 @@ export function ResultPanel({
               ? null
               : moonsignLabels[calculation.moonsign.level],
             calculation.hexerei.secretRite ? "魔导·秘仪" : null,
+            calculation.stellarConduct.active
+              ? `星极场·${calculation.stellarConduct.elementalPower} 元素力`
+              : null,
             "理论值",
           ]
             .filter(Boolean)
@@ -172,7 +175,7 @@ export function ResultPanel({
         <div className="damage-heading">
           <span>
             <strong>代表技能伤害</strong>
-            <small>单目标 · 按普通直伤或月曜直伤模型分别计算</small>
+            <small>单目标 · 按普通、月曜或星电导直伤模型分别计算</small>
           </span>
           <span className="damage-badge">天赋独立设置</span>
         </div>
@@ -319,6 +322,8 @@ export function ResultPanel({
                     {skill.multiplierLabel}
                     {skill.model === "directLunar"
                       ? " · 月曜直伤"
+                      : skill.model === "directStellar"
+                        ? " · 星电导直伤"
                       : ""}
                   </b>
                 </div>
@@ -362,6 +367,10 @@ export function ResultPanel({
             (skill) => skill.model === "directLunar",
           )
             ? `${moonsignLabels[calculation.moonsign.level]}（${calculation.moonsign.count} 级） · 月曜直伤不进入常规防御区与元素/分类增伤区，各结果按其伤害元素单独结算抗性`
+            : calculation.skills.some(
+                  (skill) => skill.model === "directStellar",
+                )
+              ? `星极场 ${calculation.stellarConduct.elementalPower} 元素力 · 星电导直伤不进入常规防御区与元素/分类增伤区，按伤害元素单独结算抗性`
             : `防御倍率 ${(calculation.defenseMultiplier * 100).toFixed(1)}% · 有效抗性 ${calculation.effectiveResistance.toFixed(1)}% · 抗性倍率 ${(calculation.resistanceMultiplier * 100).toFixed(1)}%`}
         </p>
       </section>

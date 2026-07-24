@@ -265,6 +265,7 @@ export function calculateFinalPanel(
       modifier.kind === "damageBonus" ||
       modifier.kind === "reactionBonus" ||
       modifier.kind === "lunarDamageBonus" ||
+      modifier.kind === "stellarDamageBonus" ||
       modifier.kind === "enemyResistanceReduction"
     ) {
       continue;

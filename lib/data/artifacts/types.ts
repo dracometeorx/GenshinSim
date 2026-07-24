@@ -3,7 +3,10 @@ import type {
   TalentBonuses,
 } from "../../calculator.ts";
 import type { TeamBuffDefinition } from "../../team-types.ts";
-import type { LunarReactionType } from "../../damage-types.ts";
+import type {
+  LunarReactionType,
+  StellarReactionType,
+} from "../../damage-types.ts";
 
 export type ArtifactElementKey = ElementKey;
 
@@ -55,6 +58,11 @@ export type ArtifactModifier =
       kind: "lunarDamageBonus";
       value: number;
       lunarReactions?: LunarReactionType[];
+    }
+  | {
+      kind: "stellarDamageBonus";
+      value: number;
+      stellarReactions?: StellarReactionType[];
     };
 
 export type ArtifactMoonsignLevel = "none" | "nascent" | "ascendant";
