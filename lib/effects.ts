@@ -8,6 +8,7 @@ import type {
   DamageReaction,
   DamageSettings,
   DamageTarget,
+  LunarReactionType,
 } from "./damage-types.ts";
 
 export type PanelEffectStage = "additive" | "conversion";
@@ -64,6 +65,10 @@ export type DamageEffectStat =
   | "critRate"
   | "critDmg"
   | "baseDamageMultiplier"
+  | "lunarBaseDamageBonus"
+  | "lunarReactionDamageBonus"
+  | "lunarAdditiveBaseDamage"
+  | "lunarElevation"
   | "enemyDefenseReduction"
   | "enemyDefenseIgnore"
   | "enemyResistanceReduction";
@@ -74,6 +79,7 @@ export interface DamageEffectModifier {
   category?: keyof TalentBonuses;
   element?: ElementKey;
   reactions?: readonly DamageReaction[];
+  lunarReactions?: readonly LunarReactionType[];
 }
 
 export interface DamageEffectContext {

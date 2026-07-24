@@ -42,6 +42,31 @@ export interface TeamCalculationInput {
   configuration: TeamConfiguration;
 }
 
+export type MoonsignLevel = "none" | "nascent" | "ascendant";
+
+export function getCharacterMoonsignLevels(character: CharacterPreset) {
+  if (typeof character.moonsignLevels === "number") {
+    return Math.max(0, Math.round(character.moonsignLevels));
+  }
+  return character.moonsign ? 1 : 0;
+}
+
+export function deriveMoonsignState(
+  target: CharacterPreset,
+  members: readonly Pick<CalculationTeamMember, "character">[],
+) {
+  const count =
+    getCharacterMoonsignLevels(target) +
+    members.reduce(
+      (total, member) =>
+        total + getCharacterMoonsignLevels(member.character),
+      0,
+    );
+  const level: MoonsignLevel =
+    count >= 2 ? "ascendant" : count >= 1 ? "nascent" : "none";
+  return { count, level };
+}
+
 export function createTeamCalculationInput(
   configuration: TeamConfiguration,
   plans: readonly BuildPlan[],
@@ -92,6 +117,7 @@ export function createTeamCalculationInput(
 
 function calculateStandalonePanel(
   member: Omit<CalculationTeamMember, "slot" | "planId">,
+  moonsignLevel: MoonsignLevel,
 ) {
   const constellationState = getConstellationCalculationState(
     member.character,
@@ -104,6 +130,7 @@ function calculateStandalonePanel(
       member.build.artifactSetPieces,
       member.build.artifactSetSelections,
       true,
+      { moonsignLevel },
     ),
     panelEffects: [
       ...(member.weapon.passive.panelEffects ?? []),
@@ -173,6 +200,8 @@ function createContext(
     panel: FinalPanel;
     settings: DamageSettings;
     weapon: WeaponPreset;
+    weaponSelections: Readonly<Record<string, string>>;
+    artifactSelections: Readonly<Record<string, string>>;
   },
   target: {
     character: CharacterPreset;
@@ -181,25 +210,65 @@ function createContext(
   party: {
     highestElementalMastery: number;
     elements: readonly BuildInput["element"][];
+    moonsignCount: number;
+    moonsignLevel: MoonsignLevel;
   },
 ): TeamBuffEvaluationContext {
   return {
     source: {
       characterId: source.character.id,
+      moonsign: getCharacterMoonsignLevels(source.character) > 0,
       constellation: source.constellation,
       element: source.element,
       panel: source.panel,
       settings: source.settings,
       weaponRefinement: source.weapon.refinement,
+      weaponSelections: source.weaponSelections,
+      artifactSelections: source.artifactSelections,
     },
     target: {
       characterId: target.character.id,
       element: target.build.element,
       burstEnergyCost: target.character.burstEnergyCost ?? 60,
+      moonsign: getCharacterMoonsignLevels(target.character) > 0,
     },
     party,
   };
 }
+
+const moonsignTeamBonus: TeamBuffDefinition = {
+  id: "ascendant-gleam-team-bonus",
+  name: "月兆·满辉队伍增益",
+  description:
+    "非月兆角色施放元素战技或元素爆发后，按其元素对应属性提高全队月曜反应伤害，至多 36%；多个来源不叠加。",
+  stackingGroup: "ascendant-gleam-team-bonus",
+  evaluate: ({ source, party }) => {
+    if (party.moonsignLevel !== "ascendant" || source.moonsign) {
+      return [];
+    }
+    let value = 0;
+    if (
+      source.element === "pyro" ||
+      source.element === "electro" ||
+      source.element === "cryo"
+    ) {
+      value = (source.panel.atk / 100) * 0.9;
+    } else if (source.element === "hydro") {
+      value = (source.panel.hp / 1000) * 0.6;
+    } else if (source.element === "geo") {
+      value = source.panel.def / 100;
+    } else {
+      value = (source.panel.elementalMastery / 100) * 2.25;
+    }
+    return [
+      {
+        kind: "damage",
+        stat: "lunarReactionDamageBonus",
+        value: Math.min(36, Math.max(0, value)),
+      },
+    ];
+  },
+};
 
 export function resolveTeamBuffs({
   target,
@@ -222,6 +291,7 @@ export function resolveTeamBuffs({
   const configuration =
     team?.configuration ?? createEmptyTeamConfiguration();
   const members = team?.members ?? [];
+  const moonsign = deriveMoonsignState(target.character, members);
   const sourcePanels = members.map((member) => {
     const constellationState = getConstellationCalculationState(
       member.character,
@@ -230,7 +300,7 @@ export function resolveTeamBuffs({
     );
     return {
       member,
-      panel: calculateStandalonePanel(member),
+      panel: calculateStandalonePanel(member, moonsign.level),
       settings: constellationState.settings,
     };
   });
@@ -243,15 +313,10 @@ export function resolveTeamBuffs({
       target.build.element,
       ...members.map((member) => member.build.element),
     ],
+    moonsignCount: moonsign.count,
+    moonsignLevel: moonsign.level,
   };
   const buffs: ResolvedTeamBuff[] = [];
-  const occupiedStackingGroups = new Set(
-    target.build.artifactSetPieces === 4
-      ? (target.artifactSet.teamBuffs ?? [])
-          .map((definition) => definition.stackingGroup)
-          .filter((group): group is string => Boolean(group))
-      : [],
-  );
   const targetContext = createContext(
     {
       character: target.character,
@@ -260,11 +325,54 @@ export function resolveTeamBuffs({
       panel: targetPanel,
       settings,
       weapon: target.weapon,
+      weaponSelections: target.build.weaponPassiveSelections ?? {},
+      artifactSelections: target.build.artifactSetSelections ?? {},
     },
     target,
     party,
   );
-
+  const occupiedStackingGroups = new Set<string>();
+  if (target.build.artifactSetPieces === 4) {
+    for (const definition of target.artifactSet.teamBuffs ?? []) {
+      if (
+        definition.stackingGroup &&
+        matchesDefinition(
+          definition,
+          targetConstellation,
+          target.build.artifactSetPieces,
+        ) &&
+        definition.evaluate(targetContext).some((modifier) =>
+          Number.isFinite(modifier.value),
+        )
+      ) {
+        occupiedStackingGroups.add(definition.stackingGroup);
+      }
+    }
+  }
+  const addResolvedBuff = (
+    definition: TeamBuffDefinition,
+    options: Omit<
+      Parameters<typeof createResolvedBuff>[0],
+      "definition" | "configuration"
+    >,
+  ) => {
+    if (
+      definition.stackingGroup &&
+      occupiedStackingGroups.has(definition.stackingGroup)
+    ) {
+      return;
+    }
+    const buff = createResolvedBuff({
+      ...options,
+      definition,
+      configuration,
+    });
+    if (!buff) return;
+    buffs.push(buff);
+    if (definition.stackingGroup) {
+      occupiedStackingGroups.add(definition.stackingGroup);
+    }
+  };
   for (const definition of target.character.teamBuffs ?? []) {
     if (
       !definition.appliesToSelf ||
@@ -272,8 +380,7 @@ export function resolveTeamBuffs({
     ) {
       continue;
     }
-    const buff = createResolvedBuff({
-      definition,
+    addResolvedBuff(definition, {
       id: `self:character:${definition.id}`,
       sourceKind: definition.minConstellation
         ? "constellation"
@@ -282,9 +389,17 @@ export function resolveTeamBuffs({
         ? `${target.character.name}命座`
         : target.character.name,
       context: targetContext,
-      configuration,
     });
-    if (buff) buffs.push(buff);
+  }
+
+  for (const definition of target.weapon.passive.teamBuffs ?? []) {
+    if (!definition.appliesToSelf) continue;
+    addResolvedBuff(definition, {
+      id: `self:weapon:${definition.id}`,
+      sourceKind: "weapon",
+      sourceName: target.weapon.name,
+      context: targetContext,
+    });
   }
 
   for (const { member, panel, settings: sourceSettings } of sourcePanels) {
@@ -296,6 +411,10 @@ export function resolveTeamBuffs({
         panel,
         settings: sourceSettings,
         weapon: member.weapon,
+        weaponSelections:
+          member.build.weaponPassiveSelections ?? {},
+        artifactSelections:
+          member.build.artifactSetSelections ?? {},
       },
       target,
       party,
@@ -307,26 +426,21 @@ export function resolveTeamBuffs({
       ) {
         continue;
       }
-      const buff = createResolvedBuff({
-        definition,
+      addResolvedBuff(definition, {
         id: `slot:${member.slot}:character:${definition.id}`,
         sourceKind: "character",
         sourceName: member.character.name,
         context,
-        configuration,
       });
-      if (buff) buffs.push(buff);
     }
     for (const definition of member.weapon.passive.teamBuffs ?? []) {
-      const buff = createResolvedBuff({
-        definition,
+      if (definition.appliesToTeammates === false) continue;
+      addResolvedBuff(definition, {
         id: `slot:${member.slot}:weapon:${definition.id}`,
         sourceKind: "weapon",
         sourceName: member.weapon.name,
         context,
-        configuration,
       });
-      if (buff) buffs.push(buff);
     }
     for (const definition of member.artifactSet.teamBuffs ?? []) {
       if (
@@ -340,20 +454,20 @@ export function resolveTeamBuffs({
       ) {
         continue;
       }
-      const buff = createResolvedBuff({
-        definition,
+      addResolvedBuff(definition, {
         id: `slot:${member.slot}:artifact:${definition.id}`,
         sourceKind: "artifact",
         sourceName: member.artifactSet.shortName,
         context,
-        configuration,
       });
-      if (buff) {
-        buffs.push(buff);
-        if (definition.stackingGroup) {
-          occupiedStackingGroups.add(definition.stackingGroup);
-        }
-      }
+    }
+    if (!getCharacterMoonsignLevels(member.character)) {
+      addResolvedBuff(moonsignTeamBonus, {
+        id: `slot:${member.slot}:character:${moonsignTeamBonus.id}`,
+        sourceKind: "character",
+        sourceName: member.character.name,
+        context,
+      });
     }
   }
 
@@ -363,15 +477,12 @@ export function resolveTeamBuffs({
     ).length;
     if (elementCount < 2) continue;
     for (const definition of resonance.buffs) {
-      const buff = createResolvedBuff({
-        definition,
+      addResolvedBuff(definition, {
         id: `resonance:${definition.id}`,
         sourceKind: "resonance",
         sourceName: "元素共鸣",
         context: targetContext,
-        configuration,
       });
-      if (buff) buffs.push(buff);
     }
   }
 
@@ -413,7 +524,14 @@ export function resolveTeamBuffs({
                   (!modifier.category ||
                     modifier.category === damageTarget.category) &&
                   (!modifier.element ||
-                    modifier.element === target.build.element),
+                    modifier.element ===
+                      (damageTarget.damageElement ??
+                        target.build.element)) &&
+                  (!modifier.lunarReactions?.length ||
+                    (damageTarget.model?.kind === "directLunar" &&
+                      modifier.lunarReactions.includes(
+                        damageTarget.model.reaction,
+                      ))),
               )
               .map((modifier) => ({
                 stat: modifier.stat,
@@ -421,10 +539,19 @@ export function resolveTeamBuffs({
                 category: modifier.category,
                 element: modifier.element,
                 reactions: modifier.reactions,
+                lunarReactions: modifier.lunarReactions,
               })),
         },
       ]
     : [];
 
-  return { buffs, panelEffects, damageEffects };
+  return {
+    buffs,
+    panelEffects,
+    damageEffects,
+    moonsign: {
+      count: party.moonsignCount,
+      level: party.moonsignLevel,
+    },
+  };
 }

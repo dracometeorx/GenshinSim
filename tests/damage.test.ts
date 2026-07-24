@@ -454,3 +454,258 @@ test("applies Deepwood resistance reduction to Nahida damage", () => {
     triKarma.variants[1].nonCrit > triKarma.variants[0].nonCrit,
   );
 });
+
+test("uses the direct Lunar formula without ordinary defense or damage bonuses", () => {
+  const lunarCharacter: CharacterPreset = {
+    id: "test-lunar",
+    name: "月曜公式测试",
+    level: 90,
+    baseHp: 10000,
+    baseAtk: 100,
+    baseDef: 100,
+    ascensionStat: "none",
+    ascensionValue: 0,
+    ascensionLabel: "无",
+    element: "electro",
+    weaponType: "polearm",
+    defaultWeaponId: "custom",
+    damageProfile: {
+      kind: "test-lunar",
+      talentLabel: "测试",
+      controls: [],
+      evaluateTargets: () => [
+        {
+          id: "test-direct-lunar",
+          name: "直伤月感电",
+          description: "固定 1000 点倍率区。",
+          multiplierLabel: "1000",
+          baseDamage: 1000,
+          category: "skill",
+          reactions: [],
+          model: {
+            kind: "directLunar",
+            reaction: "lunarCharged",
+          },
+        },
+      ],
+    },
+  };
+  const lunarBuild: BuildInput = {
+    element: "electro",
+    character: lunarCharacter,
+    weapon: {
+      name: "测试武器",
+      level: 90,
+      refinement: 1,
+      baseAtk: 1,
+      secondaryStat: "none",
+      secondaryValue: 0,
+    },
+    artifact,
+    talentBonuses: {
+      ...talentBonuses,
+      skill: 500,
+    },
+  };
+  const boostedPanel: FinalPanel = {
+    ...panel,
+    critRate: 0,
+    critDmg: 0,
+    elementalDmg: 500,
+    elementalMastery: 0,
+    talentBonuses: lunarBuild.talentBonuses,
+  };
+  const levelOneEnemy = calculateResolvedDamage(
+    lunarCharacter,
+    lunarBuild,
+    boostedPanel,
+    { ...defaultDamageSettings, enemyLevel: 1 },
+  ).skills[0].variants[0];
+  const levelTwoHundredEnemy = calculateResolvedDamage(
+    lunarCharacter,
+    lunarBuild,
+    boostedPanel,
+    { ...defaultDamageSettings, enemyLevel: 200 },
+  ).skills[0].variants[0];
+
+  assert.equal(levelOneEnemy.model, "directLunar");
+  assert.equal(levelOneEnemy.defenseMultiplier, 1);
+  assert.equal(levelOneEnemy.damageBonus, 0);
+  assert.equal(levelOneEnemy.nonCrit, 2700);
+  assert.equal(levelTwoHundredEnemy.nonCrit, 2700);
+});
+
+test("applies elemental mastery in the direct Lunar reaction bonus area", () => {
+  const lunarCharacter: CharacterPreset = {
+    id: "test-lunar-mastery",
+    name: "月曜精通测试",
+    level: 90,
+    baseHp: 10000,
+    baseAtk: 100,
+    baseDef: 100,
+    ascensionStat: "none",
+    ascensionValue: 0,
+    ascensionLabel: "无",
+    element: "dendro",
+    weaponType: "catalyst",
+    defaultWeaponId: "custom",
+    damageProfile: {
+      kind: "test-lunar-mastery",
+      talentLabel: "测试",
+      controls: [],
+      evaluateTargets: () => [
+        {
+          id: "test-direct-lunar-bloom",
+          name: "直伤月绽放",
+          description: "固定 1000 点倍率区。",
+          multiplierLabel: "1000",
+          baseDamage: 1000,
+          category: "skill",
+          reactions: [],
+          model: {
+            kind: "directLunar",
+            reaction: "lunarBloom",
+          },
+        },
+      ],
+    },
+  };
+  const lunarBuild: BuildInput = {
+    element: "dendro",
+    character: lunarCharacter,
+    weapon: {
+      name: "测试武器",
+      level: 90,
+      refinement: 1,
+      baseAtk: 1,
+      secondaryStat: "none",
+      secondaryValue: 0,
+    },
+    artifact,
+    talentBonuses,
+  };
+  const result = calculateResolvedDamage(
+    lunarCharacter,
+    lunarBuild,
+    {
+      ...panel,
+      critRate: 0,
+      critDmg: 0,
+      elementalMastery: 1000,
+    },
+    defaultDamageSettings,
+  ).skills[0].variants[0];
+
+  assert.equal(result.elementalMasteryBonus, 200);
+  assert.equal(result.nonCrit, 8100);
+});
+
+test("uses the 1.6 direct Lunar-Crystallize coefficient", () => {
+  const lunarCharacter: CharacterPreset = {
+    id: "test-lunar-crystallize",
+    name: "月结晶系数测试",
+    level: 90,
+    baseHp: 10000,
+    baseAtk: 100,
+    baseDef: 100,
+    ascensionStat: "none",
+    ascensionValue: 0,
+    ascensionLabel: "无",
+    element: "geo",
+    weaponType: "sword",
+    defaultWeaponId: "custom",
+    damageProfile: {
+      kind: "test-lunar-crystallize",
+      talentLabel: "测试",
+      controls: [],
+      evaluateTargets: () => [
+        {
+          id: "test-direct-lunar-crystallize",
+          name: "直伤月结晶",
+          description: "固定 1000 点倍率区。",
+          multiplierLabel: "1000",
+          baseDamage: 1000,
+          category: "skill",
+          reactions: [],
+          model: {
+            kind: "directLunar",
+            reaction: "lunarCrystallize",
+          },
+        },
+      ],
+    },
+  };
+  const lunarBuild: BuildInput = {
+    element: "geo",
+    character: lunarCharacter,
+    weapon: {
+      name: "测试武器",
+      level: 90,
+      refinement: 1,
+      baseAtk: 1,
+      secondaryStat: "none",
+      secondaryValue: 0,
+    },
+    artifact,
+    talentBonuses,
+  };
+  const result = calculateResolvedDamage(
+    lunarCharacter,
+    lunarBuild,
+    {
+      ...panel,
+      critRate: 0,
+      critDmg: 0,
+      elementalMastery: 0,
+    },
+    defaultDamageSettings,
+  ).skills[0].variants[0];
+
+  assert.equal(result.nonCrit, 1440);
+});
+
+test("does not apply Lunar-scoped modifiers to standard damage", () => {
+  const build: BuildInput = {
+    element: "pyro",
+    character: hutao,
+    weapon: {
+      name: "测试长柄武器",
+      level: 90,
+      refinement: 1,
+      baseAtk: 608,
+      secondaryStat: "none",
+      secondaryValue: 0,
+    },
+    artifact,
+    talentBonuses,
+  };
+  const result = calculateResolvedDamage(
+    hutao,
+    build,
+    panel,
+    {
+      ...defaultDamageSettings,
+      selections: {
+        ...defaultDamageSettings.selections,
+        hutaoHpState: "above50",
+      },
+    },
+    [],
+    [
+      {
+        id: "test-lunar-only-crit",
+        evaluate: () => [
+          {
+            stat: "critDmg",
+            value: 100,
+            lunarReactions: ["lunarBloom"],
+          },
+        ],
+      },
+    ],
+  );
+  const variant = result.skills[0].variants[0];
+
+  assert.equal(variant.model, "standard");
+  assert.equal(variant.crit, variant.nonCrit * 2);
+});

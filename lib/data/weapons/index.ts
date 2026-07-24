@@ -7,6 +7,13 @@ import { favoniusLance } from "./favonius-lance.ts";
 import { homa } from "./homa.ts";
 import { mistsplitter } from "./mistsplitter.ts";
 import { theCatch } from "./the-catch.ts";
+import { fracturedHalo } from "./fractured-halo.ts";
+import { bloodsoakedRuins } from "./bloodsoaked-ruins.ts";
+import { nightweaversLookingGlass } from "./nightweavers-looking-glass.ts";
+import { reliquaryOfTruth } from "./reliquary-of-truth.ts";
+import { nocturnesCurtainCall } from "./nocturnes-curtain-call.ts";
+import { lightbearingMoonshard } from "./lightbearing-moonshard.ts";
+import { frostboundOath } from "./frostbound-oath.ts";
 import type { WeaponPreset } from "./types.ts";
 import type { WeaponType } from "../../calculator.ts";
 
@@ -21,6 +28,13 @@ export const weapons: WeaponPreset[] = [
   dragonsBane,
   favoniusLance,
   dreams,
+  fracturedHalo,
+  bloodsoakedRuins,
+  nightweaversLookingGlass,
+  reliquaryOfTruth,
+  nocturnesCurtainCall,
+  lightbearingMoonshard,
+  frostboundOath,
   customWeapon,
 ];
 

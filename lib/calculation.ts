@@ -17,6 +17,7 @@ import type { ArtifactSetPreset } from "./data/artifacts/types.ts";
 import type { CharacterPreset } from "./data/characters/types.ts";
 import type { WeaponPreset } from "./data/weapons/types.ts";
 import {
+  deriveMoonsignState,
   resolveTeamBuffs,
   type TeamCalculationInput,
 } from "./team.ts";
@@ -24,6 +25,7 @@ import type { ResolvedTeamBuff } from "./team-types.ts";
 
 export type CalculationWarningCode =
   | "INCOMPATIBLE_BLIZZARD_MELT_CONDITION"
+  | "LUNAR_TRANSFORMATIVE_DAMAGE_EXCLUDED"
   | "CHARACTER_BUILD_NORMALIZED";
 
 export interface CalculationWarning {
@@ -49,6 +51,10 @@ export interface CalculationResult extends DamageCalculationResult {
   constellation: number;
   effectiveSettings: DamageSettings;
   teamBuffs: ResolvedTeamBuff[];
+  moonsign: {
+    count: number;
+    level: "none" | "nascent" | "ascendant";
+  };
   warnings: CalculationWarning[];
 }
 
@@ -109,6 +115,10 @@ export function calculateBuild({
     settings,
   );
   const effectiveSettings = constellationState.settings;
+  const moonsign = deriveMoonsignState(
+    character,
+    team?.members ?? [],
+  );
 
   if (characterMismatch || elementMismatch) {
     warnings.push({
@@ -127,12 +137,14 @@ export function calculateBuild({
     normalizedBuild.artifactSetPieces,
     normalizedBuild.artifactSetSelections,
     false,
+    { moonsignLevel: moonsign.level },
   );
   const combatArtifactModifiers = resolveArtifactModifiers(
     artifactSet,
     normalizedBuild.artifactSetPieces,
     normalizedBuild.artifactSetSelections,
     true,
+    { moonsignLevel: moonsign.level },
   );
   const staticPanel = calculateFinalPanel(normalizedBuild, {
     artifactModifiers: staticArtifactModifiers,
@@ -179,11 +191,22 @@ export function calculateBuild({
       ...resolvedTeam.damageEffects,
     ],
     constellation,
+    resolvedTeam.moonsign.level,
   );
 
   const hasMeltVariant = damage.skills.some((skill) =>
     skill.variants.some((variant) => variant.reaction === "melt"),
   );
+  const hasDirectLunarDamage = damage.skills.some(
+    (skill) => skill.model === "directLunar",
+  );
+  if (hasDirectLunarDamage) {
+    warnings.push({
+      code: "LUNAR_TRANSFORMATIVE_DAMAGE_EXCLUDED",
+      message:
+        "月曜结果仅包含技能直接造成的月反应伤害，不包含雷暴云、草原核/月绽放产物或月笼等反应触发伤害。",
+    });
+  }
   const blizzardState =
     normalizedBuild.artifactSetSelections?.blizzardEnemyState;
   if (
@@ -207,6 +230,7 @@ export function calculateBuild({
     constellation,
     effectiveSettings,
     teamBuffs: resolvedTeam.buffs,
+    moonsign: resolvedTeam.moonsign,
     warnings,
   };
 }

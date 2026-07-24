@@ -13,7 +13,9 @@ import type { TeamBuffDefinition } from "../../team-types.ts";
 export type {
   CharacterDamageProfile,
   DamageControl,
+  DamageModel,
   DamageReaction,
+  LunarReactionType,
 } from "../../damage-types.ts";
 
 export type CharacterPreset = CharacterBase & {
@@ -23,6 +25,10 @@ export type CharacterPreset = CharacterBase & {
   defaultWeaponId: string;
   ascensionLabel: string;
   burstEnergyCost?: number;
+  /** Characters with this flag contribute one level to the party Moonsign. */
+  moonsign?: boolean;
+  /** Some characters, such as Columbina, raise the party Moonsign by more. */
+  moonsignLevels?: number;
   panelEffects?: readonly PanelEffect[];
   damageProfile?: CharacterDamageProfile;
   teamBuffs?: readonly TeamBuffDefinition[];

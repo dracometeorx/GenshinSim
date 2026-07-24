@@ -15,6 +15,25 @@ export interface DamageSettings {
 
 export type DamageReaction = "none" | "vaporize" | "melt" | "spread";
 
+export type LunarReactionType =
+  | "lunarCharged"
+  | "lunarBloom"
+  | "lunarCrystallize";
+
+export type DamageModel =
+  | { kind: "standard" }
+  | {
+      kind: "directLunar";
+      reaction: LunarReactionType;
+      /**
+       * Talent-sourced Lunar DMG uses a hidden reaction coefficient:
+       * Lunar-Charged/Bloom use 3, while Lunar-Crystallize uses 1.6.
+       */
+      directMultiplier?: number;
+    };
+
+export type DamageVariantKey = DamageReaction | LunarReactionType;
+
 export interface DamageControl {
   key: string;
   label: string;
@@ -33,14 +52,22 @@ export interface DamageTarget {
   baseDamage: number;
   category: keyof TalentBonuses;
   reactions: DamageReaction[];
+  model?: DamageModel;
+  /** The element whose resistance applies when it differs from the character. */
+  damageElement?: BuildInput["element"];
   extraDamageBonus?: number;
   extraCritRate?: number;
   extraCritDmg?: number;
+  extraLunarBaseDamageBonus?: number;
+  extraLunarReactionDamageBonus?: number;
+  extraLunarAdditiveBaseDamage?: number;
+  extraLunarElevation?: number;
 }
 
 export interface CharacterDamageContext {
   build: BuildInput;
   constellation: number;
+  moonsignLevel: "none" | "nascent" | "ascendant";
   panel: FinalPanel;
   settings: DamageSettings;
   selection(key: string): string;
