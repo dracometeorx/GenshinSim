@@ -30,6 +30,7 @@ export type TeamBuffModifier =
         | "critRate"
         | "critDmg"
         | "baseDamageMultiplier"
+        | "additiveBaseDamage"
         | "lunarBaseDamageBonus"
         | "lunarReactionDamageBonus"
         | "lunarAdditiveBaseDamage"

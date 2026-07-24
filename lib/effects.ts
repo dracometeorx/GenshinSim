@@ -65,6 +65,7 @@ export type DamageEffectStat =
   | "critRate"
   | "critDmg"
   | "baseDamageMultiplier"
+  | "additiveBaseDamage"
   | "lunarBaseDamageBonus"
   | "lunarReactionDamageBonus"
   | "lunarAdditiveBaseDamage"

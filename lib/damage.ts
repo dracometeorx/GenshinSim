@@ -382,7 +382,7 @@ export function calculateRepresentativeDamage(
           const effectDamageBonus = modifiers.reduce(
             (total, modifier) =>
               modifier.stat === "damageBonus"
-                ? total + Math.max(0, modifier.value)
+                ? total + modifier.value
                 : total,
             0,
           );
@@ -421,6 +421,14 @@ export function calculateRepresentativeDamage(
           );
           let baseDamage = target.baseDamage;
           let reactionMultiplier = 1;
+          const additiveBaseDamage = modifiers.reduce(
+            (total, modifier) =>
+              modifier.stat === "additiveBaseDamage"
+                ? total + modifier.value
+                : total,
+            0,
+          );
+          baseDamage += additiveBaseDamage;
           const baseDamageMultiplier = modifiers.reduce(
             (total, modifier) =>
               modifier.stat === "baseDamageMultiplier"
