@@ -13,6 +13,18 @@ export const mistsplitter: WeaponPreset = {
   passive: {
     name: "雾切御腰物",
     description: "获得 12% 元素伤害加成，并根据巴印层数额外获得 0% / 8% / 16% / 28%。",
+    effect: {
+      kind: "elementalDamageByStacks",
+      controlKey: "mistsplitterStacks",
+      baseBonus: [12, 15, 18, 21, 24],
+      stackBonus: [
+        [0, 8, 16, 28],
+        [0, 10, 20, 35],
+        [0, 12, 24, 42],
+        [0, 14, 28, 49],
+        [0, 16, 32, 56],
+      ],
+    },
     refinementDescriptions: [
       "获得 12% 元素伤害加成，并根据巴印层数额外获得 0% / 8% / 16% / 28%。",
       "获得 15% 元素伤害加成，并根据巴印层数额外获得 0% / 10% / 20% / 35%。",

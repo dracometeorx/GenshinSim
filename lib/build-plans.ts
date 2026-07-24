@@ -274,11 +274,12 @@ export function parseBuildPlanStore(raw: string | null): BuildPlanStore | null {
     ) {
       return null;
     }
+    const requestedActivePlanIds = parsed.activePlanIds;
 
     const activePlanIds = Object.fromEntries(
       Object.entries(plansByCharacter).map(
         ([characterId, characterPlans]) => {
-          const requestedId = parsed.activePlanIds[characterId];
+          const requestedId = requestedActivePlanIds[characterId];
           const requestedPlan = characterPlans.find(
             (plan) => plan.id === requestedId,
           );

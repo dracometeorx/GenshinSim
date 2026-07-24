@@ -14,6 +14,14 @@ export const homa: WeaponPreset = {
   passive: {
     name: "无羁的朱赤之蝶",
     description: "生命值提高 20%；攻击力提高生命值上限的 0.8%，生命低于 50% 时再提高 1%。",
+    effect: {
+      kind: "hpToAttack",
+      controlKey: "homaHpState",
+      activeValue: "below50",
+      hpBonus: [20, 25, 30, 35, 40],
+      baseRatio: [0.8, 1, 1.2, 1.4, 1.6],
+      activeRatio: [1, 1.2, 1.4, 1.6, 1.8],
+    },
     refinementDescriptions: [
       "生命值提高 20%；攻击力提高生命值上限的 0.8%，生命低于 50% 时再提高 1%。",
       "生命值提高 25%；攻击力提高生命值上限的 1%，生命低于 50% 时再提高 1.2%。",

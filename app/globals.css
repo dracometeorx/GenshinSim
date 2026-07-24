@@ -1105,6 +1105,40 @@ a:focus-visible {
   font-weight: 850;
 }
 
+.calculation-warnings {
+  display: grid;
+  gap: 6px;
+  margin-top: 11px;
+}
+
+.calculation-warnings p {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 0;
+  padding: 9px 10px;
+  border: 1px solid #f0cf8e;
+  border-radius: 8px;
+  background: #fff9eb;
+  color: #77531b;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.calculation-warnings span {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: #e9a92e;
+  color: white;
+  font-size: 10px;
+  font-weight: 900;
+}
+
 .damage-settings {
   display: grid;
   gap: 10px;
@@ -1400,6 +1434,19 @@ a:focus-visible {
 
 .result-actions button span {
   font-size: 18px;
+}
+
+.operation-notice {
+  margin: 10px 0 0;
+  padding: 9px 11px;
+  border: 1px solid #edb9b9;
+  border-radius: 8px;
+  background: #fff5f5;
+  color: #9b3f3f;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.5;
+  text-align: center;
 }
 
 .updated-at {

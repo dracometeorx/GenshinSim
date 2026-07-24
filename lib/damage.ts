@@ -132,8 +132,39 @@ function amplifyingReactionMultiplier(
   return base * (1 + masteryBonus + reactionBonus);
 }
 
-function spreadBonus(elementalMastery: number, characterLevel: number) {
-  const levelBase = characterLevel >= 90 ? 1446.85 : 1446.85;
+const reactionLevelMultipliers = [
+  17.165605, 18.535048, 19.904854, 21.274903, 22.6454, 24.649613,
+  26.640643, 28.868587, 31.36768, 34.143343, 37.201, 40.66,
+  44.446668, 48.563519, 53.74848, 59.081897, 64.420047, 69.724455,
+  75.123137, 80.584775, 86.112028, 91.703742, 97.244628, 102.812644,
+  108.409563, 113.201694, 118.102906, 122.979318, 129.72733, 136.29291,
+  142.67085, 149.029029, 155.416987, 161.825495, 169.106313, 176.518077,
+  184.072741, 191.709518, 199.556908, 207.382042, 215.3989, 224.165667,
+  233.50216, 243.350573, 256.063067, 268.543493, 281.526075, 295.013648,
+  309.067188, 323.601597, 336.757542, 350.530312, 364.482705, 378.619181,
+  398.600417, 416.398254, 434.386996, 452.951051, 472.606217, 492.88489,
+  513.568543, 539.103198, 565.510563, 592.538753, 624.443427, 651.470148,
+  679.49683, 707.79406, 736.671422, 765.640231, 794.773403, 824.677397,
+  851.157781, 877.74209, 914.229123, 946.746752, 979.411386, 1011.223022,
+  1044.791746, 1077.443668, 1109.99754, 1142.976615, 1176.369483,
+  1210.184393, 1253.835659, 1288.952801, 1325.484092, 1363.456928,
+  1405.097377, 1446.853458,
+] as const;
+
+export function getReactionLevelMultiplier(characterLevel: number) {
+  const level = clamp(
+    Math.round(characterLevel),
+    1,
+    reactionLevelMultipliers.length,
+  );
+  return reactionLevelMultipliers[level - 1];
+}
+
+export function calculateSpreadBonus(
+  elementalMastery: number,
+  characterLevel: number,
+) {
+  const levelBase = getReactionLevelMultiplier(characterLevel);
   const masteryBonus =
     (5 * Math.max(0, elementalMastery)) /
     (Math.max(0, elementalMastery) + 1200);
@@ -157,17 +188,25 @@ function roundDamage(value: number) {
   return Math.max(0, Math.round(value));
 }
 
-function buildTargets(
-  character: CharacterPreset,
+type DamageProfileKind = CharacterDamageProfile["kind"];
+type DamageProfileFor<K extends DamageProfileKind> = Extract<
+  CharacterDamageProfile,
+  { kind: K }
+>;
+type CharacterDamageEvaluator<K extends DamageProfileKind> = (
+  profile: DamageProfileFor<K>,
   build: BuildInput,
   panel: FinalPanel,
   settings: DamageSettings,
-): DamageTarget[] {
-  const profile = character.damageProfile;
-  if (!profile) return [];
+) => DamageTarget[];
 
-  switch (profile.kind) {
-    case "ayaka": {
+const characterDamageEvaluators = {
+  ayaka(
+    profile: DamageProfileFor<"ayaka">,
+    _build: BuildInput,
+    panel: FinalPanel,
+    settings: DamageSettings,
+  ) {
       const skill = talentValue(
         profile.skillMultipliers,
         settings.skillTalentLevel,
@@ -206,9 +245,13 @@ function buildTargets(
           extraDamageBonus: dashBonus,
         },
       ];
-    }
-
-    case "hutao": {
+  },
+  hutao(
+    profile: DamageProfileFor<"hutao">,
+    build: BuildInput,
+    panel: FinalPanel,
+    settings: DamageSettings,
+  ) {
       const charged = talentValue(
         profile.chargedMultipliers,
         settings.normalTalentLevel,
@@ -253,9 +296,13 @@ function buildTargets(
           extraDamageBonus: lowHpPyroBonus,
         },
       ];
-    }
-
-    case "raiden": {
+  },
+  raiden(
+    profile: DamageProfileFor<"raiden">,
+    _build: BuildInput,
+    panel: FinalPanel,
+    settings: DamageSettings,
+  ) {
       const burst = talentValue(
         profile.burstMultipliers,
         settings.burstTalentLevel,
@@ -296,9 +343,13 @@ function buildTargets(
           extraDamageBonus: energyBonus + eyeBonus,
         },
       ];
-    }
-
-    case "nahida": {
+  },
+  nahida(
+    profile: DamageProfileFor<"nahida">,
+    _build: BuildInput,
+    panel: FinalPanel,
+    settings: DamageSettings,
+  ) {
       const atkMultiplier = talentValue(
         profile.triKarmaAtkMultipliers,
         settings.skillTalentLevel,
@@ -315,7 +366,7 @@ function buildTargets(
         {
           id: "nahida-tri-karma",
           name: "灭净三业",
-          description: "按攻击力与元素精通双倍率计算；蔓激化加入 90 级角色反应基础值。",
+          description: "按攻击力与元素精通双倍率计算；蔓激化加入当前角色等级对应的反应基础值。",
           multiplierLabel: `${percent(atkMultiplier)} 攻击力 + ${percent(emMultiplier)} 精通`,
           baseDamage:
             panel.atk * atkMultiplier +
@@ -326,9 +377,51 @@ function buildTargets(
           extraCritRate: Math.min(24, overTwoHundred * 0.03),
         },
       ];
+  },
+} satisfies {
+  [K in DamageProfileKind]: CharacterDamageEvaluator<K>;
+};
+
+function buildTargets(
+  character: CharacterPreset,
+  build: BuildInput,
+  panel: FinalPanel,
+  settings: DamageSettings,
+): DamageTarget[] {
+  const profile = character.damageProfile;
+  if (!profile) return [];
+
+  switch (profile.kind) {
+    case "ayaka":
+      return characterDamageEvaluators.ayaka(
+        profile,
+        build,
+        panel,
+        settings,
+      );
+    case "hutao":
+      return characterDamageEvaluators.hutao(
+        profile,
+        build,
+        panel,
+        settings,
+      );
+    case "raiden":
+      return characterDamageEvaluators.raiden(
+        profile,
+        build,
+        panel,
+        settings,
+      );
+    case "nahida":
+      return characterDamageEvaluators.nahida(
+        profile,
+        build,
+        panel,
+        settings,
+      );
     }
   }
-}
 
 /**
  * 计算角色代表技能的单目标伤害。
@@ -345,21 +438,23 @@ export function calculateRepresentativeDamage(
     build.character.level,
     settings.enemyLevel,
   );
-  const deepwoodReduction =
-    build.artifactSetId === "deepwood" &&
-    build.artifactSetPieces === 4 &&
-    build.element === "dendro"
-      ? 30
-      : 0;
-  const effectiveResistance =
-    settings.enemyResistance - deepwoodReduction;
-  const resistanceMultiplier = calculateResistanceMultiplier(
-    effectiveResistance,
-  );
   const artifactModifiers = getArtifactModifiers(
     build.artifactSetId,
     build.artifactSetPieces,
     build.artifactSetSelections,
+  );
+  const resistanceReduction = artifactModifiers.reduce(
+    (total, modifier) =>
+      modifier.kind === "enemyResistanceReduction" &&
+      modifier.element === build.element
+        ? total + Math.max(0, modifier.value)
+        : total,
+    0,
+  );
+  const effectiveResistance =
+    settings.enemyResistance - resistanceReduction;
+  const resistanceMultiplier = calculateResistanceMultiplier(
+    effectiveResistance,
   );
 
   const skills = buildTargets(
@@ -386,7 +481,7 @@ export function calculateRepresentativeDamage(
       panel.talentBonuses[target.category] +
       artifactDamageBonus +
       (target.extraDamageBonus ?? 0);
-    const critRate = clamp(
+    const baseCritRate = clamp(
       panel.critRate + (target.extraCritRate ?? 0),
       0,
       100,
@@ -404,6 +499,24 @@ export function calculateRepresentativeDamage(
       variants: target.reactions.map((reaction) => {
         let baseDamage = target.baseDamage;
         let reactionMultiplier = 1;
+        const incompatibleCritRate =
+          reaction === "melt" &&
+          build.artifactSetId === "blizzard-strayer" &&
+          build.artifactSetPieces === 4
+            ? artifactModifiers.reduce(
+                (total, modifier) =>
+                  modifier.kind === "stat" &&
+                  modifier.stat === "critRate"
+                    ? total + Math.max(0, modifier.value)
+                    : total,
+                0,
+              )
+            : 0;
+        const critRate = clamp(
+          baseCritRate - incompatibleCritRate,
+          0,
+          100,
+        );
         if (reaction === "vaporize" || reaction === "melt") {
           const reactionBonus = artifactModifiers.reduce(
             (total, modifier) => {
@@ -420,7 +533,7 @@ export function calculateRepresentativeDamage(
             reactionBonus,
           );
         } else if (reaction === "spread") {
-          baseDamage += spreadBonus(
+          baseDamage += calculateSpreadBonus(
             panel.elementalMastery,
             build.character.level,
           );

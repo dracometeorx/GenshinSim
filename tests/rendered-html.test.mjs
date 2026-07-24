@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 const developmentPreviewMeta =
-  /<meta(?=[^>]*\bname=["']codex-preview["'])(?=[^>]*\bcontent=["']development["'])[^>]*>/i;
+  /<meta(?=[^>]*\bname=["']codex-preview["'])[^>]*>/i;
+const socialImageMeta =
+  /<meta(?=[^>]*\bproperty=["']og:image["'])(?=[^>]*\bcontent=["'][^"']*\/og\.png["'])[^>]*>/i;
 
-test("renders development preview metadata", async () => {
+test("renders production product and social metadata", async () => {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
   const { default: worker } = await import(workerUrl.href);
@@ -30,7 +32,9 @@ test("renders development preview metadata", async () => {
     /^text\/html\b/i,
   );
   const html = await response.text();
-  assert.match(html, developmentPreviewMeta);
+  assert.doesNotMatch(html, developmentPreviewMeta);
+  assert.match(html, socialImageMeta);
+  assert.match(html, /原神伤害计算器/);
   assert.match(html, /选择角色方案/);
   assert.match(html, /复制当前配置为新方案/);
   assert.match(html, /武器精炼等级/);

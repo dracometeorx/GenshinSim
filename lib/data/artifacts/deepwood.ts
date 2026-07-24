@@ -18,6 +18,13 @@ export const deepwood: ArtifactSetPreset = {
   fourPiece: {
     description:
       "元素战技或元素爆发命中后，使目标的草元素抗性降低 30%，持续 8 秒。",
+    modifiers: [
+      {
+        kind: "enemyResistanceReduction",
+        value: 30,
+        element: "dendro",
+      },
+    ],
     panelNote: "降低的是敌人抗性，不会显示在角色面板中。",
   },
 };

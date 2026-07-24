@@ -13,6 +13,14 @@ export const engulfing: WeaponPreset = {
   passive: {
     name: "非时之梦·常世灶食",
     description: "基于超出 100% 的元素充能效率提高攻击力（28%，至多 80%）；施放爆发后充能提高 30%。",
+    effect: {
+      kind: "energyRechargeToAttack",
+      controlKey: "engulfingBurst",
+      activeValue: "active",
+      activeEnergyRecharge: [30, 35, 40, 45, 50],
+      attackRatio: [0.28, 0.35, 0.42, 0.49, 0.56],
+      attackCap: [80, 90, 100, 110, 120],
+    },
     refinementDescriptions: [
       "基于超出 100% 的元素充能效率提高攻击力（28%，至多 80%）；施放爆发后充能提高 30%。",
       "基于超出 100% 的元素充能效率提高攻击力（35%，至多 90%）；施放爆发后充能提高 35%。",

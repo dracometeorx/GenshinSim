@@ -101,6 +101,22 @@ test("scales Mistsplitter bonuses with refinement", () => {
   assert.equal(panel.elementalDmg, 126.6);
 });
 
+test("uses every Mistsplitter refinement tier", () => {
+  const expected = [86.6, 96.6, 106.6, 116.6, 126.6];
+  expected.forEach((elementalDmg, index) => {
+    const panel = calculateFinalPanel({
+      ...build,
+      weapon: {
+        ...build.weapon,
+        id: "mistsplitter",
+        refinement: index + 1,
+      },
+      weaponPassiveSelections: { mistsplitterStacks: "3" },
+    });
+    assert.equal(panel.elementalDmg, elementalDmg);
+  });
+});
+
 test("applies Staff of Homa HP and conditional ATK bonuses", () => {
   const panel = calculateFinalPanel({
     ...build,
@@ -132,6 +148,26 @@ test("scales Staff of Homa bonuses with refinement", () => {
 
   assert.equal(panel.hp, 28200);
   assert.equal(panel.atk, 2859);
+});
+
+test("uses every Staff of Homa refinement tier", () => {
+  const expectedHp = [25800, 26400, 27000, 27600, 28200];
+  const expectedAtk = [2364, 2481, 2602, 2728, 2859];
+  expectedHp.forEach((hp, index) => {
+    const panel = calculateFinalPanel({
+      ...build,
+      weapon: {
+        ...build.weapon,
+        id: "homa",
+        refinement: index + 1,
+        secondaryStat: "critDmg",
+        secondaryValue: 66.2,
+      },
+      weaponPassiveSelections: { homaHpState: "below50" },
+    });
+    assert.equal(panel.hp, hp);
+    assert.equal(panel.atk, expectedAtk[index]);
+  });
 });
 
 test("applies Engulfing Lightning burst ER before its ATK conversion", () => {
@@ -167,6 +203,26 @@ test("scales Engulfing Lightning bonuses with refinement", () => {
   assert.equal(panel.atk, 2531);
 });
 
+test("uses every Engulfing Lightning refinement tier", () => {
+  const expectedEr = [205.1, 210.1, 215.1, 220.1, 225.1];
+  const expectedAtk = [2165, 2247, 2335, 2430, 2531];
+  expectedEr.forEach((energyRecharge, index) => {
+    const panel = calculateFinalPanel({
+      ...build,
+      weapon: {
+        ...build.weapon,
+        id: "engulfing",
+        refinement: index + 1,
+        secondaryStat: "energyRecharge",
+        secondaryValue: 55.1,
+      },
+      weaponPassiveSelections: { engulfingBurst: "active" },
+    });
+    assert.equal(panel.energyRecharge, energyRecharge);
+    assert.equal(panel.atk, expectedAtk[index]);
+  });
+});
+
 test("applies Blizzard Strayer damage and conditional CRIT Rate", () => {
   const panel = calculateFinalPanel({
     ...build,
@@ -180,23 +236,26 @@ test("applies Blizzard Strayer damage and conditional CRIT Rate", () => {
   assert.equal(panel.critRate, 85);
 });
 
-test("adds Crimson Witch two-piece Pyro bonus to the panel only once", () => {
+test("adds Crimson Witch stacks to the two-piece Pyro bonus", () => {
   const twoPiecePanel = calculateFinalPanel({
     ...build,
     element: "pyro",
     artifactSetId: "crimson-witch",
     artifactSetPieces: 2,
   });
-  const fourPiecePanel = calculateFinalPanel({
-    ...build,
-    element: "pyro",
-    artifactSetId: "crimson-witch",
-    artifactSetPieces: 4,
-    artifactSetSelections: { crimsonWitchStacks: "3" },
-  });
-
   assert.equal(twoPiecePanel.elementalDmg, 61.6);
-  assert.equal(fourPiecePanel.elementalDmg, 61.6);
+  for (const [stacks, expected] of [61.6, 69.1, 76.6, 84.1].entries()) {
+    const fourPiecePanel = calculateFinalPanel({
+      ...build,
+      element: "pyro",
+      artifactSetId: "crimson-witch",
+      artifactSetPieces: 4,
+      artifactSetSelections: {
+        crimsonWitchStacks: String(stacks),
+      },
+    });
+    assert.equal(fourPiecePanel.elementalDmg, expected);
+  }
 });
 
 test("converts final Energy Recharge into Emblem burst damage", () => {

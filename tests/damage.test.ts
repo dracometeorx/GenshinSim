@@ -6,7 +6,9 @@ import {
   calculateDefenseMultiplier,
   calculateRepresentativeDamage,
   calculateResistanceMultiplier,
+  calculateSpreadBonus,
   defaultDamageSettings,
+  getReactionLevelMultiplier,
 } from "../lib/damage.ts";
 import { calculateFinalPanel } from "../lib/calculator.ts";
 import { hutao } from "../lib/data/characters/hutao.ts";
@@ -49,6 +51,21 @@ test("uses level 105 defense and 10% resistance defaults", () => {
   assert.equal(calculateDefenseMultiplier(90, 105), 190 / 395);
   assert.equal(calculateResistanceMultiplier(10), 0.9);
   assert.equal(calculateResistanceMultiplier(-20), 1.1);
+});
+
+test("uses the character level table for additive reactions", () => {
+  assert.equal(getReactionLevelMultiplier(80), 1077.443668);
+  assert.equal(getReactionLevelMultiplier(90), 1446.853458);
+  assert.equal(getReactionLevelMultiplier(0), 17.165605);
+  assert.equal(getReactionLevelMultiplier(999), 1446.853458);
+  assert.ok(
+    Math.abs(calculateSpreadBonus(0, 80) - 1346.804585) <
+      Number.EPSILON * 10_000,
+  );
+  assert.ok(
+    Math.abs(calculateSpreadBonus(0, 90) - 1808.5668225) <
+      Number.EPSILON * 10_000,
+  );
 });
 
 test("calculates Hu Tao skill-enhanced charged attack reaction variants", () => {
@@ -157,7 +174,7 @@ test("uses separate normal, skill, and burst talent levels", () => {
   );
 });
 
-test("applies Crimson Witch stacks in the reaction bonus layer", () => {
+test("applies Crimson Witch stacks to Pyro damage, not reaction bonus", () => {
   const baseBuild: BuildInput = {
     element: "pyro",
     character: hutao,
@@ -190,24 +207,11 @@ test("applies Crimson Witch stacks in the reaction bonus layer", () => {
     artifactSetId: "crimson-witch",
     artifactSetPieces: 2,
   };
-  const fourPieceBuild: BuildInput = {
-    ...baseBuild,
-    artifactSetId: "crimson-witch",
-    artifactSetPieces: 4,
-    artifactSetSelections: { crimsonWitchStacks: "3" },
-  };
   const twoPiecePanel = calculateFinalPanel(twoPieceBuild);
-  const fourPiecePanel = calculateFinalPanel(fourPieceBuild);
   const withTwoPiece = calculateRepresentativeDamage(
     hutao,
     twoPieceBuild,
     { ...panel, elementalDmg: twoPiecePanel.elementalDmg },
-    settings,
-  ).skills[0];
-  const withFourPiece = calculateRepresentativeDamage(
-    hutao,
-    fourPieceBuild,
-    { ...panel, elementalDmg: fourPiecePanel.elementalDmg },
     settings,
   ).skills[0];
   const basePlain = withoutSet.variants.find(
@@ -216,36 +220,60 @@ test("applies Crimson Witch stacks in the reaction bonus layer", () => {
   const twoPiecePlain = withTwoPiece.variants.find(
     ({ reaction }) => reaction === "none",
   );
-  const fourPiecePlain = withFourPiece.variants.find(
-    ({ reaction }) => reaction === "none",
-  );
   const twoPieceVaporize = withTwoPiece.variants.find(
     ({ reaction }) => reaction === "vaporize",
   );
-  const fourPieceVaporize = withFourPiece.variants.find(
-    ({ reaction }) => reaction === "vaporize",
-  );
-
   assert.ok(basePlain);
   assert.ok(twoPiecePlain);
-  assert.ok(fourPiecePlain);
   assert.ok(twoPieceVaporize);
-  assert.ok(fourPieceVaporize);
   assert.ok(
     Math.abs(twoPiecePlain.nonCrit / basePlain.nonCrit - 1.15) < 0.001,
   );
   assert.ok(
-    Math.abs(fourPiecePlain.nonCrit / twoPiecePlain.nonCrit - 1) < 0.001,
-  );
-  assert.ok(
     Math.abs(twoPieceVaporize.nonCrit / twoPiecePlain.nonCrit - 1.5) <
-      0.001,
+      0.002,
   );
-  assert.ok(
-    Math.abs(
-      fourPieceVaporize.nonCrit / fourPiecePlain.nonCrit - 2.0625,
-    ) < 0.001,
-  );
+
+  for (const [stacks, expectedPlainRatio] of [
+    1.15, 1.225, 1.3, 1.375,
+  ].entries()) {
+    const fourPieceBuild: BuildInput = {
+      ...baseBuild,
+      artifactSetId: "crimson-witch",
+      artifactSetPieces: 4,
+      artifactSetSelections: {
+        crimsonWitchStacks: String(stacks),
+      },
+    };
+    const fourPiecePanel = calculateFinalPanel(fourPieceBuild);
+    const withFourPiece = calculateRepresentativeDamage(
+      hutao,
+      fourPieceBuild,
+      { ...panel, elementalDmg: fourPiecePanel.elementalDmg },
+      settings,
+    ).skills[0];
+    const fourPiecePlain = withFourPiece.variants.find(
+      ({ reaction }) => reaction === "none",
+    );
+    const fourPieceVaporize = withFourPiece.variants.find(
+      ({ reaction }) => reaction === "vaporize",
+    );
+
+    assert.ok(fourPiecePlain);
+    assert.ok(fourPieceVaporize);
+    assert.ok(
+      Math.abs(
+        fourPiecePlain.nonCrit / basePlain.nonCrit -
+          expectedPlainRatio,
+      ) < 0.001,
+    );
+    assert.ok(
+      Math.abs(
+        fourPieceVaporize.nonCrit / fourPiecePlain.nonCrit -
+          1.725,
+      ) < 0.002,
+    );
+  }
 });
 
 test("applies Deepwood resistance reduction to Nahida damage", () => {

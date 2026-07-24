@@ -2,6 +2,7 @@ import {
   getArtifactModifiers,
   type ArtifactModifier,
 } from "./data/artifacts/index.ts";
+import { weapons } from "./data/weapons/index.ts";
 
 export type ElementKey =
   | "cryo"
@@ -179,7 +180,8 @@ export function calculateFinalPanel(input: BuildInput): FinalPanel {
   )) {
     if (
       modifier.kind === "damageBonus" ||
-      modifier.kind === "reactionBonus"
+      modifier.kind === "reactionBonus" ||
+      modifier.kind === "enemyResistanceReduction"
     ) {
       continue;
     }
@@ -208,46 +210,52 @@ export function calculateFinalPanel(input: BuildInput): FinalPanel {
   let flatAtkFromWeapon = 0;
   const refinement = refinementIndex(input);
 
-  switch (input.weapon.id) {
-    case "mistsplitter": {
-      const stacks = Math.min(
-        3,
-        Math.max(0, Number(passive.mistsplitterStacks) || 0),
-      );
-      const baseBonus = [12, 15, 18, 21, 24][refinement];
-      const stackBonus = [
-        [0, 8, 16, 28],
-        [0, 10, 20, 35],
-        [0, 12, 24, 42],
-        [0, 14, 28, 49],
-        [0, 16, 32, 56],
-      ][refinement][stacks];
-      totals.elementalDmg += baseBonus + stackBonus;
-      break;
-    }
-    case "homa": {
-      const hpBonus = [20, 25, 30, 35, 40][refinement];
-      const atkRatio = [0.8, 1, 1.2, 1.4, 1.6][refinement];
-      const lowHpRatio = [1, 1.2, 1.4, 1.6, 1.8][refinement];
-      totals.hpPct += hpBonus;
-      const passiveHp =
-        baseHp * (1 + totals.hpPct / 100) + finite(input.artifact.flatHp);
-      const activeRatio =
-        atkRatio +
-        (passive.homaHpState === "below50" ? lowHpRatio : 0);
-      flatAtkFromWeapon += passiveHp * (activeRatio / 100);
-      break;
-    }
-    case "engulfing": {
-      if (passive.engulfingBurst === "active") {
-        totals.energyRecharge += [30, 35, 40, 45, 50][refinement];
+  const weaponEffect = input.weapon.id
+    ? weapons.find((weapon) => weapon.id === input.weapon.id)?.passive
+        .effect
+    : undefined;
+  if (weaponEffect) {
+    switch (weaponEffect.kind) {
+      case "elementalDamageByStacks": {
+        const stacks = Math.min(
+          3,
+          Math.max(0, Number(passive[weaponEffect.controlKey]) || 0),
+        );
+        const baseBonus = weaponEffect.baseBonus[refinement];
+        const stackBonus = weaponEffect.stackBonus[refinement][stacks];
+        totals.elementalDmg += baseBonus + stackBonus;
+        break;
       }
-      totals.atkPct += Math.min(
-        [80, 90, 100, 110, 120][refinement],
-        Math.max(0, totals.energyRecharge - 100) *
-          [0.28, 0.35, 0.42, 0.49, 0.56][refinement],
-      );
-      break;
+      case "hpToAttack": {
+        const hpBonus = weaponEffect.hpBonus[refinement];
+        const atkRatio = weaponEffect.baseRatio[refinement];
+        const activeRatio = weaponEffect.activeRatio[refinement];
+        totals.hpPct += hpBonus;
+        const passiveHp =
+          baseHp * (1 + totals.hpPct / 100) +
+          finite(input.artifact.flatHp);
+        const totalRatio =
+          atkRatio +
+          (passive[weaponEffect.controlKey] === weaponEffect.activeValue
+            ? activeRatio
+            : 0);
+        flatAtkFromWeapon += passiveHp * (totalRatio / 100);
+        break;
+      }
+      case "energyRechargeToAttack": {
+        if (
+          passive[weaponEffect.controlKey] === weaponEffect.activeValue
+        ) {
+          totals.energyRecharge +=
+            weaponEffect.activeEnergyRecharge[refinement];
+        }
+        totals.atkPct += Math.min(
+          weaponEffect.attackCap[refinement],
+          Math.max(0, totals.energyRecharge - 100) *
+            weaponEffect.attackRatio[refinement],
+        );
+        break;
+      }
     }
   }
 

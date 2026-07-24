@@ -1,11 +1,9 @@
-export type ArtifactElementKey =
-  | "cryo"
-  | "hydro"
-  | "pyro"
-  | "electro"
-  | "anemo"
-  | "geo"
-  | "dendro";
+import type {
+  ElementKey,
+  TalentBonuses,
+} from "../../calculator.ts";
+
+export type ArtifactElementKey = ElementKey;
 
 export type ArtifactPanelStat =
   | "hpPct"
@@ -34,7 +32,7 @@ export type ArtifactModifier =
       kind: "damageBonus";
       value: number;
       element?: ArtifactElementKey;
-      category?: "skill" | "burst" | "normal" | "charged" | "plunge";
+      category?: keyof TalentBonuses;
     }
   | {
       kind: "reactionBonus";
@@ -45,6 +43,11 @@ export type ArtifactModifier =
       kind: "burstFromEnergyRecharge";
       ratio: number;
       max: number;
+    }
+  | {
+      kind: "enemyResistanceReduction";
+      value: number;
+      element: ArtifactElementKey;
     };
 
 export type ArtifactEffectControl = {

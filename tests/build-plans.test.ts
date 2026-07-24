@@ -10,6 +10,10 @@ import {
 } from "../lib/build-plans.ts";
 import type { BuildInput } from "../lib/calculator.ts";
 import type { DamageSettings } from "../lib/damage.ts";
+import {
+  normalizeBuildPlanSnapshot,
+  restorePlanSnapshot,
+} from "../lib/build-plan-runtime.ts";
 
 const build: BuildInput = {
   element: "pyro",
@@ -133,6 +137,7 @@ test("round-trips a versioned build-plan store", () => {
 
   assert.deepEqual(parseBuildPlanStore(JSON.stringify(store)), store);
   assert.equal(parseBuildPlanStore('{"schemaVersion":1,"plans":[]}'), null);
+  assert.equal(parseBuildPlanStore("{damaged-json"), null);
 });
 
 test("migrates global v1 plans into character-scoped active plans", () => {
@@ -206,4 +211,48 @@ test("repairs cross-character active plan ids instead of exposing them", () => {
 
   assert.equal(repaired?.activePlanIds.hutao, hutaoPlan.id);
   assert.equal(repaired?.activePlanIds.ayaka, ayakaPlan.id);
+});
+
+test("normalizes unknown catalog ids, conditions, and numeric ranges", () => {
+  const snapshot = createBuildPlanSnapshot({
+    build,
+    characterId: "hutao",
+    weaponId: "homa",
+    damageSettings,
+  });
+  const normalized = normalizeBuildPlanSnapshot({
+    ...snapshot,
+    element: "invalid" as typeof snapshot.element,
+    characterId: "missing-character",
+    weaponId: "missing-weapon",
+    weaponRefinement: 99,
+    artifactSetId: "missing-set",
+    artifactSetPieces: 4,
+    artifact: {
+      ...snapshot.artifact,
+      critRate: -10,
+    },
+    damageSettings: {
+      ...snapshot.damageSettings,
+      enemyLevel: 999,
+      enemyResistance: -999,
+      selections: { ayakaDashBonus: "invalid" },
+    },
+  });
+  const restored = restorePlanSnapshot(normalized);
+
+  assert.equal(normalized.characterId, "ayaka");
+  assert.equal(normalized.weaponId, "mistsplitter");
+  assert.equal(normalized.element, "cryo");
+  assert.equal(normalized.weaponRefinement, 5);
+  assert.equal(normalized.artifactSetId, "none");
+  assert.equal(normalized.artifactSetPieces, 0);
+  assert.equal(normalized.artifact.critRate, 0);
+  assert.equal(normalized.damageSettings.enemyLevel, 200);
+  assert.equal(normalized.damageSettings.enemyResistance, -100);
+  assert.equal(
+    normalized.damageSettings.selections.ayakaDashBonus,
+    "active",
+  );
+  assert.equal(restored.build.character.name, "神里绫华");
 });
