@@ -18,6 +18,7 @@ export function createResultPayload({
   const panel = result.panel;
   return {
     角色: `${build.character.name} Lv.${build.character.level}`,
+    命之座: `C${result.constellation}`,
     武器: `${build.weapon.name} Lv.${build.weapon.level}`,
     圣遗物套装:
       build.artifactSetPieces && build.artifactSetPieces > 0
@@ -32,6 +33,12 @@ export function createResultPayload({
     元素精通: panel.elementalMastery,
     [`${elementLabel}伤害加成`]: `${panel.elementalDmg}%`,
     额外伤害加成: panel.talentBonuses,
+    队伍增益: result.teamBuffs
+      .filter((buff) => buff.enabled)
+      .map(
+        (buff) =>
+          `${buff.sourceName} · ${buff.name}：${buff.description}`,
+      ),
     敌人: {
       等级: settings.enemyLevel,
       元素抗性: `${settings.enemyResistance}%`,
@@ -59,5 +66,5 @@ export function createShareText(
   result: CalculationResult,
 ) {
   const panel = result.panel;
-  return `${build.character.name}｜生命 ${panel.hp.toLocaleString("zh-CN")}｜攻击 ${panel.atk.toLocaleString("zh-CN")}｜双暴 ${panel.critRate}% / ${panel.critDmg}%`;
+  return `${build.character.name} C${result.constellation}｜生命 ${panel.hp.toLocaleString("zh-CN")}｜攻击 ${panel.atk.toLocaleString("zh-CN")}｜双暴 ${panel.critRate}% / ${panel.critDmg}%｜队伍增益 ${result.teamBuffs.filter((buff) => buff.enabled).length} 项`;
 }

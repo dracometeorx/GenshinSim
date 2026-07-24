@@ -15,6 +15,7 @@ export function CharacterWeaponSelection({
   activePlanId,
   build,
   characterId,
+  constellation,
   characterPlans,
   compatibleWeapons,
   hydrated,
@@ -22,6 +23,7 @@ export function CharacterWeaponSelection({
   selectedWeapon,
   weaponId,
   onCharacterChange,
+  onConstellationChange,
   onCreatePlan,
   onDeletePlan,
   onPlanChange,
@@ -34,6 +36,7 @@ export function CharacterWeaponSelection({
   activePlanId: string;
   build: BuildInput;
   characterId: string;
+  constellation: number;
   characterPlans: BuildPlan[];
   compatibleWeapons: WeaponPreset[];
   hydrated: boolean;
@@ -41,6 +44,7 @@ export function CharacterWeaponSelection({
   selectedWeapon?: WeaponPreset;
   weaponId: string;
   onCharacterChange: (id: string) => void;
+  onConstellationChange: (value: number) => void;
   onCreatePlan: () => void;
   onDeletePlan: () => void;
   onPlanChange: (id: string) => void;
@@ -75,15 +79,33 @@ export function CharacterWeaponSelection({
               </option>
             ))}
           </select>
-          <p>
-            {selectedCharacter?.level ?? build.character.level} 级
-            <span>·</span>
-            {selectedCharacter
-              ? weaponTypeLabels[selectedCharacter.weaponType]
-              : "武器类型未设置"}
-            <span>·</span>
-            {selectedCharacter?.ascensionLabel ?? "使用当前基础属性"}
-          </p>
+          <div className="character-meta-row">
+            <p>
+              {selectedCharacter?.level ?? build.character.level} 级
+              <span>·</span>
+              {selectedCharacter
+                ? weaponTypeLabels[selectedCharacter.weaponType]
+                : "武器类型未设置"}
+              <span>·</span>
+              {selectedCharacter?.ascensionLabel ?? "使用当前基础属性"}
+            </p>
+            <label className="constellation-picker">
+              <span>命座</span>
+              <select
+                aria-label="角色命之座"
+                value={constellation}
+                onChange={(event) =>
+                  onConstellationChange(Number(event.target.value))
+                }
+              >
+                {[0, 1, 2, 3, 4, 5, 6].map((level) => (
+                  <option key={level} value={level}>
+                    C{level}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
         </div>
         <BuildPlanManager
           activePlanId={activePlanId}
@@ -190,7 +212,7 @@ export function CharacterWeaponSelection({
                 {selectedWeapon.passive.utilityOnly
                   ? "产球效果暂不模拟"
                   : selectedWeapon.passive.teammateDependent
-                    ? "队友效果暂不计算"
+                    ? "队伍配置中生效"
                     : "无条件选项"}
               </span>
             )}

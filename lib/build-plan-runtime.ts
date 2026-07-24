@@ -7,6 +7,7 @@ import {
   type BuildPlanStore,
 } from "./build-plans.ts";
 import type { BuildInput, ElementKey } from "./calculator.ts";
+import { clampConstellation } from "./constellations.ts";
 import {
   defaultDamageSettings,
   type DamageSettings,
@@ -23,6 +24,11 @@ import {
   weapons,
   type WeaponPreset,
 } from "./data/weapons/index.ts";
+import {
+  cloneTeamConfiguration,
+  createEmptyTeamConfiguration,
+  type TeamConfiguration,
+} from "./team-types.ts";
 
 const elements: ElementKey[] = [
   "cryo",
@@ -39,6 +45,8 @@ export type BuildPlanDraft = {
   characterId: string;
   weaponId: string;
   damageSettings: DamageSettings;
+  constellation: number;
+  team: TeamConfiguration;
 };
 
 export type PersistedDamageSettings = Partial<DamageSettings> & {
@@ -238,6 +246,40 @@ function normalizeTalentBonuses(
   };
 }
 
+function normalizeTeamConfiguration(
+  team: TeamConfiguration | undefined,
+  currentCharacterId: string,
+) {
+  const normalized = cloneTeamConfiguration(team);
+  const seenCharacters = new Set<string>();
+  normalized.slots = normalized.slots.map((slot) => {
+    const character = characters.find(
+      (item) => item.id === slot.characterId,
+    );
+    if (
+      !character ||
+      (character.id === currentCharacterId &&
+        character.id !== "custom") ||
+      (character.id !== "custom" &&
+        seenCharacters.has(character.id))
+    ) {
+      return { characterId: null, planId: null };
+    }
+    seenCharacters.add(character.id);
+    return {
+      characterId: character.id,
+      planId: slot.planId,
+    };
+  }) as TeamConfiguration["slots"];
+  normalized.buffToggles = Object.fromEntries(
+    Object.entries(normalized.buffToggles).filter(
+      ([key, enabled]) =>
+        key.length <= 160 && typeof enabled === "boolean",
+    ),
+  );
+  return normalized;
+}
+
 export function normalizeBuildPlanSnapshot(
   snapshot: BuildPlanSnapshot,
 ): BuildPlanSnapshot {
@@ -305,6 +347,11 @@ export function normalizeBuildPlanSnapshot(
     artifact: normalizeArtifact(snapshot.artifact),
     talentBonuses: normalizeTalentBonuses(snapshot.talentBonuses),
     damageSettings,
+    constellation: clampConstellation(snapshot.constellation),
+    team: normalizeTeamConfiguration(
+      snapshot.team,
+      character.id,
+    ),
   };
 }
 
@@ -340,6 +387,8 @@ export function restorePlanSnapshot(
     },
     characterId: character.id,
     weaponId: weapon.id,
+    constellation: snapshot.constellation,
+    team: cloneTeamConfiguration(snapshot.team),
     damageSettings: {
       ...snapshot.damageSettings,
       selections: { ...snapshot.damageSettings.selections },
@@ -373,6 +422,42 @@ export function normalizeBuildPlanStore(
     },
     {},
   );
+  const repairedPlans = plans.map((plan) => {
+    const selectedPlanIds = new Set<string>();
+    return {
+      ...plan,
+      snapshot: {
+        ...plan.snapshot,
+        team: {
+          ...plan.snapshot.team,
+          slots: plan.snapshot.team.slots.map((slot) => {
+            if (!slot.characterId) {
+              return { characterId: null, planId: null };
+            }
+            const teammatePlans = (
+              groups[slot.characterId] ?? []
+            ).filter(
+              (teammatePlan) =>
+                teammatePlan.id !== plan.id &&
+                !selectedPlanIds.has(teammatePlan.id),
+            );
+            const requested = teammatePlans.find(
+              (teammatePlan) => teammatePlan.id === slot.planId,
+            );
+            const resolved = requested ?? teammatePlans[0];
+            if (!resolved) {
+              return { characterId: null, planId: null };
+            }
+            selectedPlanIds.add(resolved.id);
+            return {
+              characterId: slot.characterId,
+              planId: resolved.id,
+            };
+          }) as TeamConfiguration["slots"],
+        },
+      },
+    };
+  });
   const activeCharacterId = groups[store.activeCharacterId]
     ? store.activeCharacterId
     : plans[0].snapshot.characterId;
@@ -390,7 +475,7 @@ export function normalizeBuildPlanStore(
     schemaVersion: buildPlansSchemaVersion,
     activeCharacterId,
     activePlanIds,
-    plans,
+    plans: repairedPlans,
   };
 }
 
@@ -400,6 +485,8 @@ export function createDefaultDraft(): BuildPlanDraft {
     characterId: "ayaka",
     weaponId: "mistsplitter",
     damageSettings: normalizeDamageSettings(undefined, characters[0]),
+    constellation: 0,
+    team: createEmptyTeamConfiguration(),
   };
 }
 
@@ -436,6 +523,11 @@ export function createDraftForCharacter(
     characterId: character.id,
     weaponId: weapon.id,
     damageSettings,
+    constellation: 0,
+    team: normalizeTeamConfiguration(
+      current.team,
+      character.id,
+    ),
     build: {
       ...current.build,
       character,
@@ -473,6 +565,8 @@ export function resetDraftForCharacter(
     characterId: character.id,
     weaponId: weapon.id,
     damageSettings,
+    constellation: 0,
+    team: createEmptyTeamConfiguration(),
     build: {
       ...cloneDefaultBuild(),
       character: { ...character },

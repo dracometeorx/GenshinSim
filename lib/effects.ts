@@ -1,9 +1,11 @@
 import type {
   BuildInput,
+  ElementKey,
   FinalPanel,
   TalentBonuses,
 } from "./calculator.ts";
 import type {
+  DamageReaction,
   DamageSettings,
   DamageTarget,
 } from "./damage-types.ts";
@@ -60,11 +62,18 @@ export interface PanelEffect {
 export type DamageEffectStat =
   | "damageBonus"
   | "critRate"
-  | "critDmg";
+  | "critDmg"
+  | "baseDamageMultiplier"
+  | "enemyDefenseReduction"
+  | "enemyDefenseIgnore"
+  | "enemyResistanceReduction";
 
 export interface DamageEffectModifier {
   stat: DamageEffectStat;
   value: number;
+  category?: keyof TalentBonuses;
+  element?: ElementKey;
+  reactions?: readonly DamageReaction[];
 }
 
 export interface DamageEffectContext {

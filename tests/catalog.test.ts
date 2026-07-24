@@ -60,9 +60,30 @@ test("exports every weapon preset with a unique id", () => {
   );
   assert.ok(
     weapons
-      .filter(({ id }) => id !== "custom" && id !== "dreams")
+      .filter(({ id }) => id !== "custom")
       .every(({ passive }) => passive.refinementDescriptions?.length === 5),
   );
+});
+
+test("keeps constellation and team buff definitions catalog-owned", () => {
+  for (const character of characters) {
+    const constellationLevels = (
+      character.constellations ?? []
+    ).map(({ level }) => level);
+    assert.equal(
+      new Set(constellationLevels).size,
+      constellationLevels.length,
+    );
+    assert.ok(
+      constellationLevels.every(
+        (level) => level >= 1 && level <= 6,
+      ),
+    );
+    const teamBuffIds = (character.teamBuffs ?? []).map(
+      ({ id }) => id,
+    );
+    assert.equal(new Set(teamBuffIds).size, teamBuffIds.length);
+  }
 });
 
 test("uses the level-90 stats for the newly supported polearms", () => {

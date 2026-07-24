@@ -9,6 +9,7 @@ import {
   type PlanDialogState,
 } from "./components/plan-dialog";
 import { ResultPanel } from "./components/result-panel";
+import { TeamConfigurationPanel } from "./components/team-configuration";
 import { useBuildPlans } from "./hooks/use-build-plans";
 import { copyText, shareOrCopy } from "../lib/browser-actions";
 import {
@@ -28,6 +29,7 @@ import {
   isWeaponCompatible,
   weapons,
 } from "../lib/data/weapons";
+import { createTeamCalculationInput } from "../lib/team";
 
 const elements: Array<{
   key: ElementKey;
@@ -54,16 +56,22 @@ export default function Home() {
     damageSettings,
     deletePlan,
     hydrated,
+    constellation,
     plans,
     renamePlan,
     resetPlan,
     setBuild,
+    setConstellation,
     setDamageSettings,
     setStatus,
     setWeaponId,
+    setTeamBuffEnabled,
+    setTeamSlotCharacter,
+    setTeamSlotPlan,
     status: updatedAt,
     storageError,
     weaponId,
+    team,
   } = useBuildPlans();
   const [activeTalent, setActiveTalent] =
     useState<keyof BuildInput["talentBonuses"]>("skill");
@@ -106,6 +114,10 @@ export default function Home() {
     () => weapons.find((weapon) => weapon.id === weaponId),
     [weaponId],
   );
+  const calculationTeam = useMemo(
+    () => createTeamCalculationInput(team, plans),
+    [plans, team],
+  );
   const calculation = useMemo(
     () =>
       calculateBuild({
@@ -114,9 +126,13 @@ export default function Home() {
         weapon: selectedWeapon ?? weapons[0],
         artifactSet: selectedArtifactSet,
         settings: damageSettings,
+        constellation,
+        team: calculationTeam,
       }),
     [
       build,
+      calculationTeam,
+      constellation,
       damageSettings,
       selectedArtifactSet,
       selectedCharacter,
@@ -338,7 +354,7 @@ export default function Home() {
           <span className="brand-mark">✦</span>
           <span>
             <strong>原神伤害计算器</strong>
-            <small>面板与技能伤害 · v0.7</small>
+            <small>命座与队伍伤害 · v0.8</small>
           </span>
         </a>
         <nav className="top-actions" aria-label="页面操作">
@@ -393,6 +409,7 @@ export default function Home() {
               activePlanId={activePlanId}
               build={build}
               characterId={characterId}
+              constellation={constellation}
               characterPlans={characterPlans}
               compatibleWeapons={compatibleWeapons}
               hydrated={hydrated}
@@ -400,6 +417,7 @@ export default function Home() {
               selectedWeapon={selectedWeapon}
               weaponId={weaponId}
               onCharacterChange={chooseCharacter}
+              onConstellationChange={setConstellation}
               onCreatePlan={createNewPlan}
               onDeletePlan={deleteActivePlan}
               onPlanChange={choosePlan}
@@ -407,6 +425,17 @@ export default function Home() {
               onWeaponChange={chooseWeapon}
               onWeaponPassiveChange={updateWeaponPassive}
               onWeaponRefinementChange={updateWeaponRefinement}
+            />
+
+            <TeamConfigurationPanel
+              buffs={calculation.teamBuffs}
+              currentCharacterId={characterId}
+              currentPlanId={activePlanId}
+              plans={plans}
+              team={team}
+              onBuffToggle={setTeamBuffEnabled}
+              onSlotCharacterChange={setTeamSlotCharacter}
+              onSlotPlanChange={setTeamSlotPlan}
             />
 
             <ArtifactInput

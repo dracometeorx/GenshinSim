@@ -12,7 +12,7 @@ import {
   buildPlansStorageKey,
   createBuildPlan,
   createBuildPlanSnapshot,
-  legacyBuildPlansStorageKey,
+  legacyBuildPlansStorageKeys,
   parseBuildPlanStore,
   type BuildPlanStore,
 } from "../../lib/build-plans.ts";
@@ -40,6 +40,11 @@ import {
   isWeaponCompatible,
   weapons,
 } from "../../lib/data/weapons/index.ts";
+import {
+  cloneTeamConfiguration,
+  createEmptyTeamConfiguration,
+} from "../../lib/team-types.ts";
+import { clampConstellation } from "../../lib/constellations.ts";
 
 const legacyStorageKeys = [
   "genshin-panel-build-v6",
@@ -71,6 +76,18 @@ export type BuildPlansAction =
     }
   | { type: "switch-plan"; planId: string }
   | { type: "switch-character"; characterId: string }
+  | {
+      type: "set-team-character";
+      slot: number;
+      characterId: string | null;
+    }
+  | { type: "set-constellation"; constellation: number }
+  | { type: "set-team-plan"; slot: number; planId: string }
+  | {
+      type: "set-team-buff";
+      buffId: string;
+      enabled: boolean;
+    }
   | { type: "create-plan"; name: string }
   | { type: "rename-plan"; name: string }
   | { type: "delete-plan" }
@@ -206,6 +223,142 @@ export function buildPlansReducer(
         },
       };
     }
+    case "set-team-character": {
+      if (
+        action.slot < 0 ||
+        action.slot > 2 ||
+        (action.characterId === state.draft.characterId &&
+          action.characterId !== "custom")
+      ) {
+        return state;
+      }
+      const character = action.characterId
+        ? characters.find(
+            (item) => item.id === action.characterId,
+          )
+        : undefined;
+      if (action.characterId && !character) return state;
+
+      let plans = state.store.plans;
+      const unavailablePlanIds = new Set(
+        state.draft.team.slots.flatMap((slot, index) =>
+          index !== action.slot && slot.planId
+            ? [slot.planId]
+            : [],
+        ),
+      );
+      if (character?.id === state.draft.characterId) {
+        unavailablePlanIds.add(state.activePlanId);
+      }
+      const teammatePlans = character
+        ? plans.filter(
+            (plan) =>
+              plan.snapshot.characterId === character.id &&
+              !unavailablePlanIds.has(plan.id),
+          )
+        : [];
+      let teammatePlan =
+        teammatePlans.find(
+          (plan) =>
+            plan.id === state.store.activePlanIds[character?.id ?? ""],
+        ) ?? teammatePlans[0];
+      if (character && !teammatePlan) {
+        const teammateDraft = {
+          ...createDraftForCharacter(
+            state.draft,
+            character.id,
+          ),
+          team: createEmptyTeamConfiguration(),
+        };
+        teammatePlan = createBuildPlan(
+          createBuildPlanSnapshot(teammateDraft),
+          `${character.name}方案 1`,
+        );
+        plans = [...plans, teammatePlan];
+      }
+
+      const team = cloneTeamConfiguration(state.draft.team);
+      if (character?.id !== "custom") {
+        team.slots = team.slots.map((slot, index) =>
+          index !== action.slot &&
+          slot.characterId === character?.id
+            ? { characterId: null, planId: null }
+            : slot,
+        ) as typeof team.slots;
+      }
+      team.slots[action.slot] = character
+        ? {
+            characterId: character.id,
+            planId: teammatePlan?.id ?? null,
+          }
+        : { characterId: null, planId: null };
+      team.buffToggles = Object.fromEntries(
+        Object.entries(team.buffToggles).filter(
+          ([key]) => !key.startsWith(`slot:${action.slot}:`),
+        ),
+      );
+
+      const committed = commitDraft(
+        { ...state, store: { ...state.store, plans } },
+        { ...state.draft, team },
+        character
+          ? `已配置队友「${character.name}」`
+          : `已清空队友 ${action.slot + 1}`,
+      );
+      if (!character || !teammatePlan) return committed;
+      return {
+        ...committed,
+        store: {
+          ...committed.store,
+          activePlanIds: {
+            ...committed.store.activePlanIds,
+            [character.id]:
+              committed.store.activePlanIds[character.id] ??
+              teammatePlan.id,
+          },
+        },
+      };
+    }
+    case "set-constellation":
+      return commitDraft(state, {
+        ...state.draft,
+        constellation: clampConstellation(action.constellation),
+      });
+    case "set-team-plan": {
+      if (action.slot < 0 || action.slot > 2) return state;
+      const team = cloneTeamConfiguration(state.draft.team);
+      const currentSlot = team.slots[action.slot];
+      const plan = state.store.plans.find(
+        (item) =>
+          item.id === action.planId &&
+          item.snapshot.characterId === currentSlot?.characterId &&
+          item.id !== state.activePlanId &&
+          !team.slots.some(
+            (slot, index) =>
+              index !== action.slot && slot.planId === item.id,
+          ),
+      );
+      if (!currentSlot || !plan || currentSlot.planId === plan.id) {
+        return state;
+      }
+      team.slots[action.slot] = {
+        ...currentSlot,
+        planId: plan.id,
+      };
+      team.buffToggles = Object.fromEntries(
+        Object.entries(team.buffToggles).filter(
+          ([key]) => !key.startsWith(`slot:${action.slot}:`),
+        ),
+      );
+      return commitDraft(state, { ...state.draft, team });
+    }
+    case "set-team-buff": {
+      const buffId = action.buffId.trim().slice(0, 160);
+      if (!buffId) return state;
+      const team = cloneTeamConfiguration(state.draft.team);
+      team.buffToggles[buffId] = action.enabled;
+      return commitDraft(state, { ...state.draft, team });
+    }
     case "create-plan": {
       const plan = createBuildPlan(
         createBuildPlanSnapshot(state.draft),
@@ -254,6 +407,24 @@ export function buildPlansReducer(
           plan.snapshot.characterId === state.draft.characterId,
       );
       if (!nextPlan) return state;
+      const repairedPlans = plans.map((plan) => ({
+        ...plan,
+        snapshot: {
+          ...plan.snapshot,
+          team: {
+            ...plan.snapshot.team,
+            slots: plan.snapshot.team.slots.map((slot) =>
+              slot.characterId === state.draft.characterId &&
+              slot.planId === state.activePlanId
+                ? {
+                    characterId: slot.characterId,
+                    planId: nextPlan.id,
+                  }
+                : slot,
+            ) as typeof plan.snapshot.team.slots,
+          },
+        },
+      }));
       return {
         ...state,
         activePlanId: nextPlan.id,
@@ -265,7 +436,7 @@ export function buildPlansReducer(
             ...state.store.activePlanIds,
             [state.draft.characterId]: nextPlan.id,
           },
-          plans,
+          plans: repairedPlans,
         },
       };
     }
@@ -332,6 +503,8 @@ function legacyStoreFromRaw(
       characterId: character.id,
       weaponId: weaponPreset.id,
       damageSettings,
+      constellation: 0,
+      team: createEmptyTeamConfiguration(),
       build: {
         ...restoredBuild,
         character,
@@ -375,9 +548,12 @@ export function useBuildPlans() {
       const currentRaw = window.localStorage.getItem(
         buildPlansStorageKey,
       );
-      const legacyPlanRaw = window.localStorage.getItem(
-        legacyBuildPlansStorageKey,
+      const legacyPlanKey = legacyBuildPlansStorageKeys.find(
+        (key) => window.localStorage.getItem(key),
       );
+      const legacyPlanRaw = legacyPlanKey
+        ? window.localStorage.getItem(legacyPlanKey)
+        : null;
       const parsed =
         parseBuildPlanStore(currentRaw) ??
         parseBuildPlanStore(legacyPlanRaw);
@@ -399,7 +575,9 @@ export function useBuildPlans() {
         }
       }
 
-      window.localStorage.removeItem(legacyBuildPlansStorageKey);
+      legacyBuildPlansStorageKeys.forEach((key) =>
+        window.localStorage.removeItem(key),
+      );
       legacyStorageKeys.forEach((key) =>
         window.localStorage.removeItem(key),
       );
@@ -477,10 +655,38 @@ export function useBuildPlans() {
     characterId: state.draft.characterId,
     weaponId: state.draft.weaponId,
     damageSettings: state.draft.damageSettings,
+    constellation: state.draft.constellation,
+    team: state.draft.team,
     plans: state.store.plans,
     setBuild,
     setDamageSettings,
     setWeaponId,
+    setConstellation: (constellation: number) =>
+      dispatch({
+        type: "set-constellation",
+        constellation,
+      }),
+    setTeamSlotCharacter: (
+      slot: number,
+      characterId: string | null,
+    ) =>
+      dispatch({
+        type: "set-team-character",
+        slot,
+        characterId,
+      }),
+    setTeamSlotPlan: (slot: number, planId: string) =>
+      dispatch({
+        type: "set-team-plan",
+        slot,
+        planId,
+      }),
+    setTeamBuffEnabled: (buffId: string, enabled: boolean) =>
+      dispatch({
+        type: "set-team-buff",
+        buffId,
+        enabled,
+      }),
     choosePlan: (planId: string) =>
       dispatch({ type: "switch-plan", planId }),
     chooseCharacter: (characterId: string) =>

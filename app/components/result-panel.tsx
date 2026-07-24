@@ -74,7 +74,8 @@ export function ResultPanel({
           <span>
             <strong>最终面板</strong>
             <small>
-              {build.character.name} · {build.weapon.name} ·{" "}
+              {build.character.name} C{calculation.constellation} ·{" "}
+              {build.weapon.name} ·{" "}
               {build.artifactSetPieces ? artifactSetName : "无套装"}
             </small>
           </span>
@@ -200,6 +201,13 @@ export function ResultPanel({
                       </option>
                     ))}
                   </select>
+                  {calculation.effectiveSettings[talent.key] !==
+                  damageSettings[talent.key] ? (
+                    <small>
+                      命座后{" "}
+                      {calculation.effectiveSettings[talent.key]} 级
+                    </small>
+                  ) : null}
                 </label>
               ))}
             </div>
@@ -340,7 +348,11 @@ export function ResultPanel({
         <p>
           技能伤害为理论单目标值；
           <br />
-          已计入角色自身机制、武器与套装效果，暂不计队友效果、命座与敌人防御降低。
+          已计入命座及已开启的角色、武器、圣遗物与元素共鸣增益
+          {calculation.teamBuffs.length
+            ? `（${calculation.teamBuffs.filter((buff) => buff.enabled).length}/${calculation.teamBuffs.length} 项开启）`
+            : ""}
+          ；不模拟产球、循环、冷却与多目标。
         </p>
       </div>
 

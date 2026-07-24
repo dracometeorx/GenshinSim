@@ -8,10 +8,19 @@ import {
   type DamageCalculationResult,
   type DamageSettings,
 } from "./damage.ts";
+import {
+  clampConstellation,
+  getConstellationCalculationState,
+} from "./constellations.ts";
 import { resolveArtifactModifiers } from "./data/artifacts/index.ts";
 import type { ArtifactSetPreset } from "./data/artifacts/types.ts";
 import type { CharacterPreset } from "./data/characters/types.ts";
 import type { WeaponPreset } from "./data/weapons/types.ts";
+import {
+  resolveTeamBuffs,
+  type TeamCalculationInput,
+} from "./team.ts";
+import type { ResolvedTeamBuff } from "./team-types.ts";
 
 export type CalculationWarningCode =
   | "INCOMPATIBLE_BLIZZARD_MELT_CONDITION"
@@ -28,6 +37,8 @@ export interface CalculationRequest {
   weapon: WeaponPreset;
   artifactSet: ArtifactSetPreset;
   settings: DamageSettings;
+  constellation?: number;
+  team?: TeamCalculationInput;
 }
 
 export interface CalculationResult extends DamageCalculationResult {
@@ -35,6 +46,9 @@ export interface CalculationResult extends DamageCalculationResult {
   panel: FinalPanel;
   staticPanel: FinalPanel;
   combatPanel: FinalPanel;
+  constellation: number;
+  effectiveSettings: DamageSettings;
+  teamBuffs: ResolvedTeamBuff[];
   warnings: CalculationWarning[];
 }
 
@@ -51,6 +65,8 @@ export function calculateBuild({
   weapon,
   artifactSet,
   settings,
+  constellation: requestedConstellation = 0,
+  team,
 }: CalculationRequest): CalculationResult {
   const warnings: CalculationWarning[] = [];
   const characterMismatch =
@@ -84,6 +100,15 @@ export function calculateBuild({
       character.id === "custom" ? build.element : character.element,
     artifactSetId: artifactSet.id,
   };
+  const constellation = clampConstellation(
+    requestedConstellation,
+  );
+  const constellationState = getConstellationCalculationState(
+    character,
+    constellation,
+    settings,
+  );
+  const effectiveSettings = constellationState.settings;
 
   if (characterMismatch || elementMismatch) {
     warnings.push({
@@ -95,6 +120,7 @@ export function calculateBuild({
   const panelEffects = [
     ...(weapon.passive.panelEffects ?? []),
     ...(character.panelEffects ?? []),
+    ...constellationState.panelEffects,
   ];
   const staticArtifactModifiers = resolveArtifactModifiers(
     artifactSet,
@@ -111,22 +137,48 @@ export function calculateBuild({
   const staticPanel = calculateFinalPanel(normalizedBuild, {
     artifactModifiers: staticArtifactModifiers,
     panelEffects,
-    damageSettings: settings,
+    damageSettings: effectiveSettings,
     includeConditionalEffects: false,
+  });
+  const standaloneCombatPanel = calculateFinalPanel(normalizedBuild, {
+    artifactModifiers: combatArtifactModifiers,
+    panelEffects,
+    damageSettings: effectiveSettings,
+    includeConditionalEffects: true,
+  });
+  const resolvedTeam = resolveTeamBuffs({
+    target: {
+      build: normalizedBuild,
+      character,
+      weapon: {
+        ...weapon,
+        refinement: normalizedBuild.weapon.refinement,
+      },
+      artifactSet,
+    },
+    targetConstellation: constellation,
+    targetPanel: standaloneCombatPanel,
+    settings: effectiveSettings,
+    team,
   });
   const combatPanel = calculateFinalPanel(normalizedBuild, {
     artifactModifiers: combatArtifactModifiers,
-    panelEffects,
-    damageSettings: settings,
+    panelEffects: [...panelEffects, ...resolvedTeam.panelEffects],
+    damageSettings: effectiveSettings,
     includeConditionalEffects: true,
   });
   const damage = calculateRepresentativeDamage(
     character,
     normalizedBuild,
     combatPanel,
-    settings,
+    effectiveSettings,
     combatArtifactModifiers,
-    weapon.passive.damageEffects ?? [],
+    [
+      ...(weapon.passive.damageEffects ?? []),
+      ...constellationState.damageEffects,
+      ...resolvedTeam.damageEffects,
+    ],
+    constellation,
   );
 
   const hasMeltVariant = damage.skills.some((skill) =>
@@ -152,6 +204,9 @@ export function calculateBuild({
     panel: combatPanel,
     staticPanel,
     combatPanel,
+    constellation,
+    effectiveSettings,
+    teamBuffs: resolvedTeam.buffs,
     warnings,
   };
 }

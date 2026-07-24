@@ -225,6 +225,7 @@ a:focus-visible {
 
 .selection-card,
 .panel {
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.94);
@@ -361,7 +362,8 @@ a:focus-visible {
 }
 
 .plan-picker > label > span,
-.refinement-picker > span {
+.refinement-picker > span,
+.constellation-picker > span {
   color: var(--muted);
   font-size: 10px;
   font-weight: 800;
@@ -408,24 +410,28 @@ a:focus-visible {
   opacity: 0.45;
 }
 
-.weapon-meta-row {
+.weapon-meta-row,
+.character-meta-row {
   display: flex;
   min-width: 0;
   align-items: end;
   gap: 10px;
 }
 
-.weapon-meta-row p {
+.weapon-meta-row p,
+.character-meta-row p {
   flex: 1 1 auto;
 }
 
-.refinement-picker {
+.refinement-picker,
+.constellation-picker {
   display: grid;
   flex: 0 0 58px;
   gap: 2px;
 }
 
-.selection-main .refinement-picker select {
+.selection-main .refinement-picker select,
+.selection-main .constellation-picker select {
   width: 100%;
   height: 26px;
   padding: 0 2px;
@@ -435,6 +441,205 @@ a:focus-visible {
   color: #45617f;
   font-size: 10px;
   font-weight: 800;
+}
+
+.team-configuration {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.team-heading,
+.team-heading > span,
+.team-buff-heading {
+  display: flex;
+}
+
+.team-heading,
+.team-buff-heading {
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.team-heading > span {
+  align-items: baseline;
+  gap: 9px;
+}
+
+.team-heading strong,
+.team-heading small {
+  display: block;
+}
+
+.team-heading strong {
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.team-heading small,
+.team-buff-heading small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.team-heading > b {
+  display: grid;
+  min-width: 38px;
+  height: 26px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 11px;
+}
+
+.team-slots {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.team-slot {
+  position: relative;
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid #dce7f4;
+  border-radius: 11px;
+  background: #fbfdff;
+}
+
+.team-slot-index {
+  position: absolute;
+  top: -7px;
+  right: 9px;
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border: 1px solid #c7d8ec;
+  border-radius: 50%;
+  background: white;
+  color: var(--primary);
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.team-slot label {
+  display: grid;
+  gap: 4px;
+}
+
+.team-slot label > span {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.team-slot select {
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  color: #314765;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.team-slot select:disabled {
+  background: #f3f6fa;
+  color: var(--faint);
+}
+
+.team-buffs {
+  display: grid;
+  gap: 9px;
+  padding-top: 13px;
+  border-top: 1px solid #e8eef5;
+}
+
+.team-buff-heading strong {
+  color: #314765;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.team-buff-list {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.team-buff {
+  display: flex;
+  min-width: 0;
+  align-items: start;
+  gap: 9px;
+  padding: 10px;
+  border: 1px solid #dce7f4;
+  border-radius: 9px;
+  background: #fbfdff;
+  cursor: pointer;
+}
+
+.team-buff:has(input:checked) {
+  border-color: #a8c9ff;
+  background: #f2f7ff;
+}
+
+.team-buff input {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  margin: 1px 0 0;
+  accent-color: var(--primary);
+}
+
+.team-buff > span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.team-buff b {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #314765;
+  font-size: 10px;
+}
+
+.team-buff i {
+  padding: 2px 5px;
+  border-radius: 999px;
+  background: #e8f1ff;
+  color: var(--primary);
+  font-size: 8px;
+  font-style: normal;
+}
+
+.team-buff small {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.55;
+}
+
+.team-buff-empty {
+  margin: 0;
+  padding: 12px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 9px;
+  background: #fafcff;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.6;
+  text-align: center;
 }
 
 .weapon-passive {
@@ -1200,6 +1405,12 @@ a:focus-visible {
   font-weight: 800;
 }
 
+.talent-level-settings label > small {
+  color: var(--primary);
+  font-size: 8px;
+  font-weight: 800;
+}
+
 .damage-settings select,
 .damage-settings input {
   width: 100%;
@@ -1733,6 +1944,24 @@ a:focus-visible {
   .weapon-passive {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .team-configuration {
+    padding: 14px;
+  }
+
+  .team-heading {
+    align-items: start;
+  }
+
+  .team-heading > span {
+    display: grid;
+    gap: 3px;
+  }
+
+  .team-slots,
+  .team-buff-list {
+    grid-template-columns: 1fr;
   }
 
   .artifact-set-controls {
