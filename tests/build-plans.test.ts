@@ -414,3 +414,33 @@ test("normalizes Lunar catalog controls and out-of-range refinement", () => {
   });
   assert.equal(restored.build.weapon.name, "帷间夜曲");
 });
+
+test("normalizes newly added weapon controls and refinement", () => {
+  const snapshot = createBuildPlanSnapshot({
+    build,
+    characterId: "ayaka",
+    weaponId: "mistsplitter",
+    damageSettings,
+  });
+  const normalized = normalizeBuildPlanSnapshot({
+    ...snapshot,
+    weaponId: "azurelight",
+    weaponRefinement: 99,
+    weaponPassiveSelections: {
+      azurelightState: "invalid",
+      staleWeaponCondition: "active",
+    },
+  });
+  const restored = restorePlanSnapshot(normalized);
+
+  assert.equal(normalized.weaponId, "azurelight");
+  assert.equal(normalized.weaponRefinement, 5);
+  assert.deepEqual(normalized.weaponPassiveSelections, {
+    azurelightState: "zeroEnergy",
+  });
+  assert.equal(restored.build.weapon.name, "苍耀");
+  assert.equal(restored.build.weapon.refinement, 5);
+  assert.deepEqual(restored.build.weaponPassiveSelections, {
+    azurelightState: "zeroEnergy",
+  });
+});
