@@ -371,3 +371,46 @@ test("normalizes and restores new weapon and artifact conditions", () => {
     shimenawaState: "active",
   });
 });
+
+test("normalizes Lunar catalog controls and out-of-range refinement", () => {
+  const snapshot = createBuildPlanSnapshot({
+    build,
+    characterId: "columbina",
+    weaponId: "nocturnes-curtain-call",
+    damageSettings: {
+      ...damageSettings,
+      selections: {
+        ...damageSettings.selections,
+        columbinaInterference: "invalid",
+      },
+    },
+  });
+  const normalized = normalizeBuildPlanSnapshot({
+    ...snapshot,
+    weaponRefinement: 99,
+    weaponPassiveSelections: {
+      nocturnesCurtainCallState: "invalid",
+    },
+    artifactSetId: "aubade-of-morningstar-and-moon",
+    artifactSetPieces: 4,
+    artifactSetSelections: {
+      aubadeState: "invalid",
+    },
+  });
+  const restored = restorePlanSnapshot(normalized);
+
+  assert.equal(normalized.characterId, "columbina");
+  assert.equal(normalized.weaponId, "nocturnes-curtain-call");
+  assert.equal(normalized.weaponRefinement, 5);
+  assert.deepEqual(normalized.weaponPassiveSelections, {
+    nocturnesCurtainCallState: "active",
+  });
+  assert.equal(
+    normalized.damageSettings.selections.columbinaInterference,
+    "lunarCharged",
+  );
+  assert.deepEqual(normalized.artifactSetSelections, {
+    aubadeState: "active",
+  });
+  assert.equal(restored.build.weapon.name, "帷间夜曲");
+});

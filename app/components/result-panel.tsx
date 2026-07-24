@@ -31,6 +31,12 @@ function formatNumber(value: number, digits = 0) {
   });
 }
 
+const moonsignLabels = {
+  none: "无月兆",
+  nascent: "月兆·初辉",
+  ascendant: "月兆·满辉",
+} as const;
+
 export function ResultPanel({
   activeElement,
   artifactSetName,
@@ -80,7 +86,11 @@ export function ResultPanel({
             </small>
           </span>
         </div>
-        <span className="theory-badge">理论值</span>
+        <span className="theory-badge">
+          {calculation.moonsign.level === "none"
+            ? "理论值"
+            : `${moonsignLabels[calculation.moonsign.level]} · 理论值`}
+        </span>
       </div>
 
       <dl className="detail-stats">
@@ -156,7 +166,7 @@ export function ResultPanel({
         <div className="damage-heading">
           <span>
             <strong>代表技能伤害</strong>
-            <small>单目标 · 含防御、抗性与元素反应</small>
+            <small>单目标 · 按普通直伤或月曜直伤模型分别计算</small>
           </span>
           <span className="damage-badge">天赋独立设置</span>
         </div>
@@ -299,7 +309,12 @@ export function ResultPanel({
                     <strong>{skill.name}</strong>
                     <small>{skill.description}</small>
                   </span>
-                  <b>{skill.multiplierLabel}</b>
+                  <b>
+                    {skill.multiplierLabel}
+                    {skill.model === "directLunar"
+                      ? " · 月曜直伤"
+                      : ""}
+                  </b>
                 </div>
                 <div className="damage-table" role="table">
                   <div className="damage-table-head" role="row">
@@ -337,9 +352,11 @@ export function ResultPanel({
         )}
 
         <p className="damage-formula-note">
-          防御倍率 {(calculation.defenseMultiplier * 100).toFixed(1)}% ·
-          有效抗性 {calculation.effectiveResistance.toFixed(1)}% ·
-          抗性倍率 {(calculation.resistanceMultiplier * 100).toFixed(1)}%
+          {calculation.skills.some(
+            (skill) => skill.model === "directLunar",
+          )
+            ? `${moonsignLabels[calculation.moonsign.level]}（${calculation.moonsign.count} 级） · 月曜直伤不进入常规防御区与元素/分类增伤区，各结果按其伤害元素单独结算抗性`
+            : `防御倍率 ${(calculation.defenseMultiplier * 100).toFixed(1)}% · 有效抗性 ${calculation.effectiveResistance.toFixed(1)}% · 抗性倍率 ${(calculation.resistanceMultiplier * 100).toFixed(1)}%`}
         </p>
       </section>
 

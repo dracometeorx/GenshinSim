@@ -19,6 +19,12 @@ export function createResultPayload({
   return {
     角色: `${build.character.name} Lv.${build.character.level}`,
     命之座: `C${result.constellation}`,
+    月兆:
+      result.moonsign.level === "ascendant"
+        ? `满辉（${result.moonsign.count} 级）`
+        : result.moonsign.level === "nascent"
+          ? `初辉（${result.moonsign.count} 级）`
+          : "无",
     武器: `${build.weapon.name} Lv.${build.weapon.level}`,
     圣遗物套装:
       build.artifactSetPieces && build.artifactSetPieces > 0
@@ -50,9 +56,15 @@ export function createResultPayload({
           skill.variants.map((variant) => [
             variant.label,
             {
+              模型:
+                variant.model === "directLunar"
+                  ? "月曜直伤"
+                  : "普通直伤",
               未暴击: variant.nonCrit,
               暴击: variant.crit,
               期望: variant.expected,
+              防御倍率: variant.defenseMultiplier,
+              抗性倍率: variant.resistanceMultiplier,
             },
           ]),
         ),

@@ -6,6 +6,7 @@ import type {
 import type {
   DamageReaction,
   DamageSettings,
+  LunarReactionType,
 } from "./damage-types.ts";
 import type { PanelEffectStat } from "./effects.ts";
 
@@ -29,6 +30,10 @@ export type TeamBuffModifier =
         | "critRate"
         | "critDmg"
         | "baseDamageMultiplier"
+        | "lunarBaseDamageBonus"
+        | "lunarReactionDamageBonus"
+        | "lunarAdditiveBaseDamage"
+        | "lunarElevation"
         | "enemyDefenseReduction"
         | "enemyDefenseIgnore"
         | "enemyResistanceReduction";
@@ -36,25 +41,32 @@ export type TeamBuffModifier =
       category?: keyof TalentBonuses;
       element?: ElementKey;
       reactions?: DamageReaction[];
+      lunarReactions?: LunarReactionType[];
     };
 
 export interface TeamBuffEvaluationContext {
   source: {
-    characterId: string;
-    constellation: number;
+      characterId: string;
+      moonsign: boolean;
+      constellation: number;
     element: ElementKey;
     panel: Readonly<FinalPanel>;
     settings: Readonly<DamageSettings>;
     weaponRefinement: number;
+    weaponSelections: Readonly<Record<string, string>>;
+    artifactSelections: Readonly<Record<string, string>>;
   };
   target: {
     characterId: string;
     element: ElementKey;
     burstEnergyCost: number;
+    moonsign: boolean;
   };
   party: {
     highestElementalMastery: number;
     elements: readonly ElementKey[];
+    moonsignCount: number;
+    moonsignLevel: "none" | "nascent" | "ascendant";
   };
 }
 

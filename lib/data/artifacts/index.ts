@@ -4,13 +4,18 @@ import { deepwood } from "./deepwood.ts";
 import { emblem } from "./emblem.ts";
 import { noArtifactSet } from "./none.ts";
 import { shimenawa } from "./shimenawa.ts";
+import { silkenMoonsSerenade } from "./silken-moons-serenade.ts";
+import { nightOfSkysUnveiling } from "./night-of-skys-unveiling.ts";
+import { aubadeOfMorningstarAndMoon } from "./aubade-of-morningstar-and-moon.ts";
 import type {
+  ArtifactModifierContext,
   ArtifactModifier,
   ArtifactSetPreset,
 } from "./types.ts";
 
 export type {
   ArtifactEffectControl,
+  ArtifactModifierContext,
   ArtifactModifier,
   ArtifactSetEffect,
   ArtifactSetPreset,
@@ -23,6 +28,9 @@ export const artifactSets: ArtifactSetPreset[] = [
   shimenawa,
   emblem,
   deepwood,
+  silkenMoonsSerenade,
+  nightOfSkysUnveiling,
+  aubadeOfMorningstarAndMoon,
 ];
 
 export function getArtifactSet(
@@ -38,12 +46,14 @@ export function getArtifactModifiers(
   artifactSetId: string | undefined,
   pieces: 0 | 2 | 4 | undefined,
   selections: Record<string, string> | undefined,
+  context?: Partial<ArtifactModifierContext>,
 ): ArtifactModifier[] {
   return resolveArtifactModifiers(
     getArtifactSet(artifactSetId),
     pieces,
     selections,
     true,
+    context,
   );
 }
 
@@ -52,15 +62,27 @@ export function resolveArtifactModifiers(
   pieces: 0 | 2 | 4 | undefined,
   selections: Record<string, string> | undefined,
   includeConditional: boolean,
+  context: Partial<ArtifactModifierContext> = {},
 ): ArtifactModifier[] {
   if (!pieces) return [];
 
-  const modifiers = [...(artifactSet.twoPiece.modifiers ?? [])];
+  const resolvedContext: ArtifactModifierContext = {
+    moonsignLevel: context.moonsignLevel ?? "none",
+    selections: selections ?? {},
+  };
+  const modifiers = [
+    ...(artifactSet.twoPiece.modifiers ?? []),
+    ...(artifactSet.twoPiece.evaluateModifiers?.(resolvedContext) ?? []),
+  ];
   if (pieces !== 4) return modifiers;
 
   modifiers.push(...(artifactSet.fourPiece.modifiers ?? []));
   const control = artifactSet.fourPiece.control;
-  if (!control || !includeConditional) return modifiers;
+  if (!includeConditional) return modifiers;
+  modifiers.push(
+    ...(artifactSet.fourPiece.evaluateModifiers?.(resolvedContext) ?? []),
+  );
+  if (!control) return modifiers;
 
   const value = selections?.[control.key] ?? control.defaultValue;
   const option = control.options.find((item) => item.value === value);

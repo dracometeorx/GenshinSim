@@ -409,9 +409,15 @@ test("exports panel and damage from the same recalculation", () => {
           skill.variants.map((variant) => [
             variant.label,
             {
+              模型:
+                variant.model === "directLunar"
+                  ? "月曜直伤"
+                  : "普通直伤",
               未暴击: variant.nonCrit,
               暴击: variant.crit,
               期望: variant.expected,
+              防御倍率: variant.defenseMultiplier,
+              抗性倍率: variant.resistanceMultiplier,
             },
           ]),
         ),

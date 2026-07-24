@@ -3,6 +3,7 @@ import type {
   TalentBonuses,
 } from "../../calculator.ts";
 import type { TeamBuffDefinition } from "../../team-types.ts";
+import type { LunarReactionType } from "../../damage-types.ts";
 
 export type ArtifactElementKey = ElementKey;
 
@@ -49,7 +50,19 @@ export type ArtifactModifier =
       kind: "enemyResistanceReduction";
       value: number;
       element: ArtifactElementKey;
+    }
+  | {
+      kind: "lunarDamageBonus";
+      value: number;
+      lunarReactions?: LunarReactionType[];
     };
+
+export type ArtifactMoonsignLevel = "none" | "nascent" | "ascendant";
+
+export interface ArtifactModifierContext {
+  moonsignLevel: ArtifactMoonsignLevel;
+  selections: Readonly<Record<string, string>>;
+}
 
 export type ArtifactEffectControl = {
   key: string;
@@ -67,6 +80,9 @@ export type ArtifactSetEffect = {
   modifiers?: ArtifactModifier[];
   control?: ArtifactEffectControl;
   panelNote?: string;
+  evaluateModifiers?(
+    context: ArtifactModifierContext,
+  ): readonly ArtifactModifier[];
 };
 
 export type ArtifactSetPreset = {

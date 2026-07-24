@@ -13,18 +13,56 @@ import { hpStateOptions } from "../lib/data/common.ts";
 test("exports every character preset with a unique id", () => {
   assert.deepEqual(
     characters.map(({ id }) => id),
-    ["ayaka", "hutao", "raiden", "nahida", "custom"],
+    [
+      "ayaka",
+      "hutao",
+      "raiden",
+      "nahida",
+      "columbina",
+      "flins",
+      "ineffa",
+      "lauma",
+      "nefer",
+      "linnea",
+      "zibai",
+      "custom",
+    ],
   );
   assert.equal(new Set(characters.map(({ id }) => id)).size, characters.length);
   assert.deepEqual(
     characters
       .filter(({ id }) => id !== "custom")
       .map(({ damageProfile }) => damageProfile?.kind),
-    ["ayaka", "hutao", "raiden", "nahida"],
+    [
+      "ayaka",
+      "hutao",
+      "raiden",
+      "nahida",
+      "columbina",
+      "flins",
+      "ineffa",
+      "lauma",
+      "nefer",
+      "linnea",
+      "zibai",
+    ],
   );
   assert.deepEqual(
     characters.map(({ weaponType }) => weaponType),
-    ["sword", "polearm", "polearm", "catalyst", "any"],
+    [
+      "sword",
+      "polearm",
+      "polearm",
+      "catalyst",
+      "catalyst",
+      "polearm",
+      "polearm",
+      "catalyst",
+      "catalyst",
+      "bow",
+      "sword",
+      "any",
+    ],
   );
 });
 
@@ -40,6 +78,13 @@ test("exports every weapon preset with a unique id", () => {
       "dragons-bane",
       "favonius-lance",
       "dreams",
+      "fractured-halo",
+      "bloodsoaked-ruins",
+      "nightweavers-looking-glass",
+      "reliquary-of-truth",
+      "nocturnes-curtain-call",
+      "lightbearing-moonshard",
+      "frostbound-oath",
       "custom",
     ],
   );
@@ -55,6 +100,13 @@ test("exports every weapon preset with a unique id", () => {
       "polearm",
       "polearm",
       "catalyst",
+      "polearm",
+      "polearm",
+      "catalyst",
+      "catalyst",
+      "catalyst",
+      "sword",
+      "bow",
       "any",
     ],
   );
@@ -155,7 +207,7 @@ test("only exposes weapons compatible with each character", () => {
   assert.ok(mistsplitter);
   assert.deepEqual(
     getCompatibleWeapons(ayaka.weaponType).map(({ id }) => id),
-    ["mistsplitter", "custom"],
+    ["mistsplitter", "lightbearing-moonshard", "custom"],
   );
   assert.deepEqual(
     getCompatibleWeapons(hutao.weaponType).map(({ id }) => id),
@@ -166,6 +218,8 @@ test("only exposes weapons compatible with each character", () => {
       "deathmatch",
       "dragons-bane",
       "favonius-lance",
+      "fractured-halo",
+      "bloodsoaked-ruins",
       "custom",
     ],
   );
@@ -196,6 +250,9 @@ test("exports every artifact set preset with a unique id", () => {
       "shimenawa",
       "emblem",
       "deepwood",
+      "silken-moons-serenade",
+      "night-of-skys-unveiling",
+      "aubade-of-morningstar-and-moon",
     ],
   );
   assert.equal(

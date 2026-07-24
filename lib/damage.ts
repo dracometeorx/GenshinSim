@@ -8,6 +8,8 @@ import type {
   DamageReaction,
   DamageSettings,
   DamageTarget,
+  DamageVariantKey,
+  LunarReactionType,
 } from "./damage-types.ts";
 import {
   evaluateDamageEffects,
@@ -18,11 +20,19 @@ import {
 export type { DamageSettings } from "./damage-types.ts";
 
 export interface DamageVariantResult {
-  reaction: DamageReaction;
+  reaction: DamageVariantKey;
   label: string;
   nonCrit: number;
   crit: number;
   expected: number;
+  model: "standard" | "directLunar";
+  defenseMultiplier: number;
+  resistanceMultiplier: number;
+  damageBonus: number;
+  elementalMasteryBonus?: number;
+  lunarBaseDamageBonus?: number;
+  lunarReactionDamageBonus?: number;
+  lunarElevation?: number;
 }
 
 export interface RepresentativeDamageResult {
@@ -30,6 +40,8 @@ export interface RepresentativeDamageResult {
   name: string;
   description: string;
   multiplierLabel: string;
+  model: "standard" | "directLunar";
+  lunarReaction?: LunarReactionType;
   variants: DamageVariantResult[];
 }
 
@@ -181,6 +193,22 @@ function reactionLabel(reaction: DamageReaction) {
   }
 }
 
+export function lunarReactionLabel(reaction: LunarReactionType) {
+  switch (reaction) {
+    case "lunarCharged":
+      return "直伤月感电";
+    case "lunarBloom":
+      return "直伤月绽放";
+    case "lunarCrystallize":
+      return "直伤月结晶";
+  }
+}
+
+export function calculateLunarMasteryBonus(elementalMastery: number) {
+  const mastery = Math.max(0, elementalMastery);
+  return (600 * mastery) / (mastery + 2000);
+}
+
 function roundDamage(value: number) {
   return Math.max(0, Math.round(value));
 }
@@ -191,6 +219,7 @@ function buildTargets(
   panel: FinalPanel,
   settings: DamageSettings,
   constellation: number,
+  moonsignLevel: "none" | "nascent" | "ascendant",
 ): DamageTarget[] {
   const profile = character.damageProfile;
   if (!profile) return [];
@@ -198,6 +227,7 @@ function buildTargets(
   return profile.evaluateTargets({
     build,
     constellation,
+    moonsignLevel,
     panel,
     settings,
     selection: (key) => getSelection(profile, settings, key),
@@ -220,6 +250,7 @@ export function calculateRepresentativeDamage(
   artifactModifiers: readonly ArtifactModifier[] = [],
   damageEffects: readonly DamageEffect[] = [],
   constellation = 0,
+  moonsignLevel: "none" | "nascent" | "ascendant" = "none",
 ): DamageCalculationResult {
   const artifactResistanceReduction = artifactModifiers.reduce(
     (total, modifier) =>
@@ -235,6 +266,7 @@ export function calculateRepresentativeDamage(
     panel,
     settings,
     constellation,
+    moonsignLevel,
   );
   const targetsWithModifiers = targets.map((target) => ({
     target,
@@ -254,7 +286,9 @@ export function calculateRepresentativeDamage(
   }));
   const firstTargetModifiers =
     targetsWithModifiers[0]?.modifiers.filter(
-      (modifier) => !modifier.reactions?.length,
+      (modifier) =>
+        !modifier.reactions?.length &&
+        !modifier.lunarReactions?.length,
     ) ?? [];
   const defenseReduction = firstTargetModifiers.reduce(
     (total, modifier) =>
@@ -316,11 +350,34 @@ export function calculateRepresentativeDamage(
         name: target.name,
         description: target.description,
         multiplierLabel: target.multiplierLabel,
-        variants: target.reactions.map((reaction) => {
+        model: target.model?.kind ?? "standard",
+        lunarReaction:
+          target.model?.kind === "directLunar"
+            ? target.model.reaction
+            : undefined,
+        variants:
+          target.model?.kind === "directLunar"
+            ? [
+                calculateDirectLunarVariant({
+                  target: target as DamageTarget & {
+                    model: Extract<
+                      NonNullable<DamageTarget["model"]>,
+                      { kind: "directLunar" }
+                    >;
+                  },
+                  targetModifiers,
+                  artifactModifiers,
+                  build,
+                  panel,
+                  settings,
+                }),
+              ]
+            : target.reactions.map((reaction) => {
           const modifiers = targetModifiers.filter(
             (modifier) =>
-              !modifier.reactions?.length ||
-              modifier.reactions.includes(reaction),
+              !modifier.lunarReactions?.length &&
+              (!modifier.reactions?.length ||
+                modifier.reactions.includes(reaction)),
           );
           const effectDamageBonus = modifiers.reduce(
             (total, modifier) =>
@@ -461,6 +518,10 @@ export function calculateRepresentativeDamage(
             expected: roundDamage(
               nonCrit * (1 + (critRate / 100) * (critDmg / 100)),
             ),
+            model: "standard" as const,
+            defenseMultiplier: variantDefenseMultiplier,
+            resistanceMultiplier: variantResistanceMultiplier,
+            damageBonus,
           };
         }),
       };
@@ -472,5 +533,140 @@ export function calculateRepresentativeDamage(
     defenseMultiplier,
     resistanceMultiplier,
     effectiveResistance,
+  };
+}
+
+function calculateDirectLunarVariant({
+  target,
+  targetModifiers,
+  artifactModifiers,
+  build,
+  panel,
+  settings,
+}: {
+  target: DamageTarget & {
+    model: Extract<
+      NonNullable<DamageTarget["model"]>,
+      { kind: "directLunar" }
+    >;
+  };
+  targetModifiers: ReturnType<typeof evaluateDamageEffects>;
+  artifactModifiers: readonly ArtifactModifier[];
+  build: BuildInput;
+  panel: FinalPanel;
+  settings: DamageSettings;
+}): DamageVariantResult {
+  const lunarReaction = target.model.reaction;
+  const damageElement = target.damageElement ?? build.element;
+  const modifiers = targetModifiers.filter(
+    (modifier) =>
+      !modifier.reactions?.length &&
+      (!modifier.lunarReactions?.length ||
+        modifier.lunarReactions.includes(lunarReaction)),
+  );
+  const sumModifier = (
+    stat:
+      | "critRate"
+      | "critDmg"
+      | "lunarBaseDamageBonus"
+      | "lunarReactionDamageBonus"
+      | "lunarAdditiveBaseDamage"
+      | "lunarElevation"
+      | "enemyResistanceReduction",
+  ) =>
+    modifiers.reduce(
+      (total, modifier) =>
+        modifier.stat === stat &&
+        (stat !== "enemyResistanceReduction" ||
+          !modifier.element ||
+          modifier.element === damageElement)
+          ? total + Math.max(0, modifier.value)
+          : total,
+      0,
+    );
+  const artifactLunarBonus = artifactModifiers.reduce(
+    (total, modifier) =>
+      modifier.kind === "lunarDamageBonus" &&
+      (!modifier.lunarReactions?.length ||
+        modifier.lunarReactions.includes(lunarReaction))
+        ? total + Math.max(0, modifier.value)
+        : total,
+    0,
+  );
+  const critRate = clamp(
+    panel.critRate +
+      sumModifier("critRate") +
+      (target.extraCritRate ?? 0),
+    0,
+    100,
+  );
+  const critDmg = Math.max(
+    0,
+    panel.critDmg +
+      sumModifier("critDmg") +
+      (target.extraCritDmg ?? 0),
+  );
+  const lunarBaseDamageBonus =
+    sumModifier("lunarBaseDamageBonus") +
+    (target.extraLunarBaseDamageBonus ?? 0);
+  const lunarReactionDamageBonus =
+    sumModifier("lunarReactionDamageBonus") +
+    artifactLunarBonus +
+    (target.extraLunarReactionDamageBonus ?? 0);
+  const elementalMasteryBonus = calculateLunarMasteryBonus(
+    panel.elementalMastery,
+  );
+  const lunarAdditiveBaseDamage =
+    sumModifier("lunarAdditiveBaseDamage") +
+    (target.extraLunarAdditiveBaseDamage ?? 0);
+  const lunarElevation =
+    sumModifier("lunarElevation") +
+    (target.extraLunarElevation ?? 0);
+  const resistanceReduction =
+    artifactModifiers.reduce(
+      (total, modifier) =>
+        modifier.kind === "enemyResistanceReduction" &&
+        modifier.element === damageElement
+          ? total + Math.max(0, modifier.value)
+          : total,
+      0,
+    ) +
+    sumModifier("enemyResistanceReduction");
+  const variantResistanceMultiplier = calculateResistanceMultiplier(
+    settings.enemyResistance - resistanceReduction,
+  );
+  const directMultiplier = Math.max(
+    0,
+    target.model.directMultiplier ??
+      (lunarReaction === "lunarCrystallize" ? 1.6 : 3),
+  );
+  const reactionBase =
+    target.baseDamage *
+    directMultiplier *
+    (1 + lunarBaseDamageBonus / 100) *
+    (1 +
+      elementalMasteryBonus / 100 +
+      lunarReactionDamageBonus / 100);
+  const nonCrit =
+    (reactionBase + lunarAdditiveBaseDamage) *
+    (1 + lunarElevation / 100) *
+    variantResistanceMultiplier;
+
+  return {
+    reaction: lunarReaction,
+    label: lunarReactionLabel(lunarReaction),
+    nonCrit: roundDamage(nonCrit),
+    crit: roundDamage(nonCrit * (1 + critDmg / 100)),
+    expected: roundDamage(
+      nonCrit * (1 + (critRate / 100) * (critDmg / 100)),
+    ),
+    model: "directLunar",
+    defenseMultiplier: 1,
+    resistanceMultiplier: variantResistanceMultiplier,
+    damageBonus: lunarReactionDamageBonus,
+    elementalMasteryBonus,
+    lunarBaseDamageBonus,
+    lunarReactionDamageBonus,
+    lunarElevation,
   };
 }
