@@ -67,22 +67,18 @@ export const elementalResonances: readonly ElementalResonance[] = [
         name: "坚定之岩",
         description:
           "队伍中存在至少两名岩元素角色；护盾保护下伤害提高 15%，并使敌人岩抗降低 20%。",
-        evaluate: ({ target }) => [
+        evaluate: () => [
           {
             kind: "damage",
             stat: "damageBonus",
             value: 15,
           },
-          ...(target.element === "geo"
-            ? [
-                {
-                  kind: "damage" as const,
-                  stat: "enemyResistanceReduction" as const,
-                  element: "geo" as const,
-                  value: 20,
-                },
-              ]
-            : []),
+          {
+            kind: "damage" as const,
+            stat: "enemyResistanceReduction" as const,
+            element: "geo" as const,
+            value: 20,
+          },
         ],
       },
     ],

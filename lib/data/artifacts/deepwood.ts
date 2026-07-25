@@ -35,17 +35,14 @@ export const deepwood: ArtifactSetPreset = {
         "队友元素战技或元素爆发命中后，使敌人草元素抗性降低 30%。",
       stackingGroup: "deepwood-dendro-resistance",
       minArtifactPieces: 4,
-      evaluate: ({ target }) =>
-        target.element === "dendro"
-          ? [
-              {
-                kind: "damage",
-                stat: "enemyResistanceReduction",
-                element: "dendro",
-                value: 30,
-              },
-            ]
-          : [],
+      evaluate: () => [
+        {
+          kind: "damage",
+          stat: "enemyResistanceReduction",
+          element: "dendro",
+          value: 30,
+        },
+      ],
     },
   ],
 };

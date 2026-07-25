@@ -49,8 +49,7 @@ export const frostboundOath: WeaponPreset = {
         name: "霜妖精的恶戏",
         description:
           "附近存在月笼时，提高其他队友的岩元素与月结晶反应伤害。",
-        evaluate: ({ source, target }) =>
-          target.element === "geo" &&
+        evaluate: ({ source }) =>
           source.weaponSelections.frostboundOathState !== "inactive"
             ? [
                 {

@@ -341,6 +341,10 @@ export function calculateRepresentativeDamage(
   for (const target of targets) {
     damageElements.add(target.damageElement ?? build.element);
   }
+  // 无伤害目标时（如自定义角色）至少按角色自身元素初始化减抗映射
+  if (damageElements.size === 0) {
+    damageElements.add(build.element);
+  }
   const artifactResistanceByElement = new Map(
     [...damageElements].map((el) => [
       el,
@@ -487,7 +491,9 @@ export function calculateRepresentativeDamage(
               !modifier.lunarReactions?.length &&
               !modifier.stellarReactions?.length &&
               (!modifier.reactions?.length ||
-                modifier.reactions.includes(reaction)),
+                modifier.reactions.includes(reaction)) &&
+              (!modifier.element ||
+                modifier.element === targetElement),
           );
           const effectDamageBonus = modifiers.reduce(
             (total, modifier) =>
@@ -497,7 +503,9 @@ export function calculateRepresentativeDamage(
             0,
           );
           const damageBonus =
-            panel.elementalDmg +
+            (targetElement === build.element
+              ? panel.elementalDmg
+              : 0) +
             panel.talentBonuses[target.category] +
             artifactDamageBonus +
             effectDamageBonus +
@@ -612,7 +620,7 @@ export function calculateRepresentativeDamage(
             );
             reactionMultiplier = amplifyingReactionMultiplier(
               reaction,
-              build.element,
+              targetElement,
               panel.elementalMastery,
               reactionBonus,
             );

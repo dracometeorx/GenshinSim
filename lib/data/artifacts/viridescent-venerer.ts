@@ -67,18 +67,19 @@ export const viridescentVenerer: ArtifactSetPreset = {
       description: "扩散后使敌人对应元素抗性降低 40%。",
       stackingGroup: "viridescent-venerer-resistance",
       minArtifactPieces: 4,
-      evaluate: ({ source, target }) =>
-        selectedSwirlElement(source.artifactSelections) ===
-        target.element
+      evaluate: ({ source }) => {
+        const swirled = selectedSwirlElement(source.artifactSelections);
+        return swirled
           ? [
               {
                 kind: "damage",
                 stat: "enemyResistanceReduction",
-                element: target.element,
+                element: swirled,
                 value: 40,
               },
             ]
-          : [],
+          : [];
+      },
     },
   ],
 };
