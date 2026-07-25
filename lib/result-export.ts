@@ -60,7 +60,11 @@ export function createResultPayload({
     },
     代表技能伤害: Object.fromEntries(
       result.skills.map((skill) => [
-        skill.name,
+        `${skill.name}${
+          skill.damageElement !== build.element
+            ? `（${skill.damageElement} 伤害）`
+            : ""
+        }`,
         Object.fromEntries(
           skill.variants.map((variant) => [
             variant.label,

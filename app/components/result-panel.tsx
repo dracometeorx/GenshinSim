@@ -37,6 +37,16 @@ const moonsignLabels = {
   ascendant: "月兆·满辉",
 } as const;
 
+const elementDisplay: Record<string, { label: string; icon: string }> = {
+  cryo: { label: "冰", icon: "❄" },
+  hydro: { label: "水", icon: "◉" },
+  pyro: { label: "火", icon: "◆" },
+  electro: { label: "雷", icon: "ϟ" },
+  anemo: { label: "风", icon: "✤" },
+  geo: { label: "岩", icon: "◇" },
+  dendro: { label: "草", icon: "♧" },
+};
+
 export function ResultPanel({
   activeElement,
   artifactSetName,
@@ -316,6 +326,17 @@ export function ResultPanel({
                 <div className="damage-skill-title">
                   <span>
                     <strong>{skill.name}</strong>
+                    {skill.damageElement !== build.element ? (
+                      <small className="damage-element-badge">
+                        {elementDisplay[skill.damageElement]?.icon ??
+                          skill.damageElement}
+                        {
+                          elementDisplay[skill.damageElement]
+                            ?.label
+                        }
+                        伤害结算
+                      </small>
+                    ) : null}
                     <small>{skill.description}</small>
                   </span>
                   <b>
@@ -372,6 +393,17 @@ export function ResultPanel({
                 )
               ? `星极场 ${calculation.stellarConduct.elementalPower} 元素力 · 星电导直伤不进入常规防御区与元素/分类增伤区，按伤害元素单独结算抗性`
             : `防御倍率 ${(calculation.defenseMultiplier * 100).toFixed(1)}% · 有效抗性 ${calculation.effectiveResistance.toFixed(1)}% · 抗性倍率 ${(calculation.resistanceMultiplier * 100).toFixed(1)}%`}
+          {calculation.skills.length > 1 &&
+          new Set(
+            calculation.skills.map((s) => s.damageElement),
+          ).size > 1
+            ? `（${calculation.skills
+                .map((s) => s.damageElement)
+                .filter(
+                  (el, i, arr) => arr.indexOf(el) === i,
+                )
+                .join("、")} 伤害分别结算抗性）`
+            : ""}
         </p>
       </section>
 

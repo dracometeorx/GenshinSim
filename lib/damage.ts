@@ -47,6 +47,8 @@ export interface RepresentativeDamageResult {
   description: string;
   multiplierLabel: string;
   model: "standard" | "directLunar" | "directStellar";
+  /** 此技能伤害结算抗性时使用的元素；未显式声明时等于角色自身元素 */
+  damageElement: BuildInput["element"];
   lunarReaction?: LunarReactionType;
   stellarReaction?: StellarReactionType;
   variants: DamageVariantResult[];
@@ -127,6 +129,36 @@ export function calculateResistanceMultiplier(resistancePercent: number) {
   if (resistance < 0) return 1 - resistance / 2;
   if (resistance < 0.75) return 1 - resistance;
   return 1 / (4 * resistance + 1);
+}
+
+/** 圣遗物提供的、针对特定元素的抗性削减合计 */
+function artifactResistanceReductionFor(
+  artifactModifiers: readonly ArtifactModifier[],
+  element: BuildInput["element"],
+): number {
+  return artifactModifiers.reduce(
+    (total, modifier) =>
+      modifier.kind === "enemyResistanceReduction" &&
+      modifier.element === element
+        ? total + Math.max(0, modifier.value)
+        : total,
+    0,
+  );
+}
+
+/** 伤害效果（命座、武器、队伍buff）提供的、针对特定元素的抗性削减合计 */
+function effectResistanceReductionFor(
+  modifiers: ReturnType<typeof evaluateDamageEffects>,
+  element: BuildInput["element"],
+): number {
+  return modifiers.reduce(
+    (total, modifier) =>
+      modifier.stat === "enemyResistanceReduction" &&
+      (!modifier.element || modifier.element === element)
+        ? total + Math.max(0, modifier.value)
+        : total,
+    0,
+  );
 }
 
 function amplifyingReactionMultiplier(
@@ -292,14 +324,6 @@ export function calculateRepresentativeDamage(
   stellarConductActive = false,
   stellarElementalPower = 0,
 ): DamageCalculationResult {
-  const artifactResistanceReduction = artifactModifiers.reduce(
-    (total, modifier) =>
-      modifier.kind === "enemyResistanceReduction" &&
-      modifier.element === build.element
-        ? total + Math.max(0, modifier.value)
-        : total,
-    0,
-  );
   const targets = buildTargets(
     character,
     build,
@@ -311,6 +335,19 @@ export function calculateRepresentativeDamage(
     stellarConductActive,
     stellarElementalPower,
   );
+
+  // 收集所有目标涉及的伤害元素，按元素预计算圣遗物抗性削减
+  const damageElements = new Set<BuildInput["element"]>();
+  for (const target of targets) {
+    damageElements.add(target.damageElement ?? build.element);
+  }
+  const artifactResistanceByElement = new Map(
+    [...damageElements].map((el) => [
+      el,
+      artifactResistanceReductionFor(artifactModifiers, el),
+    ]),
+  );
+
   const targetsWithModifiers = targets.map((target) => ({
     target,
     modifiers: evaluateDamageEffects(
@@ -327,6 +364,10 @@ export function calculateRepresentativeDamage(
       },
     ),
   }));
+
+  // 概览级防御/抗性（使用第一个目标的伤害元素，仅用于摘要展示）
+  const firstTarget = targets[0];
+  const firstElement = firstTarget?.damageElement ?? build.element;
   const firstTargetModifiers =
     targetsWithModifiers[0]?.modifiers.filter(
       (modifier) =>
@@ -354,17 +395,13 @@ export function calculateRepresentativeDamage(
     defenseReduction,
     defenseIgnore,
   );
-  const commonResistanceReduction = firstTargetModifiers.reduce(
-    (total, modifier) =>
-      modifier.stat === "enemyResistanceReduction" &&
-      (!modifier.element || modifier.element === build.element)
-        ? total + Math.max(0, modifier.value)
-        : total,
-    0,
+  const commonResistanceReduction = effectResistanceReductionFor(
+    firstTargetModifiers,
+    firstElement,
   );
   const effectiveResistance =
     settings.enemyResistance -
-    artifactResistanceReduction -
+    (artifactResistanceByElement.get(firstElement) ?? 0) -
     commonResistanceReduction;
   const resistanceMultiplier = calculateResistanceMultiplier(
     effectiveResistance,
@@ -372,10 +409,14 @@ export function calculateRepresentativeDamage(
 
   const skills = targetsWithModifiers.map(
     ({ target, modifiers: targetModifiers }) => {
+      const targetElement = target.damageElement ?? build.element;
       const artifactDamageBonus = artifactModifiers.reduce(
         (total, modifier) => {
           if (modifier.kind !== "damageBonus") return total;
-          if (modifier.element && modifier.element !== build.element) {
+          if (
+            modifier.element &&
+            modifier.element !== targetElement
+          ) {
             return total;
           }
           if (
@@ -395,6 +436,7 @@ export function calculateRepresentativeDamage(
         description: target.description,
         multiplierLabel: target.multiplierLabel,
         model: target.model?.kind ?? "standard",
+        damageElement: targetElement,
         lunarReaction:
           target.model?.kind === "directLunar"
             ? target.model.reaction
@@ -415,6 +457,7 @@ export function calculateRepresentativeDamage(
                   },
                   targetModifiers,
                   artifactModifiers,
+                  artifactResistanceByElement,
                   build,
                   panel,
                   settings,
@@ -431,6 +474,7 @@ export function calculateRepresentativeDamage(
                     },
                     targetModifiers,
                     artifactModifiers,
+                    artifactResistanceByElement,
                     build,
                     panel,
                     settings,
@@ -541,19 +585,14 @@ export function calculateRepresentativeDamage(
             variantDefenseReduction,
             variantDefenseIgnore,
           );
-          const variantResistanceReduction = modifiers.reduce(
-            (total, modifier) =>
-              modifier.stat === "enemyResistanceReduction" &&
-              (!modifier.element ||
-                modifier.element === build.element)
-                ? total + Math.max(0, modifier.value)
-                : total,
-            0,
+          const variantResistanceReduction = effectResistanceReductionFor(
+            modifiers,
+            targetElement,
           );
           const variantResistanceMultiplier =
             calculateResistanceMultiplier(
               settings.enemyResistance -
-                artifactResistanceReduction -
+                (artifactResistanceByElement.get(targetElement) ?? 0) -
                 variantResistanceReduction,
             );
           if (reaction === "vaporize" || reaction === "melt") {
@@ -620,6 +659,7 @@ function calculateDirectLunarVariant({
   target,
   targetModifiers,
   artifactModifiers,
+  artifactResistanceByElement,
   build,
   panel,
   settings,
@@ -632,6 +672,7 @@ function calculateDirectLunarVariant({
   };
   targetModifiers: ReturnType<typeof evaluateDamageEffects>;
   artifactModifiers: readonly ArtifactModifier[];
+  artifactResistanceByElement: Map<BuildInput["element"], number>;
   build: BuildInput;
   panel: FinalPanel;
   settings: DamageSettings;
@@ -703,14 +744,7 @@ function calculateDirectLunarVariant({
     sumModifier("lunarElevation") +
     (target.extraLunarElevation ?? 0);
   const resistanceReduction =
-    artifactModifiers.reduce(
-      (total, modifier) =>
-        modifier.kind === "enemyResistanceReduction" &&
-        modifier.element === damageElement
-          ? total + Math.max(0, modifier.value)
-          : total,
-      0,
-    ) +
+    (artifactResistanceByElement.get(damageElement) ?? 0) +
     sumModifier("enemyResistanceReduction");
   const variantResistanceMultiplier = calculateResistanceMultiplier(
     settings.enemyResistance - resistanceReduction,
@@ -755,6 +789,7 @@ function calculateDirectStellarVariant({
   target,
   targetModifiers,
   artifactModifiers,
+  artifactResistanceByElement,
   build,
   panel,
   settings,
@@ -768,6 +803,7 @@ function calculateDirectStellarVariant({
   };
   targetModifiers: ReturnType<typeof evaluateDamageEffects>;
   artifactModifiers: readonly ArtifactModifier[];
+  artifactResistanceByElement: Map<BuildInput["element"], number>;
   build: BuildInput;
   panel: FinalPanel;
   settings: DamageSettings;
@@ -844,14 +880,7 @@ function calculateDirectStellarVariant({
   const specialMultiplier =
     1 + sumModifier("baseDamageMultiplier") / 100;
   const resistanceReduction =
-    artifactModifiers.reduce(
-      (total, modifier) =>
-        modifier.kind === "enemyResistanceReduction" &&
-        modifier.element === damageElement
-          ? total + Math.max(0, modifier.value)
-          : total,
-      0,
-    ) +
+    (artifactResistanceByElement.get(damageElement) ?? 0) +
     sumModifier("enemyResistanceReduction");
   const variantResistanceMultiplier = calculateResistanceMultiplier(
     settings.enemyResistance - resistanceReduction,
