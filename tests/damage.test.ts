@@ -87,6 +87,47 @@ const panel: FinalPanel = {
   talentBonuses,
 };
 
+const crossElementTestCharacter: CharacterPreset = {
+  id: "cross-element-test-character",
+  name: "跨元素测试角色",
+  level: 90,
+  baseHp: 10000,
+  baseAtk: 200,
+  baseDef: 600,
+  ascensionStat: "none",
+  ascensionValue: 0,
+  ascensionLabel: "无",
+  element: "pyro",
+  weaponType: "polearm",
+  defaultWeaponId: "homa",
+  damageProfile: {
+    kind: "cross-element-test",
+    talentLabel: "跨元素测试",
+    controls: [],
+    evaluateTargets: () => [
+      {
+        id: "test-pyro-damage",
+        name: "测试火元素伤害",
+        description: "仅用于验证同元素面板增伤。",
+        multiplierLabel: "固定 1000",
+        baseDamage: 1000,
+        category: "skill",
+        reactions: ["none"],
+      },
+      {
+        id: "test-hydro-damage",
+        name: "测试水元素伤害",
+        description: "仅用于验证跨元素伤害与反应方向。",
+        multiplierLabel: "固定 1000",
+        baseDamage: 1000,
+        category: "skill",
+        damageElement: "hydro",
+        reactions: ["none", "vaporize"],
+      },
+    ],
+  },
+};
+
 test("uses level 105 defense and 10% resistance defaults", () => {
   assert.equal(calculateDefenseMultiplier(90, 105), 190 / 395);
   assert.equal(calculateResistanceMultiplier(10), 0.9);
@@ -710,10 +751,10 @@ test("does not apply Lunar-scoped modifiers to standard damage", () => {
   assert.equal(variant.crit, variant.nonCrit * 2);
 });
 
-test("P2a: panel elemental DMG bonus does not apply to off-element damage targets", () => {
+test("does not apply the character-element panel bonus to a cross-element target", () => {
   const crossElementBuild: BuildInput = {
     element: "pyro",
-    character: hutao,
+    character: crossElementTestCharacter,
     weapon: {
       name: "测试长柄武器",
       level: 90,
@@ -728,49 +769,33 @@ test("P2a: panel elemental DMG bonus does not apply to off-element damage target
     artifact,
     talentBonuses,
   };
-  // panel with 100% pyro DMG
   const pyroPanel = { ...panel, elementalDmg: 100 };
-  const baseSettings = {
-    ...defaultDamageSettings,
-    selections: {
-      ...defaultDamageSettings.selections,
-      hutaoHpState: "above50",
-    },
-  };
-  // Standard pyro target (same element as character)
-  const sameElement = calculateResolvedDamage(
-    hutao,
+  const result = calculateResolvedDamage(
+    crossElementTestCharacter,
     crossElementBuild,
     pyroPanel,
-    baseSettings,
+    defaultDamageSettings,
     [],
     [],
   );
-  const pyroVariant = sameElement.skills[0].variants[0];
-  // Non-crit damage should include the 100% pyro DMG bonus
-  assert.ok(pyroVariant.damageBonus >= 100);
+  const pyro = result.skills.find(
+    ({ id }) => id === "test-pyro-damage",
+  );
+  const hydro = result.skills.find(
+    ({ id }) => id === "test-hydro-damage",
+  );
 
-  // Off-element target: simulate hydro damage from a pyro character
-  const offElement = calculateResolvedDamage(
-    hutao,
-    { ...crossElementBuild },
-    pyroPanel,
-    baseSettings,
-    [],
-    [],
-    // we can't pass damageElement through the standard API,
-    // but the existing standard path with matching element shouldn't regress
-  );
-  const baseVariant = offElement.skills[0].variants[0];
-  assert.ok(baseVariant.damageBonus >= 100, "same-element damage bonus unchanged");
+  assert.ok(pyro && hydro);
+  assert.equal(pyro.damageElement, "pyro");
+  assert.equal(hydro.damageElement, "hydro");
+  assert.equal(pyro.variants[0].damageBonus, 100);
+  assert.equal(hydro.variants[0].damageBonus, 0);
 });
 
-test("P2b: amplifying reaction uses damage element, not character element", () => {
-  // Hydro trigger on vaporize = 2x; pyro trigger = 1.5x
-  // Verify the existing behavior is correct (same element = character element)
-  const hutaoBuild: BuildInput = {
+test("uses the damage element to select the amplifying reaction direction", () => {
+  const crossElementBuild: BuildInput = {
     element: "pyro",
-    character: hutao,
+    character: crossElementTestCharacter,
     weapon: {
       name: "测试长柄武器",
       level: 90,
@@ -785,43 +810,28 @@ test("P2b: amplifying reaction uses damage element, not character element", () =
     artifact,
     talentBonuses,
   };
-  const settings = {
-    ...defaultDamageSettings,
-    selections: {
-      ...defaultDamageSettings.selections,
-      hutaoHpState: "above50",
-    },
-  };
-
-  // Force hu tao to produce a vaporize variant (pyro character, hydro trigger)
-  // Standard Hu Tao charged attack has vaporize variant
   const result = calculateResolvedDamage(
-    hutao,
-    hutaoBuild,
-    panel,
-    settings,
+    crossElementTestCharacter,
+    crossElementBuild,
+    { ...panel, critRate: 0, critDmg: 0 },
+    defaultDamageSettings,
     [],
     [],
   );
-  const charged = result.skills.find(
-    ({ id }) => id === "hutao-charged",
+  const hydro = result.skills.find(
+    ({ id }) => id === "test-hydro-damage",
   );
-  assert.ok(charged);
-  const vaporize = charged.variants.find(
-    ({ reaction }) => reaction === "vaporize",
-  );
-  assert.ok(vaporize);
 
-  // Pyro character on vaporize: 1.5x multiplier
-  const plain = charged.variants.find(
+  assert.ok(hydro);
+  const plain = hydro.variants.find(
     ({ reaction }) => reaction === "none",
   );
-  assert.ok(plain);
-  const ratio = vaporize.nonCrit / plain.nonCrit;
-  assert.ok(
-    Math.abs(ratio - 1.5) < 0.01,
-    `pyro-triggered vaporize should use 1.5x, got ${ratio.toFixed(3)}x`,
+  const vaporize = hydro.variants.find(
+    ({ reaction }) => reaction === "vaporize",
   );
+
+  assert.ok(plain && vaporize);
+  assert.equal(vaporize.nonCrit / plain.nonCrit, 2);
 });
 
 test("P3: artifact resistance reduction applies even without damage targets", () => {

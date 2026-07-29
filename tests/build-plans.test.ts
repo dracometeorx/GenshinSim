@@ -372,6 +372,25 @@ test("normalizes and restores new weapon and artifact conditions", () => {
   });
 });
 
+test("drops the retired Viridescent single-element selection", () => {
+  const snapshot = createBuildPlanSnapshot({
+    build,
+    characterId: "hutao",
+    weaponId: "homa",
+    damageSettings,
+  });
+  const normalized = normalizeBuildPlanSnapshot({
+    ...snapshot,
+    artifactSetId: "viridescent-venerer",
+    artifactSetPieces: 4,
+    artifactSetSelections: {
+      viridescentSwirlElement: "hydro",
+    },
+  });
+
+  assert.deepEqual(normalized.artifactSetSelections, {});
+});
+
 test("normalizes Lunar catalog controls and out-of-range refinement", () => {
   const snapshot = createBuildPlanSnapshot({
     build,

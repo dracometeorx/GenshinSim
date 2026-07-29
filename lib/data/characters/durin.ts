@@ -3,6 +3,23 @@ import { talentCurve } from "./lunar-common.ts";
 
 const whiteDragon = talentCurve(0.946);
 const darkDragon = talentCurve(1.298);
+const whiteDragonReactionElements = [
+  "hydro",
+  "cryo",
+  "electro",
+  "dendro",
+  "anemo",
+  "geo",
+] as const;
+
+function selectedWhiteDragonReactionElement(
+  selections: Readonly<Record<string, string>>,
+) {
+  const selected = selections.durinWhiteReactionElement;
+  return whiteDragonReactionElements.find(
+    (element) => element === selected,
+  );
+}
 
 export const durin: CharacterPreset = {
   id: "durin",
@@ -26,17 +43,32 @@ export const durin: CharacterPreset = {
       description:
         "触发对应反应后降低敌人火元素及参与反应元素抗性；魔导·秘仪时由 20% 提高至 35%。",
       appliesToSelf: true,
-      evaluate: ({ source, target, party }) =>
-        source.settings.selections.durinForm === "dark"
-          ? []
-          : [
-              {
-                kind: "damage",
-                stat: "enemyResistanceReduction",
-                element: target.element,
-                value: party.hexereiSecretRite ? 35 : 20,
-              },
-            ],
+      evaluate: ({ source, party }) => {
+        if (source.settings.selections.durinForm === "dark") {
+          return [];
+        }
+        const reactionElement = selectedWhiteDragonReactionElement(
+          source.settings.selections,
+        );
+        return [
+          {
+            kind: "damage",
+            stat: "enemyResistanceReduction",
+            element: "pyro",
+            value: party.hexereiSecretRite ? 35 : 20,
+          },
+          ...(reactionElement
+            ? [
+                {
+                  kind: "damage" as const,
+                  stat: "enemyResistanceReduction" as const,
+                  element: reactionElement,
+                  value: party.hexereiSecretRite ? 35 : 20,
+                },
+              ]
+            : []),
+        ];
+      },
     },
     {
       id: "durin-dark-dragon-reaction",
@@ -69,6 +101,19 @@ export const durin: CharacterPreset = {
         options: [
           { value: "white", label: "白焰之龙" },
           { value: "dark", label: "黑蚀之龙" },
+        ],
+      },
+      {
+        key: "durinWhiteReactionElement",
+        label: "白焰形态参与反应元素",
+        defaultValue: "hydro",
+        options: [
+          { value: "hydro", label: "水元素" },
+          { value: "cryo", label: "冰元素" },
+          { value: "electro", label: "雷元素" },
+          { value: "dendro", label: "草元素" },
+          { value: "anemo", label: "风元素" },
+          { value: "geo", label: "岩元素" },
         ],
       },
     ],

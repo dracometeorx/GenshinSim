@@ -261,9 +261,44 @@ test("resolves both Hexerei artifact sets from homework and Secret Rite", () => 
   );
 });
 
-test("applies Viridescent resistance shred and Tenacity attack from teammates", () => {
+test("applies Viridescent shred to every Swirl-compatible element on its wearer", () => {
   const lohen = getCharacter("lohen");
+  const baseline = calculate(lohen);
   const withViridescent = calculate(lohen, {
+    artifactSetId: "viridescent-venerer",
+    artifactSetPieces: 4,
+  });
+  const modifiers = resolveArtifactModifiers(
+    getArtifactSet("viridescent-venerer"),
+    4,
+    { viridescentSwirlElement: "pyro" },
+    true,
+  ).filter(
+    (modifier) =>
+      modifier.kind === "enemyResistanceReduction",
+  );
+
+  assert.deepEqual(
+    modifiers,
+    ["pyro", "hydro", "electro", "cryo"].map((element) => ({
+      kind: "enemyResistanceReduction",
+      value: 40,
+      element,
+    })),
+  );
+  assert.equal(withViridescent.effectiveResistance, -30);
+  assert.ok(
+    withViridescent.skills[0].variants[0].nonCrit >
+      baseline.skills[0].variants[0].nonCrit,
+  );
+});
+
+test("applies all-element Viridescent resistance shred from a teammate", () => {
+  const lohen = getCharacter("lohen");
+  const baseline = calculate(lohen, {
+    team: teamFor(memberFor(getCharacter("sucrose"), 0)),
+  });
+  const withTeammateViridescent = calculate(lohen, {
     team: teamFor(
       memberFor(
         getCharacter("sucrose"),
@@ -274,6 +309,133 @@ test("applies Viridescent resistance shred and Tenacity attack from teammates", 
       ),
     ),
   });
+
+  assert.equal(withTeammateViridescent.effectiveResistance, -30);
+  assert.ok(
+    withTeammateViridescent.skills[0].variants[0].nonCrit >
+      baseline.skills[0].variants[0].nonCrit,
+  );
+  const buff = withTeammateViridescent.teamBuffs.find(
+    ({ name }) => name === "翠绿之影四件套",
+  );
+  assert.ok(buff);
+  assert.deepEqual(
+    buff.modifiers,
+    ["pyro", "hydro", "electro", "cryo"].map((element) => ({
+      kind: "damage",
+      stat: "enemyResistanceReduction",
+      value: 40,
+      element,
+    })),
+  );
+});
+
+test("does not stack Viridescent resistance shred from multiple wearers", () => {
+  const lohen = getCharacter("lohen");
+  const result = calculate(lohen, {
+    artifactSetId: "viridescent-venerer",
+    artifactSetPieces: 4,
+    team: teamFor(
+      memberFor(
+        getCharacter("sucrose"),
+        0,
+        "viridescent-venerer",
+        4,
+      ),
+    ),
+  });
+
+  assert.equal(result.effectiveResistance, -30);
+  assert.equal(
+    result.teamBuffs.filter(
+      ({ name }) => name === "翠绿之影四件套",
+    ).length,
+    0,
+  );
+});
+
+test("keeps Beidou C6 resistance shred fixed to Electro and Cryo", () => {
+  const beidouMember = {
+    ...memberFor(getCharacter("beidou"), 0),
+    constellation: 6,
+  };
+  const result = calculate(getCharacter("sandrone"), {
+    team: teamFor(
+      beidouMember,
+      memberFor(getCharacter("qiqi"), 1),
+    ),
+  });
+  const buff = result.teamBuffs.find(
+    ({ name }) => name === "C6·星极破浪",
+  );
+
+  assert.ok(buff);
+  assert.deepEqual(
+    buff.modifiers.filter(
+      (modifier) =>
+        modifier.kind === "damage" &&
+        modifier.stat === "enemyResistanceReduction",
+    ),
+    [
+      {
+        kind: "damage",
+        stat: "enemyResistanceReduction",
+        value: 15,
+        element: "electro",
+      },
+      {
+        kind: "damage",
+        stat: "enemyResistanceReduction",
+        value: 15,
+        element: "cryo",
+      },
+    ],
+  );
+});
+
+test("makes Durin's white-form resistance elements explicit", () => {
+  const durinMember = memberFor(getCharacter("durin"), 0);
+  durinMember.settings = {
+    ...durinMember.settings,
+    selections: {
+      ...durinMember.settings.selections,
+      durinForm: "white",
+      durinWhiteReactionElement: "cryo",
+    },
+  };
+  const result = calculate(getCharacter("klee"), {
+    team: teamFor(durinMember),
+  });
+  const buff = result.teamBuffs.find(
+    ({ name }) => name === "白焰之龙·光灵显现",
+  );
+
+  assert.ok(buff);
+  assert.deepEqual(
+    buff.modifiers.filter(
+      (modifier) =>
+        modifier.kind === "damage" &&
+        modifier.stat === "enemyResistanceReduction",
+    ),
+    [
+      {
+        kind: "damage",
+        stat: "enemyResistanceReduction",
+        element: "pyro",
+        value: 35,
+      },
+      {
+        kind: "damage",
+        stat: "enemyResistanceReduction",
+        element: "cryo",
+        value: 35,
+      },
+    ],
+  );
+});
+
+test("applies Tenacity attack from teammates", () => {
+  const lohen = getCharacter("lohen");
   const baseline = calculate(lohen);
   const withTenacity = calculate(lohen, {
     team: teamFor(
@@ -287,11 +449,6 @@ test("applies Viridescent resistance shred and Tenacity attack from teammates", 
     ),
   });
 
-  assert.equal(withViridescent.effectiveResistance, -30);
-  assert.ok(
-    withViridescent.skills[0].variants[0].nonCrit >
-      baseline.skills[0].variants[0].nonCrit,
-  );
   assert.ok(withTenacity.panel.atk > baseline.panel.atk);
   assert.ok(
     withTenacity.teamBuffs.some(

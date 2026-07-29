@@ -29,7 +29,7 @@ export const beidou: CharacterPreset = {
         "星极场中雷兽之盾持续时，前台角色元素精通提高 200，并使附近敌人冰、雷抗性降低 15%。",
       minConstellation: 6,
       appliesToSelf: true,
-      evaluate: ({ target, party }) =>
+      evaluate: ({ party }) =>
         party.stellarConductActive
           ? [
               {
@@ -41,7 +41,13 @@ export const beidou: CharacterPreset = {
                 kind: "damage",
                 stat: "enemyResistanceReduction",
                 value: 15,
-                element: target.element,
+                element: "electro",
+              },
+              {
+                kind: "damage",
+                stat: "enemyResistanceReduction",
+                value: 15,
+                element: "cryo",
               },
             ]
           : [],

@@ -1,19 +1,4 @@
-import type { ElementKey } from "../../calculator.ts";
 import type { ArtifactSetPreset } from "./types.ts";
-
-const swirlElements: ElementKey[] = [
-  "pyro",
-  "hydro",
-  "electro",
-  "cryo",
-];
-
-function selectedSwirlElement(
-  selections: Readonly<Record<string, string>>,
-) {
-  const selected = selections.viridescentSwirlElement;
-  return swirlElements.find((element) => element === selected);
-}
 
 export const viridescentVenerer: ArtifactSetPreset = {
   id: "viridescent-venerer",
@@ -32,54 +17,66 @@ export const viridescentVenerer: ArtifactSetPreset = {
   },
   fourPiece: {
     description:
-      "扩散反应造成的伤害提升 60%，并使敌人对扩散元素的抗性降低 40%，持续 10 秒。",
-    control: {
-      key: "viridescentSwirlElement",
-      label: "风套扩散元素",
-      defaultValue: "inactive",
-      options: [
-        { value: "inactive", label: "未触发扩散" },
-        { value: "pyro", label: "扩散火元素" },
-        { value: "hydro", label: "扩散水元素" },
-        { value: "electro", label: "扩散雷元素" },
-        { value: "cryo", label: "扩散冰元素" },
-      ],
-    },
-    evaluateModifiers: ({ selections }) => {
-      const element = selectedSwirlElement(selections);
-      return element
-        ? [
-            {
-              kind: "enemyResistanceReduction",
-              value: 40,
-              element,
-            },
-          ]
-        : [];
-    },
+      "扩散反应造成的伤害提升 60%；计算器简化为直接降低敌人火、水、雷、冰元素抗性 40%。",
+    modifiers: [
+      {
+        kind: "enemyResistanceReduction",
+        value: 40,
+        element: "pyro",
+      },
+      {
+        kind: "enemyResistanceReduction",
+        value: 40,
+        element: "hydro",
+      },
+      {
+        kind: "enemyResistanceReduction",
+        value: 40,
+        element: "electro",
+      },
+      {
+        kind: "enemyResistanceReduction",
+        value: 40,
+        element: "cryo",
+      },
+    ],
     panelNote:
-      "计算器不计算扩散剧变伤害；这里只计入所选扩散元素的 40% 减抗。",
+      "计算器不计算扩散剧变伤害；装备四件套时直接计入火、水、雷、冰元素的 40% 减抗，队友装备时同样生效但多套不叠加。",
   },
   teamBuffs: [
     {
       id: "viridescent-venerer-resistance",
       name: "翠绿之影四件套",
-      description: "扩散后使敌人对应元素抗性降低 40%。",
+      description:
+        "直接降低敌人火、水、雷、冰元素抗性 40%；多套翠绿之影不叠加。",
       stackingGroup: "viridescent-venerer-resistance",
       minArtifactPieces: 4,
-      evaluate: ({ source }) => {
-        const swirled = selectedSwirlElement(source.artifactSelections);
-        return swirled
-          ? [
-              {
-                kind: "damage",
-                stat: "enemyResistanceReduction",
-                element: swirled,
-                value: 40,
-              },
-            ]
-          : [];
-      },
+      evaluate: () => [
+        {
+          kind: "damage",
+          stat: "enemyResistanceReduction",
+          value: 40,
+          element: "pyro",
+        },
+        {
+          kind: "damage",
+          stat: "enemyResistanceReduction",
+          value: 40,
+          element: "hydro",
+        },
+        {
+          kind: "damage",
+          stat: "enemyResistanceReduction",
+          value: 40,
+          element: "electro",
+        },
+        {
+          kind: "damage",
+          stat: "enemyResistanceReduction",
+          value: 40,
+          element: "cryo",
+        },
+      ],
     },
   ],
 };
