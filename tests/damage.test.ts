@@ -87,6 +87,47 @@ const panel: FinalPanel = {
   talentBonuses,
 };
 
+const crossElementTestCharacter: CharacterPreset = {
+  id: "cross-element-test-character",
+  name: "跨元素测试角色",
+  level: 90,
+  baseHp: 10000,
+  baseAtk: 200,
+  baseDef: 600,
+  ascensionStat: "none",
+  ascensionValue: 0,
+  ascensionLabel: "无",
+  element: "pyro",
+  weaponType: "polearm",
+  defaultWeaponId: "homa",
+  damageProfile: {
+    kind: "cross-element-test",
+    talentLabel: "跨元素测试",
+    controls: [],
+    evaluateTargets: () => [
+      {
+        id: "test-pyro-damage",
+        name: "测试火元素伤害",
+        description: "仅用于验证同元素面板增伤。",
+        multiplierLabel: "固定 1000",
+        baseDamage: 1000,
+        category: "skill",
+        reactions: ["none"],
+      },
+      {
+        id: "test-hydro-damage",
+        name: "测试水元素伤害",
+        description: "仅用于验证跨元素伤害与反应方向。",
+        multiplierLabel: "固定 1000",
+        baseDamage: 1000,
+        category: "skill",
+        damageElement: "hydro",
+        reactions: ["none", "vaporize"],
+      },
+    ],
+  },
+};
+
 test("uses level 105 defense and 10% resistance defaults", () => {
   assert.equal(calculateDefenseMultiplier(90, 105), 190 / 395);
   assert.equal(calculateResistanceMultiplier(10), 0.9);
@@ -708,4 +749,147 @@ test("does not apply Lunar-scoped modifiers to standard damage", () => {
 
   assert.equal(variant.model, "standard");
   assert.equal(variant.crit, variant.nonCrit * 2);
+});
+
+test("does not apply the character-element panel bonus to a cross-element target", () => {
+  const crossElementBuild: BuildInput = {
+    element: "pyro",
+    character: crossElementTestCharacter,
+    weapon: {
+      name: "测试长柄武器",
+      level: 90,
+      refinement: 1,
+      baseAtk: 608,
+      secondaryStat: "none",
+      secondaryValue: 0,
+    },
+    artifactSetId: "none",
+    artifactSetPieces: 0,
+    artifactSetSelections: {},
+    artifact,
+    talentBonuses,
+  };
+  const pyroPanel = { ...panel, elementalDmg: 100 };
+  const result = calculateResolvedDamage(
+    crossElementTestCharacter,
+    crossElementBuild,
+    pyroPanel,
+    defaultDamageSettings,
+    [],
+    [],
+  );
+  const pyro = result.skills.find(
+    ({ id }) => id === "test-pyro-damage",
+  );
+  const hydro = result.skills.find(
+    ({ id }) => id === "test-hydro-damage",
+  );
+
+  assert.ok(pyro && hydro);
+  assert.equal(pyro.damageElement, "pyro");
+  assert.equal(hydro.damageElement, "hydro");
+  assert.equal(pyro.variants[0].damageBonus, 100);
+  assert.equal(hydro.variants[0].damageBonus, 0);
+});
+
+test("uses the damage element to select the amplifying reaction direction", () => {
+  const crossElementBuild: BuildInput = {
+    element: "pyro",
+    character: crossElementTestCharacter,
+    weapon: {
+      name: "测试长柄武器",
+      level: 90,
+      refinement: 1,
+      baseAtk: 608,
+      secondaryStat: "none",
+      secondaryValue: 0,
+    },
+    artifactSetId: "none",
+    artifactSetPieces: 0,
+    artifactSetSelections: {},
+    artifact,
+    talentBonuses,
+  };
+  const result = calculateResolvedDamage(
+    crossElementTestCharacter,
+    crossElementBuild,
+    { ...panel, critRate: 0, critDmg: 0 },
+    defaultDamageSettings,
+    [],
+    [],
+  );
+  const hydro = result.skills.find(
+    ({ id }) => id === "test-hydro-damage",
+  );
+
+  assert.ok(hydro);
+  const plain = hydro.variants.find(
+    ({ reaction }) => reaction === "none",
+  );
+  const vaporize = hydro.variants.find(
+    ({ reaction }) => reaction === "vaporize",
+  );
+
+  assert.ok(plain && vaporize);
+  assert.equal(vaporize.nonCrit / plain.nonCrit, 2);
+});
+
+test("P3: artifact resistance reduction applies even without damage targets", () => {
+  // Custom character without damageProfile — should still get artifact
+  // resistance reduction for its own element in the summary.
+  const customBuild: BuildInput = {
+    element: "dendro",
+    character: {
+      name: "自定义角色",
+      level: 90,
+      baseHp: 10000,
+      baseAtk: 200,
+      baseDef: 600,
+      ascensionStat: "none",
+      ascensionValue: 0,
+    },
+    weapon: {
+      name: "测试武器",
+      level: 90,
+      refinement: 1,
+      baseAtk: 500,
+      secondaryStat: "none",
+      secondaryValue: 0,
+    },
+    artifactSetId: "deepwood",
+    artifactSetPieces: 4,
+    artifactSetSelections: {},
+    artifact,
+    talentBonuses,
+  };
+  const result = calculateResolvedDamage(
+    {
+      id: "custom-no-profile",
+      name: "无技能角色",
+      level: 90,
+      baseHp: 10000,
+      baseAtk: 200,
+      baseDef: 600,
+      ascensionStat: "none",
+      ascensionValue: 0,
+      ascensionLabel: "",
+      element: "dendro",
+      weaponType: "catalyst",
+      defaultWeaponId: "favonius-sword",
+    },
+    customBuild,
+    panel,
+    defaultDamageSettings,
+    getArtifactModifiers("deepwood", 4, {}),
+    [],
+  );
+
+  // Deepwood 4pc shreds dendro resistance by 30%.
+  // enemyResistance = 10, deepwood shred = 30 → effective = -20
+  assert.equal(
+    result.effectiveResistance,
+    -20,
+    "artifact resistance should apply even without damage targets",
+  );
+  assert.equal(result.skills.length, 0);
 });

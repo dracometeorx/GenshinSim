@@ -32,7 +32,8 @@ export type SecondaryStatKey =
   | "critRate"
   | "critDmg"
   | "energyRecharge"
-  | "elementalMastery";
+  | "elementalMastery"
+  | "elementalDmg";
 
 export interface CharacterBase {
   name: string;
@@ -264,6 +265,7 @@ export function calculateFinalPanel(
       modifier.kind === "damageBonus" ||
       modifier.kind === "reactionBonus" ||
       modifier.kind === "lunarDamageBonus" ||
+      modifier.kind === "stellarDamageBonus" ||
       modifier.kind === "enemyResistanceReduction"
     ) {
       continue;

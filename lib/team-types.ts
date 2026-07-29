@@ -7,6 +7,7 @@ import type {
   DamageReaction,
   DamageSettings,
   LunarReactionType,
+  StellarReactionType,
 } from "./damage-types.ts";
 import type { PanelEffectStat } from "./effects.ts";
 
@@ -15,7 +16,8 @@ export type TeamBuffSourceKind =
   | "character"
   | "weapon"
   | "artifact"
-  | "resonance";
+  | "resonance"
+  | "reaction";
 
 export type TeamBuffModifier =
   | {
@@ -27,6 +29,7 @@ export type TeamBuffModifier =
       kind: "damage";
       stat:
         | "damageBonus"
+        | "amplifyingReactionBonus"
         | "critRate"
         | "critDmg"
         | "baseDamageMultiplier"
@@ -35,6 +38,10 @@ export type TeamBuffModifier =
         | "lunarReactionDamageBonus"
         | "lunarAdditiveBaseDamage"
         | "lunarElevation"
+        | "stellarBaseDamageBonus"
+        | "stellarReactionDamageBonus"
+        | "stellarAdditiveBaseDamage"
+        | "stellarElevation"
         | "enemyDefenseReduction"
         | "enemyDefenseIgnore"
         | "enemyResistanceReduction";
@@ -43,13 +50,17 @@ export type TeamBuffModifier =
       element?: ElementKey;
       reactions?: DamageReaction[];
       lunarReactions?: LunarReactionType[];
+      stellarReactions?: StellarReactionType[];
     };
 
 export interface TeamBuffEvaluationContext {
   source: {
-      characterId: string;
-      moonsign: boolean;
-      constellation: number;
+    characterId: string;
+    moonsign: boolean;
+    hexerei: boolean;
+    stellarConductEnabler?: boolean;
+    stellarConductRelated?: boolean;
+    constellation: number;
     element: ElementKey;
     panel: Readonly<FinalPanel>;
     settings: Readonly<DamageSettings>;
@@ -62,12 +73,20 @@ export interface TeamBuffEvaluationContext {
     element: ElementKey;
     burstEnergyCost: number;
     moonsign: boolean;
+    hexerei: boolean;
+    stellarConductEnabler?: boolean;
+    stellarConductRelated?: boolean;
   };
   party: {
     highestElementalMastery: number;
     elements: readonly ElementKey[];
     moonsignCount: number;
     moonsignLevel: "none" | "nascent" | "ascendant";
+    hexereiCount: number;
+    hexereiSecretRite: boolean;
+    stellarConductActive?: boolean;
+    stellarConductEnablerCount?: number;
+    stellarElementalPower?: number;
   };
 }
 

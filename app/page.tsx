@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ArtifactInput } from "./components/artifact-input";
+import { BuildComparison } from "./components/build-comparison";
 import { CharacterWeaponSelection } from "./components/character-weapon-selection";
 import { HelpModal } from "./components/help-modal";
 import {
@@ -57,6 +58,7 @@ export default function Home() {
     deletePlan,
     hydrated,
     constellation,
+    openPlan,
     plans,
     renamePlan,
     resetPlan,
@@ -81,6 +83,9 @@ export default function Home() {
   const [operationNotice, setOperationNotice] = useState("");
   const [planDialog, setPlanDialog] =
     useState<PlanDialogState | null>(null);
+  const [view, setView] = useState<"editor" | "comparison">(
+    "editor",
+  );
 
   const activeElement = useMemo(
     () =>
@@ -347,17 +352,50 @@ export default function Home() {
     }
   }
 
+  function editComparedPlan(planId: string) {
+    openPlan(planId);
+    setView("editor");
+    window.setTimeout(() => {
+      document
+        .querySelector("#top")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 60);
+  }
+
   return (
     <main className="app-shell">
       <header className="topbar">
-        <a className="brand" href="#top" aria-label="返回顶部">
+        <a
+          className="brand"
+          href="#top"
+          aria-label="返回方案编辑"
+          onClick={() => setView("editor")}
+        >
           <span className="brand-mark">✦</span>
           <span>
             <strong>原神伤害计算器</strong>
-            <small>命座与队伍伤害 · v0.8</small>
+            <small>命座、队伍与方案对比 · v0.9</small>
           </span>
         </a>
         <nav className="top-actions" aria-label="页面操作">
+          <button
+            className={`ghost-button${view === "editor" ? " active" : ""}`}
+            aria-pressed={view === "editor"}
+            onClick={() => setView("editor")}
+          >
+            <span>▤</span>
+            <span className="action-copy">方案编辑</span>
+          </button>
+          <button
+            className={`ghost-button${
+              view === "comparison" ? " active" : ""
+            }`}
+            aria-pressed={view === "comparison"}
+            onClick={() => setView("comparison")}
+          >
+            <span>▥</span>
+            <span className="action-copy">方案对比</span>
+          </button>
           <button
             className="ghost-button"
             onClick={() => setHelpOpen(true)}
@@ -365,13 +403,24 @@ export default function Home() {
             <span>◫</span>
             <span className="action-copy">使用说明</span>
           </button>
-          <button className="ghost-button" onClick={reset}>
-            <span>↻</span>
-            <span className="action-copy">重置</span>
-          </button>
+          {view === "editor" ? (
+            <button className="ghost-button" onClick={reset}>
+              <span>↻</span>
+              <span className="action-copy">重置</span>
+            </button>
+          ) : null}
         </nav>
       </header>
 
+      {view === "comparison" ? (
+        <BuildComparison
+          activePlanId={activePlanId}
+          hydrated={hydrated}
+          plans={plans}
+          onBack={() => setView("editor")}
+          onEditPlan={editComparedPlan}
+        />
+      ) : (
       <div className="workspace" id="top">
         <section className="element-tabs" aria-label="角色元素">
           {elements.map((element) => (
@@ -481,6 +530,7 @@ export default function Home() {
           />
         </div>
       </div>
+      )}
 
       {helpOpen ? (
         <HelpModal onClose={() => setHelpOpen(false)} />

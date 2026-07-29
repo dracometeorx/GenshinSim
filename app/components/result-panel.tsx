@@ -37,6 +37,16 @@ const moonsignLabels = {
   ascendant: "月兆·满辉",
 } as const;
 
+const elementDisplay: Record<string, { label: string; icon: string }> = {
+  cryo: { label: "冰", icon: "❄" },
+  hydro: { label: "水", icon: "◉" },
+  pyro: { label: "火", icon: "◆" },
+  electro: { label: "雷", icon: "ϟ" },
+  anemo: { label: "风", icon: "✤" },
+  geo: { label: "岩", icon: "◇" },
+  dendro: { label: "草", icon: "♧" },
+};
+
 export function ResultPanel({
   activeElement,
   artifactSetName,
@@ -87,9 +97,18 @@ export function ResultPanel({
           </span>
         </div>
         <span className="theory-badge">
-          {calculation.moonsign.level === "none"
-            ? "理论值"
-            : `${moonsignLabels[calculation.moonsign.level]} · 理论值`}
+          {[
+            calculation.moonsign.level === "none"
+              ? null
+              : moonsignLabels[calculation.moonsign.level],
+            calculation.hexerei.secretRite ? "魔导·秘仪" : null,
+            calculation.stellarConduct.active
+              ? `星极场·${calculation.stellarConduct.elementalPower} 元素力`
+              : null,
+            "理论值",
+          ]
+            .filter(Boolean)
+            .join(" · ")}
         </span>
       </div>
 
@@ -166,7 +185,7 @@ export function ResultPanel({
         <div className="damage-heading">
           <span>
             <strong>代表技能伤害</strong>
-            <small>单目标 · 按普通直伤或月曜直伤模型分别计算</small>
+            <small>单目标 · 按普通、月曜或星电导直伤模型分别计算</small>
           </span>
           <span className="damage-badge">天赋独立设置</span>
         </div>
@@ -307,12 +326,25 @@ export function ResultPanel({
                 <div className="damage-skill-title">
                   <span>
                     <strong>{skill.name}</strong>
+                    {skill.damageElement !== build.element ? (
+                      <small className="damage-element-badge">
+                        {elementDisplay[skill.damageElement]?.icon ??
+                          skill.damageElement}
+                        {
+                          elementDisplay[skill.damageElement]
+                            ?.label
+                        }
+                        伤害结算
+                      </small>
+                    ) : null}
                     <small>{skill.description}</small>
                   </span>
                   <b>
                     {skill.multiplierLabel}
                     {skill.model === "directLunar"
                       ? " · 月曜直伤"
+                      : skill.model === "directStellar"
+                        ? " · 星电导直伤"
                       : ""}
                   </b>
                 </div>
@@ -356,7 +388,22 @@ export function ResultPanel({
             (skill) => skill.model === "directLunar",
           )
             ? `${moonsignLabels[calculation.moonsign.level]}（${calculation.moonsign.count} 级） · 月曜直伤不进入常规防御区与元素/分类增伤区，各结果按其伤害元素单独结算抗性`
+            : calculation.skills.some(
+                  (skill) => skill.model === "directStellar",
+                )
+              ? `星极场 ${calculation.stellarConduct.elementalPower} 元素力 · 星电导直伤不进入常规防御区与元素/分类增伤区，按伤害元素单独结算抗性`
             : `防御倍率 ${(calculation.defenseMultiplier * 100).toFixed(1)}% · 有效抗性 ${calculation.effectiveResistance.toFixed(1)}% · 抗性倍率 ${(calculation.resistanceMultiplier * 100).toFixed(1)}%`}
+          {calculation.skills.length > 1 &&
+          new Set(
+            calculation.skills.map((s) => s.damageElement),
+          ).size > 1
+            ? `（${calculation.skills
+                .map((s) => s.damageElement)
+                .filter(
+                  (el, i, arr) => arr.indexOf(el) === i,
+                )
+                .join("、")} 伤害分别结算抗性）`
+            : ""}
         </p>
       </section>
 

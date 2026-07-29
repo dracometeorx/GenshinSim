@@ -394,6 +394,7 @@ test("exposes target-only team buffs without applying them to teammates", () => 
     source: {
       characterId: "source",
       moonsign: false,
+      hexerei: false,
       constellation: 0,
       element: "pyro",
       panel: sourcePanel,
@@ -407,12 +408,15 @@ test("exposes target-only team buffs without applying them to teammates", () => 
       element: "hydro",
       burstEnergyCost: 60,
       moonsign: false,
+      hexerei: false,
     },
     party: {
       highestElementalMastery: 1000,
       elements: ["pyro", "hydro", "cryo"],
       moonsignCount: 0,
       moonsignLevel: "none",
+      hexereiCount: 0,
+      hexereiSecretRite: false,
     },
   });
 

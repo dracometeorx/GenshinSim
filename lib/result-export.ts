@@ -25,6 +25,15 @@ export function createResultPayload({
         : result.moonsign.level === "nascent"
           ? `初辉（${result.moonsign.count} 级）`
           : "无",
+    魔导:
+      result.hexerei.count > 0
+        ? `${result.hexerei.count} 名${
+            result.hexerei.secretRite ? "（魔导·秘仪）" : ""
+          }`
+        : "无",
+    星电导: result.stellarConduct.active
+      ? `星极场已建立（${result.stellarConduct.elementalPower} 元素力）`
+      : "未建立星极场",
     武器: `${build.weapon.name} Lv.${build.weapon.level}`,
     圣遗物套装:
       build.artifactSetPieces && build.artifactSetPieces > 0
@@ -51,7 +60,11 @@ export function createResultPayload({
     },
     代表技能伤害: Object.fromEntries(
       result.skills.map((skill) => [
-        skill.name,
+        `${skill.name}${
+          skill.damageElement !== build.element
+            ? `（${skill.damageElement} 伤害）`
+            : ""
+        }`,
         Object.fromEntries(
           skill.variants.map((variant) => [
             variant.label,
@@ -59,6 +72,8 @@ export function createResultPayload({
               模型:
                 variant.model === "directLunar"
                   ? "月曜直伤"
+                  : variant.model === "directStellar"
+                    ? "星电导直伤"
                   : "普通直伤",
               未暴击: variant.nonCrit,
               暴击: variant.crit,

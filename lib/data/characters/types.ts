@@ -16,6 +16,7 @@ export type {
   DamageModel,
   DamageReaction,
   LunarReactionType,
+  StellarReactionType,
 } from "../../damage-types.ts";
 
 export type CharacterPreset = CharacterBase & {
@@ -29,6 +30,14 @@ export type CharacterPreset = CharacterBase & {
   moonsign?: boolean;
   /** Some characters, such as Columbina, raise the party Moonsign by more. */
   moonsignLevels?: number;
+  /**
+   * The character has completed Witch's Homework and is a Hexerei character.
+   * A party containing at least two such characters enables Hexerei:
+   * Secret Rite.
+   */
+  hexerei?: boolean;
+  /** Enables or directly interacts with the Polestar Field. */
+  stellarConduct?: "enabler" | "related";
   panelEffects?: readonly PanelEffect[];
   damageProfile?: CharacterDamageProfile;
   teamBuffs?: readonly TeamBuffDefinition[];

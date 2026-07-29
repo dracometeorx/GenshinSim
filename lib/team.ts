@@ -11,6 +11,7 @@ import type { WeaponPreset } from "./data/weapons/types.ts";
 import { weapons } from "./data/weapons/index.ts";
 import { getArtifactSet } from "./data/artifacts/index.ts";
 import type { DamageSettings } from "./damage-types.ts";
+import { getPolestarElementalDamageBonus } from "./damage.ts";
 import type {
   DamageEffect,
   PanelEffect,
@@ -67,6 +68,57 @@ export function deriveMoonsignState(
   return { count, level };
 }
 
+export function deriveHexereiState(
+  target: CharacterPreset,
+  members: readonly Pick<CalculationTeamMember, "character">[],
+) {
+  const uniqueCharacters = new Map(
+    [target, ...members.map(({ character }) => character)].map(
+      (character) => [character.id, character],
+    ),
+  );
+  const count = [...uniqueCharacters.values()].filter(
+    (character) => character.hexerei,
+  ).length;
+  return { count, secretRite: count >= 2 };
+}
+
+export function deriveStellarConductState(
+  target: CharacterPreset,
+  members: readonly Pick<CalculationTeamMember, "character">[],
+  settings: DamageSettings,
+) {
+  const uniqueCharacters = new Map(
+    [target, ...members.map(({ character }) => character)].map(
+      (character) => [character.id, character],
+    ),
+  );
+  const partyCharacters = [...uniqueCharacters.values()];
+  const enablerCount = partyCharacters.filter(
+    (character) => character.stellarConduct === "enabler",
+  ).length;
+  const hasCryo = partyCharacters.some(
+    (character) => character.element === "cryo",
+  );
+  const hasElectro = partyCharacters.some(
+    (character) => character.element === "electro",
+  );
+  const active = enablerCount > 0 && hasCryo && hasElectro;
+  const rawPower = Number(
+    settings.selections.stellarElementalPower ?? "12",
+  );
+  const elementalPower = active
+    ? Math.min(
+        12,
+        Math.max(
+          0,
+          Number.isFinite(rawPower) ? Math.round(rawPower) : 12,
+        ),
+      )
+    : 0;
+  return { enablerCount, active, elementalPower };
+}
+
 export function createTeamCalculationInput(
   configuration: TeamConfiguration,
   plans: readonly BuildPlan[],
@@ -118,6 +170,7 @@ export function createTeamCalculationInput(
 function calculateStandalonePanel(
   member: Omit<CalculationTeamMember, "slot" | "planId">,
   moonsignLevel: MoonsignLevel,
+  hexereiSecretRite: boolean,
 ) {
   const constellationState = getConstellationCalculationState(
     member.character,
@@ -130,7 +183,12 @@ function calculateStandalonePanel(
       member.build.artifactSetPieces,
       member.build.artifactSetSelections,
       true,
-      { moonsignLevel },
+      {
+        moonsignLevel,
+        witchHomeworkCompleted: Boolean(member.character.hexerei),
+        hexereiSecretRite,
+        characterElement: member.character.element,
+      },
     ),
     panelEffects: [
       ...(member.weapon.passive.panelEffects ?? []),
@@ -212,12 +270,23 @@ function createContext(
     elements: readonly BuildInput["element"][];
     moonsignCount: number;
     moonsignLevel: MoonsignLevel;
+    hexereiCount: number;
+    hexereiSecretRite: boolean;
+    stellarConductActive: boolean;
+    stellarConductEnablerCount: number;
+    stellarElementalPower: number;
   },
 ): TeamBuffEvaluationContext {
   return {
     source: {
       characterId: source.character.id,
       moonsign: getCharacterMoonsignLevels(source.character) > 0,
+      hexerei: Boolean(source.character.hexerei),
+      stellarConductEnabler:
+        source.character.stellarConduct === "enabler",
+      stellarConductRelated: Boolean(
+        source.character.stellarConduct,
+      ),
       constellation: source.constellation,
       element: source.element,
       panel: source.panel,
@@ -231,6 +300,12 @@ function createContext(
       element: target.build.element,
       burstEnergyCost: target.character.burstEnergyCost ?? 60,
       moonsign: getCharacterMoonsignLevels(target.character) > 0,
+      hexerei: Boolean(target.character.hexerei),
+      stellarConductEnabler:
+        target.character.stellarConduct === "enabler",
+      stellarConductRelated: Boolean(
+        target.character.stellarConduct,
+      ),
     },
     party,
   };
@@ -270,6 +345,31 @@ const moonsignTeamBonus: TeamBuffDefinition = {
   },
 };
 
+const polestarFieldElementalBonus: TeamBuffDefinition = {
+  id: "polestar-field-elemental-bonus",
+  name: "星极场·冰雷增伤",
+  description:
+    "星极场按当前元素力提高冰元素与雷元素普通伤害；该增益不进入星电导直伤乘区。",
+  appliesToSelf: true,
+  evaluate: ({ target, party }) => {
+    if (
+      !party.stellarConductActive ||
+      (target.element !== "cryo" && target.element !== "electro")
+    ) {
+      return [];
+    }
+    return [
+      {
+        kind: "panel",
+        stat: "elementalDmg",
+        value: getPolestarElementalDamageBonus(
+          party.stellarElementalPower ?? 0,
+        ),
+      },
+    ];
+  },
+};
+
 export function resolveTeamBuffs({
   target,
   targetConstellation,
@@ -292,6 +392,12 @@ export function resolveTeamBuffs({
     team?.configuration ?? createEmptyTeamConfiguration();
   const members = team?.members ?? [];
   const moonsign = deriveMoonsignState(target.character, members);
+  const hexerei = deriveHexereiState(target.character, members);
+  const stellarConduct = deriveStellarConductState(
+    target.character,
+    members,
+    settings,
+  );
   const sourcePanels = members.map((member) => {
     const constellationState = getConstellationCalculationState(
       member.character,
@@ -300,7 +406,11 @@ export function resolveTeamBuffs({
     );
     return {
       member,
-      panel: calculateStandalonePanel(member, moonsign.level),
+      panel: calculateStandalonePanel(
+        member,
+        moonsign.level,
+        hexerei.secretRite,
+      ),
       settings: constellationState.settings,
     };
   });
@@ -315,6 +425,11 @@ export function resolveTeamBuffs({
     ],
     moonsignCount: moonsign.count,
     moonsignLevel: moonsign.level,
+    hexereiCount: hexerei.count,
+    hexereiSecretRite: hexerei.secretRite,
+    stellarConductActive: stellarConduct.active,
+    stellarConductEnablerCount: stellarConduct.enablerCount,
+    stellarElementalPower: stellarConduct.elementalPower,
   };
   const buffs: ResolvedTeamBuff[] = [];
   const targetContext = createContext(
@@ -391,6 +506,12 @@ export function resolveTeamBuffs({
       context: targetContext,
     });
   }
+  addResolvedBuff(polestarFieldElementalBonus, {
+    id: `reaction:${polestarFieldElementalBonus.id}`,
+    sourceKind: "reaction",
+    sourceName: "星极场",
+    context: targetContext,
+  });
 
   for (const definition of target.weapon.passive.teamBuffs ?? []) {
     if (!definition.appliesToSelf) continue;
@@ -531,6 +652,11 @@ export function resolveTeamBuffs({
                     (damageTarget.model?.kind === "directLunar" &&
                       modifier.lunarReactions.includes(
                         damageTarget.model.reaction,
+                      ))) &&
+                  (!modifier.stellarReactions?.length ||
+                    (damageTarget.model?.kind === "directStellar" &&
+                      modifier.stellarReactions.includes(
+                        damageTarget.model.reaction,
                       ))),
               )
               .map((modifier) => ({
@@ -540,6 +666,7 @@ export function resolveTeamBuffs({
                 element: modifier.element,
                 reactions: modifier.reactions,
                 lunarReactions: modifier.lunarReactions,
+                stellarReactions: modifier.stellarReactions,
               })),
         },
       ]
@@ -552,6 +679,15 @@ export function resolveTeamBuffs({
     moonsign: {
       count: party.moonsignCount,
       level: party.moonsignLevel,
+    },
+    hexerei: {
+      count: party.hexereiCount,
+      secretRite: party.hexereiSecretRite,
+    },
+    stellarConduct: {
+      enablerCount: party.stellarConductEnablerCount,
+      active: party.stellarConductActive,
+      elementalPower: party.stellarElementalPower,
     },
   };
 }

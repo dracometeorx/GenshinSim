@@ -17,6 +17,7 @@ import type { ArtifactSetPreset } from "./data/artifacts/types.ts";
 import type { CharacterPreset } from "./data/characters/types.ts";
 import type { WeaponPreset } from "./data/weapons/types.ts";
 import {
+  deriveHexereiState,
   deriveMoonsignState,
   resolveTeamBuffs,
   type TeamCalculationInput,
@@ -26,6 +27,8 @@ import type { ResolvedTeamBuff } from "./team-types.ts";
 export type CalculationWarningCode =
   | "INCOMPATIBLE_BLIZZARD_MELT_CONDITION"
   | "LUNAR_TRANSFORMATIVE_DAMAGE_EXCLUDED"
+  | "STELLAR_REACTION_TRIGGER_DAMAGE_EXCLUDED"
+  | "STELLAR_CONDUCT_INACTIVE"
   | "CHARACTER_BUILD_NORMALIZED";
 
 export interface CalculationWarning {
@@ -54,6 +57,15 @@ export interface CalculationResult extends DamageCalculationResult {
   moonsign: {
     count: number;
     level: "none" | "nascent" | "ascendant";
+  };
+  hexerei: {
+    count: number;
+    secretRite: boolean;
+  };
+  stellarConduct: {
+    enablerCount: number;
+    active: boolean;
+    elementalPower: number;
   };
   warnings: CalculationWarning[];
 }
@@ -119,6 +131,10 @@ export function calculateBuild({
     character,
     team?.members ?? [],
   );
+  const hexerei = deriveHexereiState(
+    character,
+    team?.members ?? [],
+  );
 
   if (characterMismatch || elementMismatch) {
     warnings.push({
@@ -137,14 +153,24 @@ export function calculateBuild({
     normalizedBuild.artifactSetPieces,
     normalizedBuild.artifactSetSelections,
     false,
-    { moonsignLevel: moonsign.level },
+    {
+      moonsignLevel: moonsign.level,
+      witchHomeworkCompleted: Boolean(character.hexerei),
+      hexereiSecretRite: hexerei.secretRite,
+      characterElement: character.element,
+    },
   );
   const combatArtifactModifiers = resolveArtifactModifiers(
     artifactSet,
     normalizedBuild.artifactSetPieces,
     normalizedBuild.artifactSetSelections,
     true,
-    { moonsignLevel: moonsign.level },
+    {
+      moonsignLevel: moonsign.level,
+      witchHomeworkCompleted: Boolean(character.hexerei),
+      hexereiSecretRite: hexerei.secretRite,
+      characterElement: character.element,
+    },
   );
   const staticPanel = calculateFinalPanel(normalizedBuild, {
     artifactModifiers: staticArtifactModifiers,
@@ -192,6 +218,9 @@ export function calculateBuild({
     ],
     constellation,
     resolvedTeam.moonsign.level,
+    resolvedTeam.hexerei.secretRite,
+    resolvedTeam.stellarConduct.active,
+    resolvedTeam.stellarConduct.elementalPower,
   );
 
   const hasMeltVariant = damage.skills.some((skill) =>
@@ -205,6 +234,25 @@ export function calculateBuild({
       code: "LUNAR_TRANSFORMATIVE_DAMAGE_EXCLUDED",
       message:
         "月曜结果仅包含技能直接造成的月反应伤害，不包含雷暴云、草原核/月绽放产物或月笼等反应触发伤害。",
+    });
+  }
+  const hasDirectStellarDamage = damage.skills.some(
+    (skill) => skill.model === "directStellar",
+  );
+  if (hasDirectStellarDamage) {
+    warnings.push({
+      code: "STELLAR_REACTION_TRIGGER_DAMAGE_EXCLUDED",
+      message:
+        "星电导反应本身不造成伤害；结果仅包含角色天赋或技能直接造成的星电导伤害。",
+    });
+  } else if (
+    character.stellarConduct &&
+    !resolvedTeam.stellarConduct.active
+  ) {
+    warnings.push({
+      code: "STELLAR_CONDUCT_INACTIVE",
+      message:
+        "队伍需同时包含桑多涅、冰元素角色与雷元素角色才能建立星极场；当前不显示星电导直伤。",
     });
   }
   const blizzardState =
@@ -231,6 +279,8 @@ export function calculateBuild({
     effectiveSettings,
     teamBuffs: resolvedTeam.buffs,
     moonsign: resolvedTeam.moonsign,
+    hexerei: resolvedTeam.hexerei,
+    stellarConduct: resolvedTeam.stellarConduct,
     warnings,
   };
 }

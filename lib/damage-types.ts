@@ -20,6 +20,8 @@ export type LunarReactionType =
   | "lunarBloom"
   | "lunarCrystallize";
 
+export type StellarReactionType = "stellarConduct";
+
 export type DamageModel =
   | { kind: "standard" }
   | {
@@ -30,9 +32,16 @@ export type DamageModel =
        * Lunar-Charged/Bloom use 3, while Lunar-Crystallize uses 1.6.
        */
       directMultiplier?: number;
+    }
+  | {
+      kind: "directStellar";
+      reaction: StellarReactionType;
     };
 
-export type DamageVariantKey = DamageReaction | LunarReactionType;
+export type DamageVariantKey =
+  | DamageReaction
+  | LunarReactionType
+  | StellarReactionType;
 
 export interface DamageControl {
   key: string;
@@ -62,12 +71,19 @@ export interface DamageTarget {
   extraLunarReactionDamageBonus?: number;
   extraLunarAdditiveBaseDamage?: number;
   extraLunarElevation?: number;
+  extraStellarBaseDamageBonus?: number;
+  extraStellarReactionDamageBonus?: number;
+  extraStellarAdditiveBaseDamage?: number;
+  extraStellarElevation?: number;
 }
 
 export interface CharacterDamageContext {
   build: BuildInput;
   constellation: number;
   moonsignLevel: "none" | "nascent" | "ascendant";
+  hexereiSecretRite: boolean;
+  stellarConductActive: boolean;
+  stellarElementalPower: number;
   panel: FinalPanel;
   settings: DamageSettings;
   selection(key: string): string;

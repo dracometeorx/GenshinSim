@@ -267,3 +267,32 @@ test("uses distinct custom plans for a custom target and teammates", () => {
   assert.notEqual(secondTeammatePlanId, targetPlanId);
   assert.notEqual(firstTeammatePlanId, secondTeammatePlanId);
 });
+
+test("opens a compared plan across character boundaries atomically", () => {
+  let state = {
+    ...createInitialBuildPlansState(),
+    hydrated: true,
+  };
+  const ayakaPlanId = state.activePlanId;
+  state = buildPlansReducer(state, {
+    type: "switch-character",
+    characterId: "hutao",
+  });
+  const hutaoPlanId = state.activePlanId;
+  state = buildPlansReducer(state, {
+    type: "switch-character",
+    characterId: "ayaka",
+  });
+
+  assert.equal(state.activePlanId, ayakaPlanId);
+  state = buildPlansReducer(state, {
+    type: "open-plan",
+    planId: hutaoPlanId,
+  });
+
+  assert.equal(state.activePlanId, hutaoPlanId);
+  assert.equal(state.draft.characterId, "hutao");
+  assert.equal(state.store.activeCharacterId, "hutao");
+  assert.equal(state.store.activePlanIds.hutao, hutaoPlanId);
+  assert.equal(state.status, "已打开「胡桃方案 1」");
+});
