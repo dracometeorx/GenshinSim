@@ -13,6 +13,10 @@ import { linnea } from "./linnea.ts";
 import { lohen } from "./lohen.ts";
 import { mona } from "./mona.ts";
 import { nahida } from "./nahida.ts";
+import { xilonen } from "./xilonen.ts";
+import { citlali } from "./citlali.ts";
+import { zhongli } from "./zhongli.ts";
+import { furina } from "./furina.ts";
 import { nefer } from "./nefer.ts";
 import { nicole } from "./nicole.ts";
 import { prune } from "./prune.ts";
@@ -38,6 +42,10 @@ export const characters: CharacterPreset[] = [
   hutao,
   raiden,
   nahida,
+  xilonen,
+  citlali,
+  zhongli,
+  furina,
   columbina,
   flins,
   ineffa,

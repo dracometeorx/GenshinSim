@@ -13,6 +13,7 @@ const sourceLabels = {
   weapon: "武器",
   artifact: "圣遗物",
   resonance: "共鸣",
+  reaction: "反应",
 } as const;
 
 export function TeamConfigurationPanel({

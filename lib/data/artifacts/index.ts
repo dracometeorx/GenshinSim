@@ -12,6 +12,14 @@ import { celestialGift } from "./celestial-gift.ts";
 import { tenacityOfTheMillelith } from "./tenacity-of-the-millelith.ts";
 import { viridescentVenerer } from "./viridescent-venerer.ts";
 import { delusionOfImmolatedShadow } from "./delusion-of-immolated-shadow.ts";
+import { archaicPetra } from "./archaic-petra.ts";
+import { instructor } from "./instructor.ts";
+import { noblesseOblige } from "./noblesse-oblige.ts";
+import { scrollOfTheHeroOfCinderCity } from "./scroll-of-the-hero-of-cinder-city.ts";
+import { songOfDaysPast } from "./song-of-days-past.ts";
+import { maidenBeloved } from "./maiden-beloved.ts";
+import { theExile } from "./the-exile.ts";
+import { scholar } from "./scholar.ts";
 import type {
   ArtifactModifierContext,
   ArtifactModifier,
@@ -40,6 +48,14 @@ export const artifactSets: ArtifactSetPreset[] = [
   celestialGift,
   viridescentVenerer,
   tenacityOfTheMillelith,
+  noblesseOblige,
+  instructor,
+  archaicPetra,
+  scrollOfTheHeroOfCinderCity,
+  songOfDaysPast,
+  maidenBeloved,
+  theExile,
+  scholar,
   delusionOfImmolatedShadow,
 ];
 

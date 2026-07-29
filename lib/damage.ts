@@ -433,6 +433,19 @@ export function calculateRepresentativeDamage(
         },
         0,
       );
+      const artifactAdditiveBaseDamage = artifactModifiers.reduce(
+        (total, modifier) => {
+          if (modifier.kind !== "additiveBaseDamage") return total;
+          if (
+            modifier.category &&
+            modifier.category !== target.category
+          ) {
+            return total;
+          }
+          return total + Math.max(0, modifier.value);
+        },
+        0,
+      );
 
       return {
         id: target.id,
@@ -537,7 +550,8 @@ export function calculateRepresentativeDamage(
               effectCritDmg +
               (target.extraCritDmg ?? 0),
           );
-          let baseDamage = target.baseDamage;
+          let baseDamage =
+            target.baseDamage + artifactAdditiveBaseDamage;
           let reactionMultiplier = 1;
           const additiveBaseDamage = modifiers.reduce(
             (total, modifier) =>
