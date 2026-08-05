@@ -223,10 +223,13 @@ export function calculateBuild({
     resolvedTeam.stellarConduct.elementalPower,
   );
 
-  const hasMeltVariant = damage.skills.some((skill) =>
+  const selectedSkills = damage.selectedSkill
+    ? [damage.selectedSkill]
+    : [];
+  const hasMeltVariant = selectedSkills.some((skill) =>
     skill.variants.some((variant) => variant.reaction === "melt"),
   );
-  const hasDirectLunarDamage = damage.skills.some(
+  const hasDirectLunarDamage = selectedSkills.some(
     (skill) => skill.model === "directLunar",
   );
   if (hasDirectLunarDamage) {
@@ -236,7 +239,7 @@ export function calculateBuild({
         "月曜结果仅包含技能直接造成的月反应伤害，不包含雷暴云、草原核/月绽放产物或月笼等反应触发伤害。",
     });
   }
-  const hasDirectStellarDamage = damage.skills.some(
+  const hasDirectStellarDamage = selectedSkills.some(
     (skill) => skill.model === "directStellar",
   );
   if (hasDirectStellarDamage) {

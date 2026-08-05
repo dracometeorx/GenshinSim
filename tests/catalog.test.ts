@@ -1,8 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import type { BuildInput } from "../lib/calculator.ts";
+import { calculateFinalPanel } from "../lib/calculator.ts";
+import {
+  calculateRepresentativeDamage,
+  defaultDamageSettings,
+} from "../lib/damage.ts";
 import { artifactSets } from "../lib/data/artifacts/index.ts";
 import { characters } from "../lib/data/characters/index.ts";
+import {
+  getRepresentativeSkillCharacterIds,
+  getRepresentativeSkillId,
+} from "../lib/data/characters/representative-skills.ts";
 import {
   getCompatibleWeapons,
   isWeaponCompatible,
@@ -133,6 +143,70 @@ test("exports every character preset with a unique id", () => {
       "any",
     ],
   );
+});
+
+test("defines one fixed representative skill for every combat character", () => {
+  assert.deepEqual(
+    [...getRepresentativeSkillCharacterIds()].sort(),
+    characters
+      .filter((character) => character.damageProfile)
+      .map((character) => character.id)
+      .sort(),
+  );
+
+  for (const character of characters.filter(
+    (candidate) => candidate.damageProfile,
+  )) {
+    const weapon =
+      weapons.find(
+        (candidate) => candidate.id === character.defaultWeaponId,
+      ) ?? weapons[0];
+    const build: BuildInput = {
+      element: character.element,
+      character,
+      weapon,
+      artifactSetId: "none",
+      artifactSetPieces: 0,
+      artifactSetSelections: {},
+      artifact: {
+        flatHp: 0,
+        flatAtk: 0,
+        flatDef: 0,
+        critRate: 0,
+        critDmg: 0,
+        energyRecharge: 0,
+        elementalMastery: 0,
+        elementalDmg: 0,
+        healingBonus: 0,
+      },
+      talentBonuses: {
+        skill: 0,
+        burst: 0,
+        normal: 0,
+        charged: 0,
+        plunge: 0,
+      },
+    };
+    const result = calculateRepresentativeDamage(
+      character,
+      build,
+      calculateFinalPanel(build),
+      defaultDamageSettings,
+      [],
+      [],
+      0,
+      "ascendant",
+      true,
+      true,
+      12,
+    );
+
+    assert.equal(
+      result.selectedSkill?.id,
+      getRepresentativeSkillId(character.id),
+      character.id,
+    );
+  }
 });
 
 test("exports every weapon preset with a unique id", () => {
@@ -401,6 +475,8 @@ test("exports every artifact set preset with a unique id", () => {
       "crimson-witch",
       "shimenawa",
       "emblem",
+      "golden-troupe",
+      "gilded-dreams",
       "deepwood",
       "silken-moons-serenade",
       "night-of-skys-unveiling",

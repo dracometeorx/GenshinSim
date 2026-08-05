@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { BuildPlan } from "../../lib/build-plans";
-import { createBuildComparisonEntries } from "../../lib/build-comparison";
+import { createCharacterBuildComparisonEntries } from "../../lib/build-comparison";
 
 const elementMeta = {
   cryo: { label: "冰", icon: "❄" },
@@ -33,12 +33,14 @@ function formatUpdatedAt(value: string) {
 
 export function BuildComparison({
   activePlanId,
+  currentCharacterId,
   hydrated,
   plans,
   onBack,
   onEditPlan,
 }: {
   activePlanId: string;
+  currentCharacterId: string;
   hydrated: boolean;
   plans: BuildPlan[];
   onBack: () => void;
@@ -46,21 +48,15 @@ export function BuildComparison({
 }) {
   const [excludedPlanIds, setExcludedPlanIds] = useState<string[]>([]);
   const [query, setQuery] = useState("");
-  const [characterFilter, setCharacterFilter] = useState("all");
   const entries = useMemo(
-    () => createBuildComparisonEntries(plans),
-    [plans],
-  );
-  const availableCharacters = useMemo(
     () =>
-      [...new Map(
-        entries.map((entry) => [
-          entry.characterId,
-          entry.characterName,
-        ]),
-      )].map(([id, name]) => ({ id, name })),
-    [entries],
+      createCharacterBuildComparisonEntries(
+        plans,
+        currentCharacterId,
+      ),
+    [currentCharacterId, plans],
   );
+  const currentCharacterName = entries[0]?.characterName ?? "当前角色";
   const excluded = useMemo(
     () => new Set(excludedPlanIds),
     [excludedPlanIds],
@@ -69,13 +65,8 @@ export function BuildComparison({
     const keyword = query.trim().toLocaleLowerCase("zh-CN");
     return entries.filter(
       (entry) =>
-        (characterFilter === "all" ||
-          entry.characterId === characterFilter) &&
         (!keyword ||
           entry.plan.name.toLocaleLowerCase("zh-CN").includes(keyword) ||
-          entry.characterName
-            .toLocaleLowerCase("zh-CN")
-            .includes(keyword) ||
           entry.weaponName
             .toLocaleLowerCase("zh-CN")
             .includes(keyword) ||
@@ -83,7 +74,7 @@ export function BuildComparison({
             .toLocaleLowerCase("zh-CN")
             .includes(keyword)),
     );
-  }, [characterFilter, entries, query]);
+  }, [entries, query]);
   const selectedEntries = entries.filter(
     (entry) => !excluded.has(entry.plan.id),
   );
@@ -111,10 +102,10 @@ export function BuildComparison({
       <header className="comparison-hero">
         <div>
           <span className="comparison-kicker">BUILD COMPARISON</span>
-          <h1>方案伤害对比</h1>
+          <h1>{currentCharacterName}方案伤害对比</h1>
           <p>
-            使用各方案保存的角色、队伍、武器、圣遗物与增益开关重新计算。
-            不同角色的代表技能口径可能不同，请结合技能名称比较。
+            仅比较当前角色的已保存方案，使用各方案保存的队伍、武器、
+            圣遗物与增益开关重新计算固定代表技能。
           </p>
         </div>
         <button className="comparison-back" type="button" onClick={onBack}>
@@ -155,7 +146,7 @@ export function BuildComparison({
         <header>
           <span>
             <strong>最高期望伤害排行</strong>
-            <small>每个方案取所有代表技能与反应结果中的最高期望值</small>
+            <small>每个方案取预设代表技能各反应结果中的最高期望值</small>
           </span>
           <b>{rankedEntries.length} 项</b>
         </header>
@@ -205,23 +196,9 @@ export function BuildComparison({
           <input
             type="search"
             value={query}
-            placeholder="搜索方案、角色、武器或圣遗物"
+            placeholder="搜索方案、武器或圣遗物"
             onChange={(event) => setQuery(event.target.value)}
           />
-        </label>
-        <label className="comparison-filter">
-          <span>角色</span>
-          <select
-            value={characterFilter}
-            onChange={(event) => setCharacterFilter(event.target.value)}
-          >
-            <option value="all">全部角色</option>
-            {availableCharacters.map((character) => (
-              <option key={character.id} value={character.id}>
-                {character.name}
-              </option>
-            ))}
-          </select>
         </label>
         <div className="comparison-selection-actions">
           <button

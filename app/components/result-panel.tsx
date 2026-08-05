@@ -37,6 +37,16 @@ const moonsignLabels = {
   ascendant: "月兆·满辉",
 } as const;
 
+const lunarReactionBonusLabels = [
+  { key: "lunarCharged" as const, label: "月感电" },
+  { key: "lunarBloom" as const, label: "月绽放" },
+  { key: "lunarCrystallize" as const, label: "月结晶" },
+];
+
+const stellarReactionBonusLabels = [
+  { key: "stellarConduct" as const, label: "星电导" },
+];
+
 const elementDisplay: Record<string, { label: string; icon: string }> = {
   cryo: { label: "冰", icon: "❄" },
   hydro: { label: "水", icon: "◉" },
@@ -79,6 +89,9 @@ export function ResultPanel({
   setDamageSettings: Dispatch<SetStateAction<DamageSettings>>;
 }) {
   const panel = calculation.panel;
+  const displayedSkills = calculation.selectedSkill
+    ? [calculation.selectedSkill]
+    : [];
 
   return (
     <aside className="panel result-panel" aria-live="polite">
@@ -171,13 +184,56 @@ export function ResultPanel({
       </dl>
 
       <div className="bonus-summary">
-        <span>分类伤害加成</span>
-        <div>
-          {talentLabels.map((talent) => (
-            <b key={talent.key}>
-              {talent.label} {panel.talentBonuses[talent.key]}%
-            </b>
-          ))}
+        <div className="bonus-summary-group">
+          <span>分类伤害加成</span>
+          <div>
+            {talentLabels.map((talent) => (
+              <b key={talent.key}>
+                {talent.label}{" "}
+                {formatNumber(
+                  calculation.damageBonusSummary.categories[
+                    talent.key
+                  ],
+                  1,
+                )}
+                %
+              </b>
+            ))}
+          </div>
+        </div>
+        <div className="bonus-summary-group">
+          <span>月反应伤害提升</span>
+          <div>
+            {lunarReactionBonusLabels.map((reaction) => (
+              <b key={reaction.key}>
+                {reaction.label}{" "}
+                {formatNumber(
+                  calculation.damageBonusSummary.lunarReactions[
+                    reaction.key
+                  ],
+                  1,
+                )}
+                %
+              </b>
+            ))}
+          </div>
+        </div>
+        <div className="bonus-summary-group">
+          <span>星反应伤害提升</span>
+          <div>
+            {stellarReactionBonusLabels.map((reaction) => (
+              <b key={reaction.key}>
+                {reaction.label}{" "}
+                {formatNumber(
+                  calculation.damageBonusSummary.stellarReactions[
+                    reaction.key
+                  ],
+                  1,
+                )}
+                %
+              </b>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -319,9 +375,9 @@ export function ResultPanel({
           </section>
         </div>
 
-        {calculation.skills.length ? (
+        {displayedSkills.length ? (
           <div className="damage-skills">
-            {calculation.skills.map((skill) => (
+            {displayedSkills.map((skill) => (
               <article className="damage-skill" key={skill.id}>
                 <div className="damage-skill-title">
                   <span>
@@ -384,20 +440,20 @@ export function ResultPanel({
         )}
 
         <p className="damage-formula-note">
-          {calculation.skills.some(
+          {displayedSkills.some(
             (skill) => skill.model === "directLunar",
           )
             ? `${moonsignLabels[calculation.moonsign.level]}（${calculation.moonsign.count} 级） · 月曜直伤不进入常规防御区与元素/分类增伤区，各结果按其伤害元素单独结算抗性`
-            : calculation.skills.some(
+            : displayedSkills.some(
                   (skill) => skill.model === "directStellar",
                 )
               ? `星极场 ${calculation.stellarConduct.elementalPower} 元素力 · 星电导直伤不进入常规防御区与元素/分类增伤区，按伤害元素单独结算抗性`
             : `防御倍率 ${(calculation.defenseMultiplier * 100).toFixed(1)}% · 有效抗性 ${calculation.effectiveResistance.toFixed(1)}% · 抗性倍率 ${(calculation.resistanceMultiplier * 100).toFixed(1)}%`}
-          {calculation.skills.length > 1 &&
+          {displayedSkills.length > 1 &&
           new Set(
-            calculation.skills.map((s) => s.damageElement),
+            displayedSkills.map((s) => s.damageElement),
           ).size > 1
-            ? `（${calculation.skills
+            ? `（${displayedSkills
                 .map((s) => s.damageElement)
                 .filter(
                   (el, i, arr) => arr.indexOf(el) === i,

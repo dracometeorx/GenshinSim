@@ -1,9 +1,14 @@
-import type { BuildInput, FinalPanel } from "./calculator.ts";
+import type {
+  BuildInput,
+  FinalPanel,
+  TalentBonuses,
+} from "./calculator.ts";
 import type {
   CharacterDamageProfile,
   CharacterPreset,
 } from "./data/characters/types.ts";
 import type { ArtifactModifier } from "./data/artifacts/types.ts";
+import { getRepresentativeSkillId } from "./data/characters/representative-skills.ts";
 import type {
   DamageReaction,
   DamageSettings,
@@ -56,10 +61,36 @@ export interface RepresentativeDamageResult {
 
 export interface DamageCalculationResult {
   skills: RepresentativeDamageResult[];
+  selectedSkill: RepresentativeDamageResult | null;
+  damageBonusSummary: DamageBonusSummary;
   defenseMultiplier: number;
   resistanceMultiplier: number;
   effectiveResistance: number;
 }
+
+export interface DamageBonusSummary {
+  categories: TalentBonuses;
+  lunarReactions: Record<LunarReactionType, number>;
+  stellarReactions: Record<StellarReactionType, number>;
+}
+
+const talentCategories: Array<keyof TalentBonuses> = [
+  "skill",
+  "burst",
+  "normal",
+  "charged",
+  "plunge",
+];
+
+const lunarReactionTypes: LunarReactionType[] = [
+  "lunarCharged",
+  "lunarBloom",
+  "lunarCrystallize",
+];
+
+const stellarReactionTypes: StellarReactionType[] = [
+  "stellarConduct",
+];
 
 export const defaultDamageSettings: DamageSettings = {
   enemyLevel: 105,
@@ -276,6 +307,180 @@ function roundDamage(value: number) {
   return Math.max(0, Math.round(value));
 }
 
+function roundBonus(value: number) {
+  return Math.round(value * 10) / 10;
+}
+
+function createSummaryTarget(
+  category: keyof TalentBonuses,
+  model: NonNullable<DamageTarget["model"]> = { kind: "standard" },
+): DamageTarget {
+  return {
+    id: `damage-bonus-summary-${category}-${model.kind}`,
+    name: "伤害加成摘要",
+    description: "用于汇总当前条件下的伤害加成。",
+    multiplierLabel: "0%",
+    baseDamage: 0,
+    category,
+    reactions: model.kind === "standard" ? ["none"] : [],
+    model,
+  };
+}
+
+function calculateDamageBonusSummary({
+  targets,
+  build,
+  panel,
+  settings,
+  artifactModifiers,
+  damageEffects,
+}: {
+  targets: readonly DamageTarget[];
+  build: BuildInput;
+  panel: FinalPanel;
+  settings: DamageSettings;
+  artifactModifiers: readonly ArtifactModifier[];
+  damageEffects: readonly DamageEffect[];
+}): DamageBonusSummary {
+  const evaluate = (target: DamageTarget) =>
+    evaluateDamageEffects(damageEffects, {
+      build,
+      panel,
+      target,
+      settings,
+      refinementIndex: getRefinementIndex(build.weapon.refinement),
+      weaponSelections: build.weaponPassiveSelections ?? {},
+    });
+  const artifactCategoryBonus = (
+    category: keyof TalentBonuses,
+    element: BuildInput["element"],
+  ) =>
+    artifactModifiers.reduce(
+      (total, modifier) =>
+        modifier.kind === "damageBonus" &&
+        (!modifier.category || modifier.category === category) &&
+        (!modifier.element || modifier.element === element)
+          ? total + Math.max(0, modifier.value)
+          : total,
+      0,
+    );
+  const categories = Object.fromEntries(
+    talentCategories.map((category) => {
+      const target =
+        targets.find(
+          (candidate) =>
+            (candidate.model?.kind ?? "standard") === "standard" &&
+            candidate.category === category,
+        ) ?? createSummaryTarget(category);
+      const targetElement = target.damageElement ?? build.element;
+      const effectBonus = evaluate(target).reduce(
+        (total, modifier) =>
+          modifier.stat === "damageBonus" &&
+          (!modifier.category || modifier.category === category) &&
+          (!modifier.element || modifier.element === targetElement) &&
+          !modifier.lunarReactions?.length &&
+          !modifier.stellarReactions?.length &&
+          (!modifier.reactions?.length ||
+            modifier.reactions.includes("none"))
+            ? total + modifier.value
+            : total,
+        0,
+      );
+      return [
+        category,
+        roundBonus(
+          panel.talentBonuses[category] +
+            artifactCategoryBonus(category, targetElement) +
+            effectBonus +
+            (target.extraDamageBonus ?? 0),
+        ),
+      ];
+    }),
+  ) as TalentBonuses;
+  const lunarReactions = Object.fromEntries(
+    lunarReactionTypes.map((reaction) => {
+      const target =
+        targets.find(
+          (candidate) =>
+            candidate.model?.kind === "directLunar" &&
+            candidate.model.reaction === reaction,
+        ) ??
+        createSummaryTarget("skill", {
+          kind: "directLunar",
+          reaction,
+        });
+      const artifactBonus = artifactModifiers.reduce(
+        (total, modifier) =>
+          modifier.kind === "lunarDamageBonus" &&
+          (!modifier.lunarReactions?.length ||
+            modifier.lunarReactions.includes(reaction))
+            ? total + Math.max(0, modifier.value)
+            : total,
+        0,
+      );
+      const effectBonus = evaluate(target).reduce(
+        (total, modifier) =>
+          modifier.stat === "lunarReactionDamageBonus" &&
+          (!modifier.lunarReactions?.length ||
+            modifier.lunarReactions.includes(reaction))
+            ? total + Math.max(0, modifier.value)
+            : total,
+        0,
+      );
+      return [
+        reaction,
+        roundBonus(
+          artifactBonus +
+            effectBonus +
+            (target.extraLunarReactionDamageBonus ?? 0),
+        ),
+      ];
+    }),
+  ) as Record<LunarReactionType, number>;
+  const stellarReactions = Object.fromEntries(
+    stellarReactionTypes.map((reaction) => {
+      const target =
+        targets.find(
+          (candidate) =>
+            candidate.model?.kind === "directStellar" &&
+            candidate.model.reaction === reaction,
+        ) ??
+        createSummaryTarget("skill", {
+          kind: "directStellar",
+          reaction,
+        });
+      const artifactBonus = artifactModifiers.reduce(
+        (total, modifier) =>
+          modifier.kind === "stellarDamageBonus" &&
+          (!modifier.stellarReactions?.length ||
+            modifier.stellarReactions.includes(reaction))
+            ? total + Math.max(0, modifier.value)
+            : total,
+        0,
+      );
+      const effectBonus = evaluate(target).reduce(
+        (total, modifier) =>
+          modifier.stat === "stellarReactionDamageBonus" &&
+          (!modifier.stellarReactions?.length ||
+            modifier.stellarReactions.includes(reaction))
+            ? total + Math.max(0, modifier.value)
+            : total,
+        0,
+      );
+      return [
+        reaction,
+        roundBonus(
+          artifactBonus +
+            effectBonus +
+            (target.extraStellarReactionDamageBonus ?? 0),
+        ),
+      ];
+    }),
+  ) as Record<StellarReactionType, number>;
+
+  return { categories, lunarReactions, stellarReactions };
+}
+
 function buildTargets(
   character: CharacterPreset,
   build: BuildInput,
@@ -335,6 +540,10 @@ export function calculateRepresentativeDamage(
     stellarConductActive,
     stellarElementalPower,
   );
+  const representativeSkillId = getRepresentativeSkillId(character.id);
+  const selectedTarget = representativeSkillId
+    ? targets.find((target) => target.id === representativeSkillId) ?? null
+    : targets[0] ?? null;
 
   // 收集所有目标涉及的伤害元素，按元素预计算圣遗物抗性削减
   const damageElements = new Set<BuildInput["element"]>();
@@ -370,10 +579,12 @@ export function calculateRepresentativeDamage(
   }));
 
   // 概览级防御/抗性（使用第一个目标的伤害元素，仅用于摘要展示）
-  const firstTarget = targets[0];
+  const firstTarget = selectedTarget;
   const firstElement = firstTarget?.damageElement ?? build.element;
   const firstTargetModifiers =
-    targetsWithModifiers[0]?.modifiers.filter(
+    targetsWithModifiers
+      .find(({ target }) => target.id === firstTarget?.id)
+      ?.modifiers.filter(
       (modifier) =>
         !modifier.reactions?.length &&
         !modifier.lunarReactions?.length &&
@@ -669,8 +880,22 @@ export function calculateRepresentativeDamage(
     },
   );
 
+  const damageBonusSummary = calculateDamageBonusSummary({
+    targets,
+    build,
+    panel,
+    settings,
+    artifactModifiers,
+    damageEffects,
+  });
+  const selectedSkill =
+    skills.find((skill) => skill.id === selectedTarget?.id) ??
+    null;
+
   return {
     skills,
+    selectedSkill,
+    damageBonusSummary,
     defenseMultiplier,
     resistanceMultiplier,
     effectiveResistance,

@@ -1,0 +1,44 @@
+const representativeSkillIds: Record<string, string> = {
+  ayaka: "ayaka-burst",
+  hutao: "hutao-charged",
+  raiden: "raiden-burst",
+  nahida: "nahida-tri-karma",
+  xilonen: "xilonen-burst",
+  citlali: "citlali-ice-storm",
+  zhongli: "zhongli-planet-befall",
+  furina: "furina-salon-chevalmarin",
+  columbina: "columbina-interference",
+  flins: "flins-thunderous-symphony",
+  ineffa: "ineffa-overclock",
+  lauma: "lauma-eternal-rest",
+  nefer: "nefer-phantom",
+  linnea: "linnea-megaton-hammer",
+  zibai: "zibai-burst-second",
+  sandrone: "sandrone-stellar-ray",
+  qiqi: "qiqi-burst-stellar",
+  "yae-miko": "yae-stellar-followup",
+  wriothesley: "wriothesley-charged-stellar",
+  cyno: "cyno-duststalker-stellar",
+  beidou: "beidou-full-counter",
+  diona: "diona-hold-skill",
+  durin: "durin-white-dragon",
+  venti: "venti-stormeye",
+  klee: "klee-special-charged",
+  albedo: "albedo-transient-blossom",
+  mona: "mona-illusory-bubble",
+  fischl: "fischl-oz-attack",
+  sucrose: "sucrose-skill",
+  razor: "razor-claw",
+  varka: "varka-four-winds",
+  prune: "prune-transformed-hammer",
+  nicole: "nicole-burst",
+  lohen: "lohen-heart-piercer",
+};
+
+export function getRepresentativeSkillId(characterId: string) {
+  return representativeSkillIds[characterId];
+}
+
+export function getRepresentativeSkillCharacterIds() {
+  return Object.keys(representativeSkillIds);
+}

@@ -2,6 +2,8 @@ import { blizzardStrayer } from "./blizzard-strayer.ts";
 import { crimsonWitch } from "./crimson-witch.ts";
 import { deepwood } from "./deepwood.ts";
 import { emblem } from "./emblem.ts";
+import { goldenTroupe } from "./golden-troupe.ts";
+import { gildedDreams } from "./gilded-dreams.ts";
 import { noArtifactSet } from "./none.ts";
 import { shimenawa } from "./shimenawa.ts";
 import { silkenMoonsSerenade } from "./silken-moons-serenade.ts";
@@ -40,6 +42,8 @@ export const artifactSets: ArtifactSetPreset[] = [
   crimsonWitch,
   shimenawa,
   emblem,
+  goldenTroupe,
+  gildedDreams,
   deepwood,
   silkenMoonsSerenade,
   nightOfSkysUnveiling,

@@ -415,6 +415,7 @@ export default function Home() {
       {view === "comparison" ? (
         <BuildComparison
           activePlanId={activePlanId}
+          currentCharacterId={characterId}
           hydrated={hydrated}
           plans={plans}
           onBack={() => setView("editor")}

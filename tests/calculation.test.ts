@@ -188,6 +188,131 @@ test("separates static panel from selected combat conditions", () => {
   assert.equal(result.combatPanel.elementalDmg, 73);
 });
 
+test("summarizes resolved category damage bonuses", () => {
+  const shimenawaBuild = {
+    ...build,
+    artifactSetId: "shimenawa",
+    artifactSetPieces: 4 as const,
+    artifactSetSelections: { shimenawaState: "active" },
+  };
+  const result = calculateResolvedBuild({
+    build: shimenawaBuild,
+    character: ayaka,
+    weapon: mistsplitter,
+    artifactSet: getArtifactSet("shimenawa"),
+    settings: defaultDamageSettings,
+  });
+
+  assert.deepEqual(result.damageBonusSummary.categories, {
+    skill: 0,
+    burst: 0,
+    normal: 50,
+    charged: 50,
+    plunge: 50,
+  });
+});
+
+test("summarizes active weapon damage bonuses", () => {
+  const result = calculateResolvedBuild({
+    build: buildFor(raiden, theCatch),
+    character: raiden,
+    weapon: theCatch,
+    artifactSet: getArtifactSet("none"),
+    settings: {
+      ...defaultDamageSettings,
+      selections: {
+        ...defaultDamageSettings.selections,
+        raidenEyeState: "inactive",
+        raidenResolveStacks: "0",
+      },
+    },
+  });
+
+  assert.equal(result.damageBonusSummary.categories.burst, 16);
+});
+
+test("applies Golden Troupe on-field and off-field skill bonuses", () => {
+  const calculateGoldenTroupe = (state: "onField" | "offField") =>
+    calculateResolvedBuild({
+      build: {
+        ...build,
+        artifactSetId: "golden-troupe",
+        artifactSetPieces: 4,
+        artifactSetSelections: { goldenTroupeState: state },
+      },
+      character: ayaka,
+      weapon: mistsplitter,
+      artifactSet: getArtifactSet("golden-troupe"),
+      settings: defaultDamageSettings,
+    });
+  const onField = calculateGoldenTroupe("onField");
+  const offField = calculateGoldenTroupe("offField");
+
+  assert.equal(onField.damageBonusSummary.categories.skill, 45);
+  assert.equal(offField.damageBonusSummary.categories.skill, 70);
+  assert.equal(
+    (offField.skills.find((skill) => skill.id === "ayaka-skill")
+      ?.variants[0].damageBonus ?? 0) -
+      (onField.skills.find((skill) => skill.id === "ayaka-skill")
+        ?.variants[0].damageBonus ?? 0),
+    25,
+  );
+});
+
+test("uses the catalog-defined representative skill", () => {
+  const result = calculateBuild({
+    build,
+    character: ayaka,
+    settings: defaultDamageSettings,
+  });
+
+  assert.deepEqual(
+    result.skills.map((skill) => skill.id),
+    ["ayaka-skill", "ayaka-burst"],
+  );
+  assert.equal(result.selectedSkill?.id, "ayaka-burst");
+});
+
+test("summarizes lunar and stellar reaction damage bonuses", () => {
+  const lunarBuild = {
+    ...build,
+    artifactSetId: "aubade-of-morningstar-and-moon",
+    artifactSetPieces: 4 as const,
+    artifactSetSelections: { aubadeState: "active" },
+  };
+  const lunar = calculateResolvedBuild({
+    build: lunarBuild,
+    character: ayaka,
+    weapon: mistsplitter,
+    artifactSet: getArtifactSet(
+      "aubade-of-morningstar-and-moon",
+    ),
+    settings: defaultDamageSettings,
+  });
+  const stellarBuild = {
+    ...build,
+    artifactSetId: "delusion-of-immolated-shadow",
+    artifactSetPieces: 4 as const,
+    artifactSetSelections: { delusionStellarState: "active" },
+  };
+  const stellar = calculateResolvedBuild({
+    build: stellarBuild,
+    character: ayaka,
+    weapon: mistsplitter,
+    artifactSet: getArtifactSet("delusion-of-immolated-shadow"),
+    settings: defaultDamageSettings,
+  });
+
+  assert.deepEqual(lunar.damageBonusSummary.lunarReactions, {
+    lunarCharged: 20,
+    lunarBloom: 20,
+    lunarCrystallize: 20,
+  });
+  assert.deepEqual(stellar.damageBonusSummary.stellarReactions, {
+    stellarConduct: 40,
+  });
+});
+
 test("applies Hu Tao panel passives from the character preset", () => {
   const hutaoBuild: BuildInput = {
     ...build,
@@ -401,9 +526,21 @@ test("exports panel and damage from the same recalculation", () => {
 
   assert.equal(payload.攻击力, result.panel.atk);
   assert.deepEqual(
+    payload.额外伤害加成,
+    result.damageBonusSummary.categories,
+  );
+  assert.deepEqual(
+    payload.月反应伤害提升,
+    result.damageBonusSummary.lunarReactions,
+  );
+  assert.deepEqual(
+    payload.星反应伤害提升,
+    result.damageBonusSummary.stellarReactions,
+  );
+  assert.deepEqual(
     payload.代表技能伤害,
     Object.fromEntries(
-      result.skills.map((skill) => [
+      (result.selectedSkill ? [result.selectedSkill] : []).map((skill) => [
         skill.name,
         Object.fromEntries(
           skill.variants.map((variant) => [

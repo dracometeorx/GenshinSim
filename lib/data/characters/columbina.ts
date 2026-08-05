@@ -295,7 +295,7 @@ export const columbina: CharacterPreset = {
       );
       return [
         {
-          id: `columbina-interference-${choice.reaction}`,
+          id: "columbina-interference",
           name: `引力干涉·${choice.label}`,
           description:
             "只计算引力干涉由技能直接造成的月曜伤害；不计算雷暴云、诳言之核或月笼攻击。",

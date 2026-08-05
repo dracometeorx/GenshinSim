@@ -108,7 +108,10 @@ export function createBuildComparisonEntry(
     constellation: draft.constellation,
     team: createTeamCalculationInput(draft.team, plans),
   });
-  const damages = calculation.skills.flatMap((skill) =>
+  const damages = (calculation.selectedSkill
+    ? [calculation.selectedSkill]
+    : []
+  ).flatMap((skill) =>
     skill.variants.map((variant) => ({
       id: `${skill.id}:${variant.reaction}`,
       skillName: skill.name,
@@ -150,4 +153,13 @@ export function createBuildComparisonEntries(
   return plans.map((plan) =>
     createBuildComparisonEntry(plan, plans),
   );
+}
+
+export function createCharacterBuildComparisonEntries(
+  plans: readonly BuildPlan[],
+  characterId: string,
+) {
+  return plans
+    .filter((plan) => plan.snapshot.characterId === characterId)
+    .map((plan) => createBuildComparisonEntry(plan, plans));
 }

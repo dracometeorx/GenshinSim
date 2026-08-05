@@ -5,7 +5,10 @@ import {
   buildPlansReducer,
   createInitialBuildPlansState,
 } from "../app/hooks/use-build-plans.ts";
-import { createBuildComparisonEntries } from "../lib/build-comparison.ts";
+import {
+  createBuildComparisonEntries,
+  createCharacterBuildComparisonEntries,
+} from "../lib/build-comparison.ts";
 
 test("recalculates saved plans and exposes build and team summaries", () => {
   let state = {
@@ -53,6 +56,10 @@ test("recalculates saved plans and exposes build and team summaries", () => {
   const entries = createBuildComparisonEntries(
     state.store.plans,
   );
+  const ayakaEntries = createCharacterBuildComparisonEntries(
+    state.store.plans,
+    "ayaka",
+  );
   const baseline = entries.find(
     (entry) => entry.plan.id === baselinePlanId,
   );
@@ -73,6 +80,14 @@ test("recalculates saved plans and exposes build and team summaries", () => {
   assert.equal(highAttack.teammates.length, 1);
   assert.equal(highAttack.teammates[0].characterName, "纳西妲");
   assert.ok(highAttack.damages.length > 0);
+  assert.equal(
+    ayakaEntries.every((entry) => entry.characterId === "ayaka"),
+    true,
+  );
+  assert.equal(
+    ayakaEntries.length,
+    entries.filter((entry) => entry.characterId === "ayaka").length,
+  );
   assert.equal(
     highAttack.calculation.panel.atk >
       baseline.calculation.panel.atk,

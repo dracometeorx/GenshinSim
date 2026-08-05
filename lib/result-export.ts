@@ -47,7 +47,9 @@ export function createResultPayload({
     元素充能效率: `${panel.energyRecharge}%`,
     元素精通: panel.elementalMastery,
     [`${elementLabel}伤害加成`]: `${panel.elementalDmg}%`,
-    额外伤害加成: panel.talentBonuses,
+    额外伤害加成: result.damageBonusSummary.categories,
+    月反应伤害提升: result.damageBonusSummary.lunarReactions,
+    星反应伤害提升: result.damageBonusSummary.stellarReactions,
     队伍增益: result.teamBuffs
       .filter((buff) => buff.enabled)
       .map(
@@ -59,7 +61,7 @@ export function createResultPayload({
       元素抗性: `${settings.enemyResistance}%`,
     },
     代表技能伤害: Object.fromEntries(
-      result.skills.map((skill) => [
+      (result.selectedSkill ? [result.selectedSkill] : []).map((skill) => [
         `${skill.name}${
           skill.damageElement !== build.element
             ? `（${skill.damageElement} 伤害）`
