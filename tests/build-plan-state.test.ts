@@ -99,6 +99,49 @@ test("creates, renames, and deletes character-scoped plans", () => {
   );
 });
 
+test("duplicates the active character plan with all current settings", () => {
+  let state = {
+    ...createInitialBuildPlansState(),
+    hydrated: true,
+  };
+  const sourceId = state.activePlanId;
+  state = buildPlansReducer(state, {
+    type: "update-draft",
+    update: (draft) => ({
+      ...draft,
+      constellation: 4,
+      build: {
+        ...draft.build,
+        artifact: { ...draft.build.artifact, flatAtk: 4321 },
+      },
+    }),
+  });
+  const sourcePlan = state.store.plans.find(
+    (plan) => plan.id === sourceId,
+  );
+  assert.ok(sourcePlan);
+
+  state = buildPlansReducer(state, { type: "duplicate-plan" });
+  const copyId = state.activePlanId;
+  const copy = state.store.plans.find((plan) => plan.id === copyId);
+
+  assert.notEqual(copyId, sourceId);
+  assert.equal(copy?.name, "神里绫华方案 1 副本");
+  assert.deepEqual(copy?.snapshot, sourcePlan.snapshot);
+  assert.notEqual(copy?.snapshot, sourcePlan.snapshot);
+  assert.notEqual(copy?.snapshot.artifact, sourcePlan.snapshot.artifact);
+  assert.equal(state.draft.constellation, 4);
+  assert.equal(state.draft.build.artifact.flatAtk, 4321);
+  assert.equal(state.status, "已复制为「神里绫华方案 1 副本」");
+
+  state = buildPlansReducer(state, { type: "duplicate-plan" });
+  assert.equal(
+    state.store.plans.find((plan) => plan.id === state.activePlanId)
+      ?.name,
+    "神里绫华方案 1 副本 2",
+  );
+});
+
 test("does not delete the final plan and resets only the active character", () => {
   let state = createInitialBuildPlansState();
   const originalId = state.activePlanId;

@@ -90,6 +90,7 @@ export type BuildPlansAction =
       enabled: boolean;
     }
   | { type: "create-plan"; name: string }
+  | { type: "duplicate-plan" }
   | { type: "rename-plan"; name: string }
   | { type: "delete-plan" }
   | { type: "reset-plan" }
@@ -101,6 +102,27 @@ function activePlanName(state: BuildPlansState) {
     state.store.plans.find((plan) => plan.id === state.activePlanId)
       ?.name ?? "当前方案"
   );
+}
+
+function duplicatePlanName(state: BuildPlansState) {
+  const sourceName = activePlanName(state);
+  const baseName =
+    sourceName.replace(/ 副本(?: \d+)?$/, "").trim() || "未命名方案";
+  const siblingNames = new Set(
+    state.store.plans
+      .filter(
+        (plan) =>
+          plan.snapshot.characterId === state.draft.characterId,
+      )
+      .map((plan) => plan.name),
+  );
+
+  for (let copyNumber = 1; ; copyNumber += 1) {
+    const suffix = copyNumber === 1 ? " 副本" : ` 副本 ${copyNumber}`;
+    const stem = baseName.slice(0, 80 - suffix.length).trimEnd();
+    const candidate = `${stem}${suffix}`;
+    if (!siblingNames.has(candidate)) return candidate;
+  }
 }
 
 function commitDraft(
@@ -390,6 +412,31 @@ export function buildPlansReducer(
         ...state,
         activePlanId: plan.id,
         status: `已新建「${plan.name}」`,
+        store: {
+          ...state.store,
+          activePlanIds: {
+            ...state.store.activePlanIds,
+            [state.draft.characterId]: plan.id,
+          },
+          plans: [...state.store.plans, plan],
+        },
+      };
+    }
+    case "duplicate-plan": {
+      const sourcePlan = state.store.plans.find(
+        (plan) =>
+          plan.id === state.activePlanId &&
+          plan.snapshot.characterId === state.draft.characterId,
+      );
+      if (!sourcePlan) return state;
+      const plan = createBuildPlan(
+        createBuildPlanSnapshot(state.draft),
+        duplicatePlanName(state),
+      );
+      return {
+        ...state,
+        activePlanId: plan.id,
+        status: `已复制为「${plan.name}」`,
         store: {
           ...state.store,
           activePlanIds: {
@@ -717,6 +764,7 @@ export function useBuildPlans() {
       dispatch({ type: "switch-character", characterId }),
     createPlan: (name: string) =>
       dispatch({ type: "create-plan", name }),
+    duplicatePlan: () => dispatch({ type: "duplicate-plan" }),
     renamePlan: (name: string) =>
       dispatch({ type: "rename-plan", name }),
     deletePlan: () => dispatch({ type: "delete-plan" }),

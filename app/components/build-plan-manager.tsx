@@ -8,6 +8,7 @@ export function BuildPlanManager({
   plans,
   onChoose,
   onCreate,
+  onDuplicate,
   onRename,
   onDelete,
 }: {
@@ -16,6 +17,7 @@ export function BuildPlanManager({
   plans: BuildPlan[];
   onChoose: (id: string) => void;
   onCreate: () => void;
+  onDuplicate: () => void;
   onRename: () => void;
   onDelete: () => void;
 }) {
@@ -44,6 +46,15 @@ export function BuildPlanManager({
           title="复制当前配置为新方案"
         >
           ＋ 新建
+        </button>
+        <button
+          type="button"
+          onClick={onDuplicate}
+          disabled={!hydrated || plans.length === 0}
+          aria-label="复制当前角色方案"
+          title="完整复制当前角色方案"
+        >
+          复制
         </button>
         <button
           type="button"

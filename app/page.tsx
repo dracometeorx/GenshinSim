@@ -56,6 +56,7 @@ export default function Home() {
     createPlan,
     damageSettings,
     deletePlan,
+    duplicatePlan,
     hydrated,
     constellation,
     openPlan,
@@ -470,6 +471,7 @@ export default function Home() {
               onConstellationChange={setConstellation}
               onCreatePlan={createNewPlan}
               onDeletePlan={deleteActivePlan}
+              onDuplicatePlan={duplicatePlan}
               onPlanChange={choosePlan}
               onRenamePlan={renameActivePlan}
               onWeaponChange={chooseWeapon}
