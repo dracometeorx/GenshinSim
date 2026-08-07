@@ -75,6 +75,19 @@ export interface DamageTarget {
   extraStellarReactionDamageBonus?: number;
   extraStellarAdditiveBaseDamage?: number;
   extraStellarElevation?: number;
+  /**
+   * Optional display-only breakdown for multi-hit targets. Segment base damage
+   * is used as a weight; the already calculated total is allocated across the
+   * segments so buffs and rounding remain consistent with the total result.
+   */
+  segments?: readonly DamageSegment[];
+}
+
+export interface DamageSegment {
+  id: string;
+  name: string;
+  multiplierLabel: string;
+  baseDamage: number;
 }
 
 export interface CharacterDamageContext {

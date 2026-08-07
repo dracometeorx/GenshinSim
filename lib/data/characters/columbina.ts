@@ -304,6 +304,15 @@ export const columbina: CharacterPreset = {
             constellation >= 4
               ? panel.hp * choice.c4HpMultiplier
               : 0,
+          segments:
+            choice.reaction === "lunarBloom"
+              ? Array.from({ length: 5 }, (_, index) => ({
+                  id: `columbina-interference-bloom-${index + 1}`,
+                  name: `月绽放第 ${index + 1} 枚`,
+                  multiplierLabel: `${percent(multiplier / 5)} 生命值上限`,
+                  baseDamage: (panel.hp * multiplier) / 5,
+                }))
+              : undefined,
         },
       ];
     },

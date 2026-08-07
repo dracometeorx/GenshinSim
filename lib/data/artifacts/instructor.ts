@@ -45,6 +45,7 @@ export const instructor: ArtifactSetPreset = {
         "装备者触发元素反应后，全队元素精通提高 120 点。",
       stackingGroup: "instructor-party-mastery",
       minArtifactPieces: 4,
+      contributesToBuffSourcePanel: true,
       evaluate: ({ source }) =>
         source.artifactSelections.instructorState === "inactive"
           ? []

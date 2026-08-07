@@ -302,6 +302,60 @@ test("applies Sucrose constellation talent levels and C6 absorption buffs", () =
   );
 });
 
+test("lets Sucrose convert fixed party mastery from Silken Moon without double counting", () => {
+  const flins = getCharacter("flins");
+  const sucrose = getCharacter("sucrose");
+  const columbina = getCharacter("columbina");
+  const sucroseMember = memberFor(sucrose, 0);
+  const columbinaMember = memberFor(columbina, 1);
+  const getSucroseShare = (result: ReturnType<typeof calculate>) => {
+    const buff = result.teamBuffs.find(
+      ({ sourceName, name }) =>
+        sourceName === "砂糖" &&
+        name === "触媒置换术·小小的慧风",
+    );
+    assert.ok(buff);
+    const modifier = buff.modifiers.find(
+      (candidate) =>
+        candidate.kind === "panel" &&
+        candidate.stat === "elementalMastery",
+    );
+    assert.ok(modifier && modifier.kind === "panel");
+    return modifier.value;
+  };
+
+  const baseline = calculate(flins, {
+    team: teamFor(sucroseMember, columbinaMember),
+  });
+  const teammateSilken = calculate(flins, {
+    team: teamFor(
+      sucroseMember,
+      memberFor(columbina, 1, "silken-moons-serenade", 4),
+    ),
+  });
+  const sucroseSilken = calculate(flins, {
+    team: teamFor(
+      memberFor(sucrose, 0, "silken-moons-serenade", 4),
+      columbinaMember,
+    ),
+  });
+  const disabledTeam = teamFor(
+    sucroseMember,
+    memberFor(columbina, 1, "silken-moons-serenade", 4),
+  );
+  disabledTeam.configuration.buffToggles[
+    "slot:1:artifact:silken-moon-devotion"
+  ] = false;
+  const disabled = calculate(flins, { team: disabledTeam });
+
+  assert.equal(teammateSilken.moonsign.level, "ascendant");
+  assert.equal(getSucroseShare(teammateSilken) - getSucroseShare(baseline), 24);
+  assert.equal(getSucroseShare(sucroseSilken) - getSucroseShare(baseline), 24);
+  assert.equal(getSucroseShare(disabled), getSucroseShare(baseline));
+  assert.equal(teammateSilken.panel.elementalMastery - baseline.panel.elementalMastery, 144);
+  assert.equal(sucroseSilken.panel.elementalMastery - baseline.panel.elementalMastery, 144);
+});
+
 test("defines all six constellations for the requested Hexerei characters", () => {
   for (const id of [
     "durin",

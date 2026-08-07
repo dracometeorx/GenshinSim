@@ -43,6 +43,7 @@ export const silkenMoonsSerenade: ArtifactSetPreset = {
         "初辉/满辉时为全队提供 60/120 元素精通，并提高月曜反应伤害。",
       stackingGroup: "gleaming-moon-devotion",
       minArtifactPieces: 4,
+      contributesToBuffSourcePanel: true,
       evaluate: ({ party }) => {
         const mastery = partyMastery(party.moonsignLevel);
         return mastery

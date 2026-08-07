@@ -110,6 +110,60 @@ test("adds the six requested characters with fixed representative damage", () =>
   }
 });
 
+test("breaks multi-hit representative damage into segments that sum to the total", () => {
+  const cases = [
+    ["ayaka", 20],
+    ["yelan", 3],
+    ["skirk", 6],
+    ["nefer", 3],
+    ["diona", 5],
+    ["venti", 20],
+    ["varka", 2],
+    ["lohen", 4],
+  ] as const;
+
+  for (const [characterId, segmentCount] of cases) {
+    const skill = calculate(characterId).selectedSkill;
+    assert.ok(skill, characterId);
+    assert.equal(skill.segments?.length, segmentCount, characterId);
+
+    for (const [variantIndex, total] of skill.variants.entries()) {
+      const segmentVariants = skill.segments!.map(
+        (segment) => segment.variants[variantIndex],
+      );
+      assert.equal(
+        segmentVariants.reduce(
+          (sum, variant) => sum + variant.nonCrit,
+          0,
+        ),
+        total.nonCrit,
+        `${characterId} non-crit`,
+      );
+      assert.equal(
+        segmentVariants.reduce((sum, variant) => sum + variant.crit, 0),
+        total.crit,
+        `${characterId} crit`,
+      );
+      assert.equal(
+        segmentVariants.reduce(
+          (sum, variant) => sum + variant.expected,
+          0,
+        ),
+        total.expected,
+        `${characterId} expected`,
+      );
+    }
+  }
+
+  assert.equal(calculate("xingqiu").selectedSkill?.segments, undefined);
+  assert.equal(
+    calculate("columbina", {
+      selections: { columbinaInterference: "lunarBloom" },
+    }).selectedSkill?.segments?.length,
+    5,
+  );
+});
+
 test("adds Kokomi, Escoffier, and Charlotte with fixed representative damage", () => {
   const expected = [
     ["kokomi", 13471, 234, 657, "kokomi-ceremonial-normal-third"],

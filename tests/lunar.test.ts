@@ -360,6 +360,14 @@ test("applies teammate Lunar buffs and full-Moonsign character passives", () => 
     withTeam.selectedSkill?.multiplierLabel ?? "",
     /\+.*攻击力/,
   );
+  assert.equal(withTeam.selectedSkill?.segments?.length, 2);
+  assert.equal(
+    withTeam.selectedSkill?.segments?.reduce(
+      (sum, segment) => sum + segment.variants[0].expected,
+      0,
+    ),
+    withTeam.selectedSkill?.variants[0].expected,
+  );
   assert.ok(
     (withTeam.selectedSkill?.variants[0].expected ?? 0) >
       (withoutTeam.selectedSkill?.variants[0].expected ?? 0) * 2,

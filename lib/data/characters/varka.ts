@@ -1,22 +1,14 @@
 import type { DamageTarget } from "../../damage-types.ts";
 import type { CharacterPreset } from "./types.ts";
 
-const fourWinds = [
-  1.758 + 0.946,
-  1.889 + 1.017,
-  2.021 + 1.088,
-  2.197 + 1.183,
-  2.329 + 1.254,
-  2.461 + 1.325,
-  2.636 + 1.42,
-  2.812 + 1.514,
-  2.988 + 1.609,
-  3.164 + 1.704,
-  3.339 + 1.798,
-  3.515 + 1.893,
-  3.735 + 2.011,
-  3.955 + 2.129,
-  4.174 + 2.248,
+const fourWindsFirstHit = [
+  1.758, 1.889, 2.021, 2.197, 2.329, 2.461, 2.636, 2.812,
+  2.988, 3.164, 3.339, 3.515, 3.735, 3.955, 4.174,
+] as const;
+
+const fourWindsSecondHit = [
+  0.946, 1.017, 1.088, 1.183, 1.254, 1.325, 1.42, 1.514,
+  1.609, 1.704, 1.798, 1.893, 2.011, 2.129, 2.248,
 ] as const;
 
 export const varka: CharacterPreset = {
@@ -134,10 +126,15 @@ export const varka: CharacterPreset = {
       hexereiSecretRite,
     }) => {
       const stacks = Number(selection("varkaOathStacks")) || 0;
-      const multiplier = talentValue(
-        fourWinds,
+      const firstHitMultiplier = talentValue(
+        fourWindsFirstHit,
         settings.skillTalentLevel,
       );
+      const secondHitMultiplier = talentValue(
+        fourWindsSecondHit,
+        settings.skillTalentLevel,
+      );
+      const multiplier = firstHitMultiplier + secondHitMultiplier;
       const targets: DamageTarget[] = [
         {
           id: "varka-four-winds",
@@ -153,6 +150,20 @@ export const varka: CharacterPreset = {
           reactions: ["none"],
           extraDamageBonus: stacks * 7.5,
           extraCritDmg: constellation >= 6 ? stacks * 20 : 0,
+          segments: [
+            {
+              id: "varka-four-winds-first-hit",
+              name: "四风将起第 1 段",
+              multiplierLabel: `${(firstHitMultiplier * 100).toFixed(1)}% 攻击力`,
+              baseDamage: panel.atk * firstHitMultiplier,
+            },
+            {
+              id: "varka-four-winds-second-hit",
+              name: "四风将起第 2 段",
+              multiplierLabel: `${(secondHitMultiplier * 100).toFixed(1)}% 攻击力`,
+              baseDamage: panel.atk * secondHitMultiplier,
+            },
+          ],
         },
       ];
       if (constellation >= 2) {

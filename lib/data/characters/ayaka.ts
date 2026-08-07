@@ -139,6 +139,20 @@ export const ayaka: CharacterPreset = {
           baseDamage: panel.atk * (cut * 19 + bloom),
           category: "burst",
           reactions: ["none"],
+          segments: [
+            ...Array.from({ length: 19 }, (_, index) => ({
+              id: `ayaka-burst-cut-${index + 1}`,
+              name: `切割第 ${index + 1} 段`,
+              multiplierLabel: `${percent(cut)} 攻击力`,
+              baseDamage: panel.atk * cut,
+            })),
+            {
+              id: "ayaka-burst-bloom",
+              name: "绽放伤害",
+              multiplierLabel: `${percent(bloom)} 攻击力`,
+              baseDamage: panel.atk * bloom,
+            },
+          ],
         },
       ];
     },

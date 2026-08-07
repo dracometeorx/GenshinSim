@@ -146,6 +146,7 @@ export const skirk: CharacterPreset = {
       const baseMultiplier =
         (slash * 5 + finalSlash + guilePerPoint * effectiveGuile) *
         deadRiverMultiplier;
+      const guilePerHit = (guilePerPoint * effectiveGuile) / 6;
       return [
         {
           id: "skirk-burst",
@@ -156,6 +157,26 @@ export const skirk: CharacterPreset = {
           category: "burst",
           reactions: ["none", "melt"],
           extraDamageBonus: riftBonus,
+          segments: [
+            ...Array.from({ length: 5 }, (_, index) => ({
+              id: `skirk-burst-slash-${index + 1}`,
+              name: `斩击第 ${index + 1} 段`,
+              multiplierLabel: `(${percent(slash)} + ${percent(guilePerHit)}) × ${deadRiverMultiplier.toFixed(2)}`,
+              baseDamage:
+                panel.atk *
+                (slash + guilePerHit) *
+                deadRiverMultiplier,
+            })),
+            {
+              id: "skirk-burst-final-slash",
+              name: "终结斩击",
+              multiplierLabel: `(${percent(finalSlash)} + ${percent(guilePerHit)}) × ${deadRiverMultiplier.toFixed(2)}`,
+              baseDamage:
+                panel.atk *
+                (finalSlash + guilePerHit) *
+                deadRiverMultiplier,
+            },
+          ],
         },
       ];
     },

@@ -180,6 +180,17 @@ export const venti: CharacterPreset = {
             (hexereiSecretRite ? 1.35 : 1),
           category: "burst",
           reactions: ["none"],
+          segments: Array.from({ length: 20 }, (_, index) => ({
+            id: `venti-stormeye-tick-${index + 1}`,
+            name: `风伤第 ${index + 1} 跳`,
+            multiplierLabel: `${(
+              tick *
+              (hexereiSecretRite ? 1.35 : 1) *
+              100
+            ).toFixed(1)}% 攻击力`,
+            baseDamage:
+              panel.atk * tick * (hexereiSecretRite ? 1.35 : 1),
+          })),
         },
       ];
     },

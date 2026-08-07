@@ -1641,6 +1641,115 @@ a:focus-visible {
   text-align: right;
 }
 
+.damage-total > header,
+.damage-segments > header {
+  display: flex;
+  min-height: 29px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 9px;
+  border-top: 1px solid #e4ecf6;
+  background: #f1f7ff;
+}
+
+.damage-total > header strong,
+.damage-segments > header strong {
+  color: #31577f;
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.damage-total > header small,
+.damage-segments > header small {
+  color: var(--faint);
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.damage-total .damage-table-head {
+  border-top: 0;
+}
+
+.damage-segments > header {
+  border-bottom: 1px solid #e4ecf6;
+  background: #fafcff;
+}
+
+.damage-segment-table-head,
+.damage-segment-row {
+  display: grid;
+  align-items: center;
+  gap: 5px;
+  grid-template-columns: minmax(94px, 1.35fr) minmax(48px, 0.65fr) repeat(3, minmax(54px, 0.8fr));
+}
+
+.damage-segment-table-head {
+  min-height: 28px;
+  padding: 0 9px;
+  border-bottom: 1px solid #e4ecf6;
+  background: #f7f9fc;
+  color: var(--faint);
+  font-size: 8px;
+  font-weight: 800;
+  text-align: right;
+}
+
+.damage-segment-table-head span:first-child,
+.damage-segment-table-head span:nth-child(2) {
+  text-align: left;
+}
+
+.damage-segment-row {
+  min-height: 43px;
+  padding: 5px 9px;
+  border-bottom: 1px solid #edf1f6;
+  color: #556986;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 750;
+  text-align: right;
+}
+
+.damage-segment-row:last-child {
+  border-bottom: 0;
+}
+
+.damage-segment-row > span:first-child {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+}
+
+.damage-segment-row > span:first-child strong {
+  color: #405b7d;
+  font-size: 9px;
+  font-weight: 850;
+}
+
+.damage-segment-row > span:first-child small {
+  color: var(--faint);
+  font-size: 7px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.damage-segment-row > span:nth-child(2) {
+  color: #45617f;
+  text-align: left;
+}
+
+.damage-segment-row > strong {
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.damage-segment-row .damage-expected {
+  color: var(--primary);
+  font-weight: 950;
+}
+
 .damage-table-head,
 .damage-row {
   display: grid;

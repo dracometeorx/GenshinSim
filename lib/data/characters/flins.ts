@@ -202,6 +202,23 @@ export const flins: CharacterPreset = {
           category: "burst" as const,
           reactions: [],
           model: directLunarModel("lunarCharged"),
+          segments:
+            extraMultiplier > 0
+              ? [
+                  {
+                    id: "flins-thunderous-symphony-main",
+                    name: "雷霆交响本体",
+                    multiplierLabel: `${percent(multiplier)} 攻击力`,
+                    baseDamage: panel.atk * multiplier,
+                  },
+                  {
+                    id: "flins-thunderous-symphony-extra",
+                    name: "满辉追加直伤",
+                    multiplierLabel: `${percent(extraMultiplier)} 攻击力`,
+                    baseDamage: panel.atk * extraMultiplier,
+                  },
+                ]
+              : undefined,
         },
       ];
       if (constellation >= 2) {

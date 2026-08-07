@@ -112,6 +112,7 @@ export const lohen: CharacterPreset = {
         talentValue(heartPiercer, settings.skillTalentLevel) *
         4 *
         (1 + rivalry * 0.004);
+      const heartPiercerHitMultiplier = heartPiercerMultiplier / 4;
       const burstRivalry =
         constellation >= 4 ? rivalryMaximum : rivalry;
       const burstMultiplier =
@@ -145,6 +146,12 @@ export const lohen: CharacterPreset = {
           category: "skill",
           reactions: ["none", "melt"],
           extraCritDmg: c6CritDmg,
+          segments: Array.from({ length: 4 }, (_, index) => ({
+            id: `lohen-heart-piercer-${index + 1}`,
+            name: `镂骨彻心第 ${index + 1} 段`,
+            multiplierLabel: `${(heartPiercerHitMultiplier * 100).toFixed(1)}% 攻击力`,
+            baseDamage: panel.atk * heartPiercerHitMultiplier,
+          })),
         },
         {
           id: "lohen-burst",

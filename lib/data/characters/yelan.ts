@@ -130,6 +130,12 @@ export const yelan: CharacterPreset = {
           baseDamage: panel.hp * multiplier * 3,
           category: "burst",
           reactions: ["none"],
+          segments: Array.from({ length: 3 }, (_, index) => ({
+            id: `yelan-exquisite-throw-arrow-${index + 1}`,
+            name: `水箭第 ${index + 1} 段`,
+            multiplierLabel: `${percent(multiplier)} 生命值上限`,
+            baseDamage: panel.hp * multiplier,
+          })),
         },
       ];
     },

@@ -12,6 +12,7 @@ import { getRepresentativeSkillId } from "./data/characters/representative-skill
 import type {
   DamageReaction,
   DamageSettings,
+  DamageSegment,
   DamageTarget,
   DamageVariantKey,
   LunarReactionType,
@@ -56,6 +57,14 @@ export interface RepresentativeDamageResult {
   damageElement: BuildInput["element"];
   lunarReaction?: LunarReactionType;
   stellarReaction?: StellarReactionType;
+  variants: DamageVariantResult[];
+  segments?: RepresentativeDamageSegmentResult[];
+}
+
+export interface RepresentativeDamageSegmentResult {
+  id: string;
+  name: string;
+  multiplierLabel: string;
   variants: DamageVariantResult[];
 }
 
@@ -306,6 +315,55 @@ export function getPolestarElementalDamageBonus(
 
 function roundDamage(value: number) {
   return Math.max(0, Math.round(value));
+}
+
+function allocateRoundedTotal(total: number, weights: number[]) {
+  const positiveWeights = weights.map((weight) => Math.max(0, weight));
+  const weightTotal = positiveWeights.reduce((sum, weight) => sum + weight, 0);
+  if (!positiveWeights.length || weightTotal <= 0) return [];
+
+  const roundedTotal = roundDamage(total);
+  const rawValues = positiveWeights.map(
+    (weight) => (roundedTotal * weight) / weightTotal,
+  );
+  const values = rawValues.map(Math.floor);
+  const remainder =
+    roundedTotal - values.reduce((sum, value) => sum + value, 0);
+  const remainderOrder = rawValues
+    .map((value, index) => ({ index, fraction: value - Math.floor(value) }))
+    .sort((left, right) => right.fraction - left.fraction);
+
+  for (let index = 0; index < remainder; index += 1) {
+    const target = remainderOrder[index % remainderOrder.length];
+    if (target) values[target.index] += 1;
+  }
+  return values;
+}
+
+function calculateSegmentResults(
+  segments: readonly DamageSegment[] | undefined,
+  variants: DamageVariantResult[],
+): RepresentativeDamageSegmentResult[] | undefined {
+  if (!segments || segments.length < 2) return undefined;
+
+  const weights = segments.map((segment) => segment.baseDamage);
+  const allocatedVariants = variants.map((variant) => ({
+    nonCrit: allocateRoundedTotal(variant.nonCrit, weights),
+    crit: allocateRoundedTotal(variant.crit, weights),
+    expected: allocateRoundedTotal(variant.expected, weights),
+  }));
+
+  return segments.map((segment, segmentIndex) => ({
+    id: segment.id,
+    name: segment.name,
+    multiplierLabel: segment.multiplierLabel,
+    variants: variants.map((variant, variantIndex) => ({
+      ...variant,
+      nonCrit: allocatedVariants[variantIndex]?.nonCrit[segmentIndex] ?? 0,
+      crit: allocatedVariants[variantIndex]?.crit[segmentIndex] ?? 0,
+      expected: allocatedVariants[variantIndex]?.expected[segmentIndex] ?? 0,
+    })),
+  }));
 }
 
 function roundBonus(value: number) {
@@ -657,7 +715,7 @@ export function calculateRepresentativeDamage(
     effectiveResistance,
   );
 
-  const skills = targetsWithModifiers.map(
+  const calculatedSkills = targetsWithModifiers.map(
     ({ target, modifiers: targetModifiers }) => {
       const targetElement = target.damageElement ?? build.element;
       const artifactDamageBonus = artifactModifiers.reduce(
@@ -911,6 +969,16 @@ export function calculateRepresentativeDamage(
             damageBonus,
           };
         }),
+      };
+    },
+  );
+
+  const skills: RepresentativeDamageResult[] = calculatedSkills.map(
+    (skill) => {
+      const target = targets.find((candidate) => candidate.id === skill.id);
+      return {
+        ...skill,
+        segments: calculateSegmentResults(target?.segments, skill.variants),
       };
     },
   );

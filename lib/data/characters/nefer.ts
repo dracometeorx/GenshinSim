@@ -200,6 +200,16 @@ export const nefer: CharacterPreset = {
             constellation >= 1
               ? panel.elementalMastery * 0.6 * veilMultiplier
               : 0,
+          segments: Array.from({ length: 3 }, (_, index) => ({
+            id: `nefer-phantom-${index + 1}`,
+            name: `虚影第 ${index + 1} 段`,
+            multiplierLabel: `${percent(phantomMultiplier / 3)} 元素精通 × ${veilMultiplier.toFixed(2)}`,
+            baseDamage:
+              (panel.elementalMastery *
+                phantomMultiplier *
+                veilMultiplier) /
+              3,
+          })),
         },
       ];
       if (constellation >= 6) {

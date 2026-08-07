@@ -100,6 +100,12 @@ export interface TeamBuffDefinition {
   minArtifactPieces?: 2 | 4;
   /** Intrinsic effects stay enabled and are shown as always active. */
   toggleable?: boolean;
+  /**
+   * Direct fixed-stat party buffs marked here are applied to teammate source
+   * panels before stat-sharing talents are evaluated. Percentage-derived
+   * sharing effects must not use this flag, which prevents recursive scaling.
+   */
+  contributesToBuffSourcePanel?: boolean;
   appliesToSelf?: boolean;
   appliesToTeammates?: boolean;
   evaluate(

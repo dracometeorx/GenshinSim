@@ -171,6 +171,7 @@ function calculateStandalonePanel(
   member: Omit<CalculationTeamMember, "slot" | "planId">,
   moonsignLevel: MoonsignLevel,
   hexereiSecretRite: boolean,
+  partyPanelModifiers: readonly PanelModifier[] = [],
 ) {
   const constellationState = getConstellationCalculationState(
     member.character,
@@ -194,6 +195,16 @@ function calculateStandalonePanel(
       ...(member.weapon.passive.panelEffects ?? []),
       ...(member.character.panelEffects ?? []),
       ...constellationState.panelEffects,
+      ...(partyPanelModifiers.length
+        ? [
+            {
+              id: "pre-conversion-party-panel-buffs",
+              stage: "additive" as const,
+              conditional: true,
+              evaluate: () => partyPanelModifiers,
+            },
+          ]
+        : []),
     ],
     damageSettings: constellationState.settings,
     includeConditionalEffects: true,
@@ -402,7 +413,7 @@ export function resolveTeamBuffs({
     members,
     settings,
   );
-  const sourcePanels = members.map((member) => {
+  const preliminarySourcePanels = members.map((member) => {
     const constellationState = getConstellationCalculationState(
       member.character,
       member.constellation,
@@ -418,10 +429,12 @@ export function resolveTeamBuffs({
       settings: constellationState.settings,
     };
   });
-  const party = {
+  const createPartyState = (
+    panels: typeof preliminarySourcePanels,
+  ) => ({
     highestElementalMastery: Math.max(
       targetPanel.elementalMastery,
-      ...sourcePanels.map(({ panel }) => panel.elementalMastery),
+      ...panels.map(({ panel }) => panel.elementalMastery),
     ),
     elements: [
       target.build.element,
@@ -434,7 +447,156 @@ export function resolveTeamBuffs({
     stellarConductActive: stellarConduct.active,
     stellarConductEnablerCount: stellarConduct.enablerCount,
     stellarElementalPower: stellarConduct.elementalPower,
+  });
+  const preliminaryParty = createPartyState(preliminarySourcePanels);
+
+  type SourcePanelBuff = {
+    key: string;
+    modifiers: PanelModifier[];
   };
+  const sourcePanelBuffs: SourcePanelBuff[] = [];
+  const occupiedSourcePanelGroups = new Set<string>();
+  const collectSourcePanelBuff = (
+    definition: TeamBuffDefinition,
+    id: string,
+    context: TeamBuffEvaluationContext,
+    constellation: number,
+    artifactPieces: 0 | 2 | 4,
+  ) => {
+    if (
+      !definition.contributesToBuffSourcePanel ||
+      !matchesDefinition(definition, constellation, artifactPieces)
+    ) {
+      return;
+    }
+    const key = definition.stackingGroup ?? definition.id;
+    if (occupiedSourcePanelGroups.has(key)) return;
+    const modifiers = definition
+      .evaluate(context)
+      .filter(
+        (modifier): modifier is Extract<
+          TeamBuffModifier,
+          { kind: "panel" }
+        > => modifier.kind === "panel" && Number.isFinite(modifier.value),
+      )
+      .map(({ stat, value }) => ({ stat, value }));
+    if (!modifiers.length) return;
+    occupiedSourcePanelGroups.add(key);
+    const enabled =
+      definition.toggleable === false ||
+      (configuration.buffToggles[id] ?? true);
+    if (enabled) sourcePanelBuffs.push({ key, modifiers });
+  };
+
+  const preliminaryTargetContext = createContext(
+    {
+      character: target.character,
+      constellation: targetConstellation,
+      element: target.build.element,
+      panel: targetPanel,
+      settings,
+      weapon: target.weapon,
+      weaponSelections: target.build.weaponPassiveSelections ?? {},
+      artifactSelections: target.build.artifactSetSelections ?? {},
+    },
+    target,
+    preliminaryParty,
+  );
+  for (const definition of target.artifactSet.teamBuffs ?? []) {
+    collectSourcePanelBuff(
+      definition,
+      `self:artifact:${definition.id}`,
+      preliminaryTargetContext,
+      targetConstellation,
+      target.build.artifactSetPieces,
+    );
+  }
+  for (const {
+    member,
+    panel,
+    settings: sourceSettings,
+  } of preliminarySourcePanels) {
+    const context = createContext(
+      {
+        character: member.character,
+        constellation: member.constellation,
+        element: member.build.element,
+        panel,
+        settings: sourceSettings,
+        weapon: member.weapon,
+        weaponSelections: member.build.weaponPassiveSelections ?? {},
+        artifactSelections: member.build.artifactSetSelections ?? {},
+      },
+      target,
+      preliminaryParty,
+    );
+    for (const definition of member.artifactSet.teamBuffs ?? []) {
+      collectSourcePanelBuff(
+        definition,
+        `slot:${member.slot}:artifact:${definition.id}`,
+        context,
+        member.constellation,
+        member.build.artifactSetPieces,
+      );
+    }
+  }
+
+  const sourcePanels = preliminarySourcePanels.map(
+    ({ member, panel: preliminaryPanel, settings: sourceSettings }) => {
+      const ownContext = createContext(
+        {
+          character: member.character,
+          constellation: member.constellation,
+          element: member.build.element,
+          panel: preliminaryPanel,
+          settings: sourceSettings,
+          weapon: member.weapon,
+          weaponSelections: member.build.weaponPassiveSelections ?? {},
+          artifactSelections: member.build.artifactSetSelections ?? {},
+        },
+        target,
+        preliminaryParty,
+      );
+      const ownSourcePanelBuffKeys = new Set(
+        (member.artifactSet.teamBuffs ?? [])
+          .filter(
+            (definition) =>
+              definition.contributesToBuffSourcePanel &&
+              matchesDefinition(
+                definition,
+                member.constellation,
+                member.build.artifactSetPieces,
+              ) &&
+              definition
+                .evaluate(ownContext)
+                .some(
+                  (modifier) =>
+                    modifier.kind === "panel" &&
+                    Number.isFinite(modifier.value),
+                ),
+          )
+          .map(
+            (definition) => definition.stackingGroup ?? definition.id,
+          ),
+      );
+      const externalModifiers = sourcePanelBuffs.flatMap((buff) =>
+        ownSourcePanelBuffKeys.has(buff.key) ? [] : buff.modifiers,
+      );
+      return {
+        member,
+        panel: externalModifiers.length
+          ? calculateStandalonePanel(
+              member,
+              moonsign.level,
+              hexerei.secretRite,
+              externalModifiers,
+            )
+          : preliminaryPanel,
+        settings: sourceSettings,
+      };
+    },
+  );
+  const party = createPartyState(sourcePanels);
   const buffs: ResolvedTeamBuff[] = [];
   const targetContext = createContext(
     {

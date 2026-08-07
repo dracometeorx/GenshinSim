@@ -4,7 +4,11 @@ import type { Dispatch, SetStateAction } from "react";
 import type { BuildInput } from "../../lib/calculator";
 import type { CalculationResult } from "../../lib/calculation";
 import type { CharacterPreset } from "../../lib/data/characters";
-import type { DamageSettings } from "../../lib/damage";
+import type {
+  DamageSettings,
+  DamageVariantResult,
+  RepresentativeDamageSegmentResult,
+} from "../../lib/damage";
 import { NumericInput } from "./numeric-input";
 
 const talentLabels: Array<{
@@ -56,6 +60,79 @@ const elementDisplay: Record<string, { label: string; icon: string }> = {
   geo: { label: "岩", icon: "◇" },
   dendro: { label: "草", icon: "♧" },
 };
+
+function DamageTable({ variants }: { variants: DamageVariantResult[] }) {
+  return (
+    <div className="damage-table" role="table">
+      <div className="damage-table-head" role="row">
+        <span role="columnheader">反应</span>
+        <span role="columnheader">未暴击</span>
+        <span role="columnheader">暴击</span>
+        <span role="columnheader">期望</span>
+      </div>
+      {variants.map((variant) => (
+        <div
+          className={`damage-row reaction-${variant.reaction}`}
+          key={variant.reaction}
+          role="row"
+        >
+          <span role="cell">{variant.label}</span>
+          <span role="cell">{formatNumber(variant.nonCrit)}</span>
+          <strong role="cell">{formatNumber(variant.crit)}</strong>
+          <strong className="damage-expected" role="cell">
+            {formatNumber(variant.expected)}
+          </strong>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DamageSegmentTable({
+  segments,
+}: {
+  segments: RepresentativeDamageSegmentResult[];
+}) {
+  return (
+    <section className="damage-segments" aria-label="分段伤害明细">
+      <header>
+        <strong>分段明细</strong>
+        <small>各段之和与上方总计一致</small>
+      </header>
+      <div className="damage-segment-table" role="table">
+        <div className="damage-segment-table-head" role="row">
+          <span role="columnheader">伤害段</span>
+          <span role="columnheader">反应</span>
+          <span role="columnheader">未暴击</span>
+          <span role="columnheader">暴击</span>
+          <span role="columnheader">期望</span>
+        </div>
+        {segments.flatMap((segment) =>
+          segment.variants.map((variant, variantIndex) => (
+            <div
+              className={`damage-segment-row reaction-${variant.reaction}`}
+              key={`${segment.id}-${variant.reaction}`}
+              role="row"
+            >
+              <span role="cell">
+                <strong>{segment.name}</strong>
+                {variantIndex === 0 ? (
+                  <small>{segment.multiplierLabel}</small>
+                ) : null}
+              </span>
+              <span role="cell">{variant.label}</span>
+              <span role="cell">{formatNumber(variant.nonCrit)}</span>
+              <strong role="cell">{formatNumber(variant.crit)}</strong>
+              <strong className="damage-expected" role="cell">
+                {formatNumber(variant.expected)}
+              </strong>
+            </div>
+          )),
+        )}
+      </div>
+    </section>
+  );
+}
 
 export function ResultPanel({
   activeElement,
@@ -411,32 +488,20 @@ export function ResultPanel({
                       : ""}
                   </b>
                 </div>
-                <div className="damage-table" role="table">
-                  <div className="damage-table-head" role="row">
-                    <span role="columnheader">反应</span>
-                    <span role="columnheader">未暴击</span>
-                    <span role="columnheader">暴击</span>
-                    <span role="columnheader">期望</span>
+                {skill.segments?.length ? (
+                  <div className="damage-total">
+                    <header>
+                      <strong>总计</strong>
+                      <small>{skill.segments.length} 段伤害合计</small>
+                    </header>
+                    <DamageTable variants={skill.variants} />
                   </div>
-                  {skill.variants.map((variant) => (
-                    <div
-                      className={`damage-row reaction-${variant.reaction}`}
-                      key={variant.reaction}
-                      role="row"
-                    >
-                      <span role="cell">{variant.label}</span>
-                      <span role="cell">
-                        {formatNumber(variant.nonCrit)}
-                      </span>
-                      <strong role="cell">
-                        {formatNumber(variant.crit)}
-                      </strong>
-                      <strong className="damage-expected" role="cell">
-                        {formatNumber(variant.expected)}
-                      </strong>
-                    </div>
-                  ))}
-                </div>
+                ) : (
+                  <DamageTable variants={skill.variants} />
+                )}
+                {skill.segments?.length ? (
+                  <DamageSegmentTable segments={skill.segments} />
+                ) : null}
               </article>
             ))}
           </div>
