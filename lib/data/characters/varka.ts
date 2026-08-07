@@ -1,3 +1,4 @@
+import type { DamageTarget } from "../../damage-types.ts";
 import type { CharacterPreset } from "./types.ts";
 
 const fourWinds = [
@@ -11,6 +12,11 @@ const fourWinds = [
   2.812 + 1.514,
   2.988 + 1.609,
   3.164 + 1.704,
+  3.339 + 1.798,
+  3.515 + 1.893,
+  3.735 + 2.011,
+  3.955 + 2.129,
+  4.174 + 2.248,
 ] as const;
 
 export const varka: CharacterPreset = {
@@ -28,6 +34,69 @@ export const varka: CharacterPreset = {
   defaultWeaponId: "wolfs-gravestone",
   burstEnergyCost: 60,
   hexerei: true,
+  teamBuffs: [
+    {
+      id: "varka-c4-swirl-damage",
+      name: "C4·歌唱的自由",
+      description:
+        "触发扩散后，全队获得 20% 风元素伤害与对应扩散元素伤害加成。",
+      minConstellation: 4,
+      appliesToSelf: true,
+      evaluate: ({ source, target }) => {
+        const swirlElement = source.settings.selections.varkaSwirlElement;
+        return target.element === "anemo" || target.element === swirlElement
+          ? [{ kind: "damage", stat: "damageBonus", value: 20 }]
+          : [];
+      },
+    },
+  ],
+  constellations: [
+    {
+      level: 1,
+      name: "「来吧，朋友，让我们在月下共舞」",
+      description:
+        "切换至狂飙突进后，首次四风将起或苍噬造成原本 200% 的伤害。",
+      damageEffects: [
+        {
+          id: "varka-c1-double-skill",
+          evaluate: ({ target }) =>
+            target.id === "varka-four-winds"
+              ? [{ stat: "baseDamageMultiplier", value: 100 }]
+              : [],
+        },
+      ],
+    },
+    {
+      level: 2,
+      name: "「待天光破晓，我们便要踏上征途」",
+      description:
+        "施放四风将起或苍噬时，追加 800% 攻击力的风元素伤害。",
+    },
+    {
+      level: 3,
+      name: "「朋友，莫要再饮令人落泪的苦酒」",
+      description: "元素战技等级提高 3 级。",
+      talentLevelBonuses: { skill: 3 },
+    },
+    {
+      level: 4,
+      name: "「因为无人能夺去我们歌唱的自由」",
+      description:
+        "触发扩散后，全队风元素与对应扩散元素伤害提高 20%。",
+    },
+    {
+      level: 5,
+      name: "「斟满杯中佳酿吧，暴君来了又去」",
+      description: "元素爆发等级提高 3 级。",
+      talentLevelBonuses: { burst: 3 },
+    },
+    {
+      level: 6,
+      name: "「我心爱的蒙德呀，依然屹立如初」",
+      description:
+        "狂飙突进获得额外连携；每层苍牙之誓使暴击伤害提高 20%。",
+    },
+  ],
   damageProfile: {
     kind: "varka",
     talentLabel: "烈风终坠",
@@ -44,8 +113,20 @@ export const varka: CharacterPreset = {
           { value: "4", label: "4 层" },
         ],
       },
+      {
+        key: "varkaSwirlElement",
+        label: "C4 扩散元素",
+        defaultValue: "pyro",
+        options: [
+          { value: "pyro", label: "火元素" },
+          { value: "hydro", label: "水元素" },
+          { value: "cryo", label: "冰元素" },
+          { value: "electro", label: "雷元素" },
+        ],
+      },
     ],
     evaluateTargets: ({
+      constellation,
       panel,
       selection,
       settings,
@@ -57,7 +138,7 @@ export const varka: CharacterPreset = {
         fourWinds,
         settings.skillTalentLevel,
       );
-      return [
+      const targets: DamageTarget[] = [
         {
           id: "varka-four-winds",
           name: "四风将起（二段合计）",
@@ -71,8 +152,22 @@ export const varka: CharacterPreset = {
           category: "skill",
           reactions: ["none"],
           extraDamageBonus: stacks * 7.5,
+          extraCritDmg: constellation >= 6 ? stacks * 20 : 0,
         },
       ];
+      if (constellation >= 2) {
+        targets.push({
+          id: "varka-c2-followup",
+          name: "C2·踏上征途",
+          description: "施放四风将起时追加的一次风元素范围攻击。",
+          multiplierLabel: "800% 攻击力",
+          baseDamage: panel.atk * 8,
+          category: "skill",
+          reactions: ["none"],
+          extraCritDmg: constellation >= 6 ? stacks * 20 : 0,
+        });
+      }
+      return targets;
     },
   },
 };

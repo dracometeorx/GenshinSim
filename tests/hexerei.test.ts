@@ -155,6 +155,16 @@ function calculate(
   });
 }
 
+function skillNonCrit(
+  result: ReturnType<typeof calculate>,
+  skillId: string,
+) {
+  const value = result.skills.find(({ id }) => id === skillId)
+    ?.variants[0]?.nonCrit;
+  assert.equal(typeof value, "number", skillId);
+  return value;
+}
+
 test("catalogs every current Hexerei character as homework-complete", () => {
   assert.deepEqual(
     characters
@@ -290,6 +300,187 @@ test("applies Sucrose constellation talent levels and C6 absorption buffs", () =
     ),
     false,
   );
+});
+
+test("defines all six constellations for the requested Hexerei characters", () => {
+  for (const id of [
+    "durin",
+    "venti",
+    "klee",
+    "albedo",
+    "mona",
+    "fischl",
+    "razor",
+    "varka",
+    "prune",
+    "lohen",
+  ]) {
+    assert.deepEqual(
+      getCharacter(id).constellations?.map(({ level }) => level),
+      [1, 2, 3, 4, 5, 6],
+      id,
+    );
+  }
+});
+
+test("applies Durin, Venti, Klee, and Albedo constellation damage", () => {
+  const durin = getCharacter("durin");
+  const durinC0 = calculate(durin, {
+    selections: { durinForm: "dark" },
+  });
+  const durinC1 = calculate(durin, {
+    constellation: 1,
+    selections: { durinForm: "dark" },
+  });
+  const durinC4 = calculate(durin, {
+    constellation: 4,
+    selections: { durinForm: "dark" },
+  });
+  const durinC6 = calculate(durin, {
+    constellation: 6,
+    selections: { durinForm: "dark" },
+  });
+  assert.ok(
+    skillNonCrit(durinC1, "durin-dark-dragon") >
+      skillNonCrit(durinC0, "durin-dark-dragon"),
+  );
+  assert.ok(
+    skillNonCrit(durinC4, "durin-dark-dragon") >
+      skillNonCrit(durinC1, "durin-dark-dragon"),
+  );
+  assert.ok(
+    skillNonCrit(durinC6, "durin-dark-dragon") >
+      skillNonCrit(durinC4, "durin-dark-dragon"),
+  );
+  assert.equal(durinC6.effectiveSettings.burstTalentLevel, 13);
+  assert.equal(durinC6.effectiveSettings.skillTalentLevel, 13);
+
+  const venti = getCharacter("venti");
+  const ventiC0 = calculate(venti);
+  const ventiC6 = calculate(venti, { constellation: 6 });
+  assert.equal(ventiC6.effectiveSettings.burstTalentLevel, 13);
+  assert.equal(ventiC6.effectiveSettings.skillTalentLevel, 13);
+  assert.ok(ventiC6.panel.elementalDmg > ventiC0.panel.elementalDmg);
+  assert.equal(ventiC6.effectiveResistance, -22);
+
+  const klee = getCharacter("klee");
+  const kleeC0 = calculate(klee);
+  const kleeC6 = calculate(klee, { constellation: 6 });
+  assert.ok(kleeC6.defenseMultiplier > kleeC0.defenseMultiplier);
+  assert.ok(kleeC6.skills.some(({ id }) => id === "klee-c1-spark"));
+  assert.ok(
+    kleeC6.skills.some(({ id }) => id === "klee-c4-explosion"),
+  );
+  assert.equal(kleeC6.effectiveSettings.skillTalentLevel, 13);
+  assert.equal(kleeC6.effectiveSettings.burstTalentLevel, 13);
+
+  const albedo = getCharacter("albedo");
+  const albedoC0 = calculate(albedo);
+  const albedoC6 = calculate(albedo, { constellation: 6 });
+  assert.ok(
+    albedoC6.skills.some(({ id }) => id === "albedo-c2-burst"),
+  );
+  assert.ok(
+    skillNonCrit(albedoC6, "albedo-transient-blossom") >
+      skillNonCrit(albedoC0, "albedo-transient-blossom"),
+  );
+  assert.equal(albedoC6.effectiveSettings.skillTalentLevel, 13);
+  assert.equal(albedoC6.effectiveSettings.burstTalentLevel, 13);
+});
+
+test("applies Mona, Fischl, and Razor constellation damage", () => {
+  const mona = getCharacter("mona");
+  const monaC0 = calculate(mona);
+  const monaC6 = calculate(mona, { constellation: 6 });
+  const monaC0Vaporize = monaC0.skills[0].variants.find(
+    ({ reaction }) => reaction === "vaporize",
+  );
+  const monaC6Vaporize = monaC6.skills[0].variants.find(
+    ({ reaction }) => reaction === "vaporize",
+  );
+  assert.ok(monaC0Vaporize && monaC6Vaporize);
+  assert.ok(monaC6Vaporize.expected > monaC0Vaporize.expected);
+  assert.equal(monaC6.effectiveSettings.burstTalentLevel, 13);
+  assert.equal(monaC6.effectiveSettings.skillTalentLevel, 13);
+
+  const fischl = getCharacter("fischl");
+  const fischlC0 = calculate(fischl);
+  const fischlC6 = calculate(fischl, { constellation: 6 });
+  assert.ok(
+    skillNonCrit(fischlC6, "fischl-oz-attack") >
+      skillNonCrit(fischlC0, "fischl-oz-attack"),
+  );
+  for (const id of [
+    "fischl-c2-summon",
+    "fischl-c4-burst",
+    "fischl-c6-coordinated",
+  ]) {
+    assert.ok(fischlC6.skills.some((skill) => skill.id === id), id);
+  }
+
+  const razor = getCharacter("razor");
+  const razorC0 = calculate(razor);
+  const razorC6 = calculate(razor, { constellation: 6 });
+  assert.ok(
+    skillNonCrit(razorC6, "razor-claw") >
+      skillNonCrit(razorC0, "razor-claw"),
+  );
+  assert.ok(
+    razorC6.skills.some(({ id }) => id === "razor-c6-lightning"),
+  );
+  assert.equal(razorC6.effectiveSettings.burstTalentLevel, 13);
+  assert.equal(razorC6.effectiveSettings.skillTalentLevel, 13);
+});
+
+test("applies Varka, Prune, and Lohen constellation mechanics", () => {
+  const varka = getCharacter("varka");
+  const varkaC0 = calculate(varka);
+  const varkaC6 = calculate(varka, { constellation: 6 });
+  assert.ok(
+    skillNonCrit(varkaC6, "varka-four-winds") >
+      skillNonCrit(varkaC0, "varka-four-winds") * 2,
+  );
+  assert.ok(
+    varkaC6.skills.some(({ id }) => id === "varka-c2-followup"),
+  );
+  assert.equal(varkaC6.effectiveSettings.skillTalentLevel, 13);
+  assert.equal(varkaC6.effectiveSettings.burstTalentLevel, 13);
+
+  const prune = getCharacter("prune");
+  const pruneC0 = calculate(prune);
+  const pruneC6 = calculate(prune, { constellation: 6 });
+  assert.ok(pruneC6.panel.atk > pruneC0.panel.atk + 350);
+  assert.ok(
+    pruneC6.skills.some(({ id }) => id === "prune-c4-ricochet"),
+  );
+  assert.equal(pruneC6.effectiveSettings.skillTalentLevel, 13);
+  assert.equal(pruneC6.effectiveSettings.burstTalentLevel, 13);
+
+  const lohen = getCharacter("lohen");
+  const lohenC0 = calculate(lohen, {
+    selections: { lohenRivalry: "300" },
+  });
+  const lohenC1 = calculate(lohen, {
+    constellation: 1,
+    selections: { lohenRivalry: "300" },
+  });
+  const lohenC6 = calculate(lohen, {
+    constellation: 6,
+    selections: { lohenRivalry: "100" },
+  });
+  assert.ok(
+    skillNonCrit(lohenC1, "lohen-heart-piercer") >
+      skillNonCrit(lohenC0, "lohen-heart-piercer"),
+  );
+  assert.ok(
+    lohenC6.skills.some(({ id }) => id === "lohen-c2-evilsbane"),
+  );
+  assert.ok(
+    skillNonCrit(lohenC6, "lohen-burst") >
+      skillNonCrit(lohenC1, "lohen-burst"),
+  );
+  assert.equal(lohenC6.effectiveSettings.skillTalentLevel, 13);
+  assert.equal(lohenC6.effectiveSettings.burstTalentLevel, 13);
 });
 
 test("resolves both Hexerei artifact sets from homework and Secret Rite", () => {

@@ -1,3 +1,4 @@
+import type { DamageTarget } from "../../damage-types.ts";
 import type { CharacterPreset } from "./types.ts";
 
 const ozAttack = [
@@ -50,16 +51,56 @@ export const fischl: CharacterPreset = {
           : [],
     },
   ],
+  constellations: [
+    {
+      level: 1,
+      name: "幽邃鸦眼",
+      description: "奥兹不在场时，普通攻击附带 22% 攻击力的协同攻击。",
+    },
+    {
+      level: 2,
+      name: "圣裁影羽",
+      description: "施放元素战技时额外造成 200% 攻击力的伤害。",
+    },
+    {
+      level: 3,
+      name: "渊色黑翼",
+      description: "元素战技等级提高 3 级。",
+      talentLevelBonuses: { skill: 3 },
+    },
+    {
+      level: 4,
+      name: "皇女幻绮谭",
+      description: "施放元素爆发时额外造成 222% 攻击力的雷元素伤害。",
+    },
+    {
+      level: 5,
+      name: "至夜默示录",
+      description: "元素爆发等级提高 3 级。",
+      talentLevelBonuses: { burst: 3 },
+    },
+    {
+      level: 6,
+      name: "永夜之禽",
+      description:
+        "奥兹协同当前场上角色攻击，造成菲谢尔 30% 攻击力的雷元素伤害。",
+    },
+  ],
   damageProfile: {
     kind: "fischl",
     talentLabel: "夜巡影翼",
     controls: [],
-    evaluateTargets: ({ panel, settings, talentValue }) => {
+    evaluateTargets: ({
+      constellation,
+      panel,
+      settings,
+      talentValue,
+    }) => {
       const multiplier = talentValue(
         ozAttack,
         settings.skillTalentLevel,
       );
-      return [
+      const targets: DamageTarget[] = [
         {
           id: "fischl-oz-attack",
           name: "奥兹单次攻击",
@@ -70,6 +111,40 @@ export const fischl: CharacterPreset = {
           reactions: ["none"],
         },
       ];
+      if (constellation >= 2) {
+        targets.push({
+          id: "fischl-c2-summon",
+          name: "C2·圣裁影羽",
+          description: "施放夜巡影翼时造成的额外雷元素伤害。",
+          multiplierLabel: "200% 攻击力",
+          baseDamage: panel.atk * 2,
+          category: "skill",
+          reactions: ["none"],
+        });
+      }
+      if (constellation >= 4) {
+        targets.push({
+          id: "fischl-c4-burst",
+          name: "C4·皇女幻绮谭",
+          description: "施放至夜幻现时造成的额外雷元素范围伤害。",
+          multiplierLabel: "222% 攻击力",
+          baseDamage: panel.atk * 2.22,
+          category: "burst",
+          reactions: ["none"],
+        });
+      }
+      if (constellation >= 6) {
+        targets.push({
+          id: "fischl-c6-coordinated",
+          name: "C6·奥兹协同攻击",
+          description: "当前场上角色攻击时，奥兹进行一次协同攻击。",
+          multiplierLabel: "30% 攻击力",
+          baseDamage: panel.atk * 0.3,
+          category: "skill",
+          reactions: ["none"],
+        });
+      }
+      return targets;
     },
   },
 };

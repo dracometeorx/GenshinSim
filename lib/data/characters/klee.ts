@@ -1,8 +1,13 @@
+import type { DamageTarget } from "../../damage-types.ts";
 import type { CharacterPreset } from "./types.ts";
 
 const chargedAttack = [
   1.5736, 1.6916, 1.8096, 1.9669, 2.0849, 2.2029, 2.3603,
   2.5177, 2.675, 2.8324, 2.9898,
+] as const;
+const sparklyExplosion = [
+  0.426, 0.458, 0.49, 0.533, 0.565, 0.597, 0.64, 0.682,
+  0.725, 0.768, 0.81, 0.853, 0.906, 0.959, 1.013,
 ] as const;
 
 export const klee: CharacterPreset = {
@@ -20,6 +25,68 @@ export const klee: CharacterPreset = {
   defaultWeaponId: "lost-prayer",
   burstEnergyCost: 60,
   hexerei: true,
+  teamBuffs: [
+    {
+      id: "klee-c2-defense-down",
+      name: "C2·破破弹片",
+      description: "蹦蹦炸弹的诡雷使敌人防御力降低 23%。",
+      minConstellation: 2,
+      appliesToSelf: true,
+      evaluate: () => [
+        {
+          kind: "damage",
+          stat: "enemyDefenseReduction",
+          value: 23,
+        },
+      ],
+    },
+    {
+      id: "klee-c6-pyro-damage",
+      name: "C6·火力全开",
+      description: "施放轰轰火花后，全队获得 10% 火元素伤害加成。",
+      minConstellation: 6,
+      appliesToSelf: true,
+      evaluate: ({ target }) =>
+        target.element === "pyro"
+          ? [{ kind: "damage", stat: "damageBonus", value: 10 }]
+          : [],
+    },
+  ],
+  constellations: [
+    {
+      level: 1,
+      name: "连环轰隆",
+      description:
+        "攻击或施放技能时可召唤火花，造成轰轰火花单次攻击 120% 的伤害。",
+    },
+    {
+      level: 2,
+      name: "破破弹片",
+      description: "蹦蹦炸弹的诡雷使敌人防御力降低 23%。",
+    },
+    {
+      level: 3,
+      name: "可莉特调",
+      description: "元素战技等级提高 3 级。",
+      talentLevelBonuses: { skill: 3 },
+    },
+    {
+      level: 4,
+      name: "一触即发",
+      description: "轰轰火花期间退场时，造成 555% 攻击力的火元素伤害。",
+    },
+    {
+      level: 5,
+      name: "轰击之星",
+      description: "元素爆发等级提高 3 级。",
+      talentLevelBonuses: { burst: 3 },
+    },
+    {
+      level: 6,
+      name: "火力全开",
+      description: "施放元素爆发后，全队获得 10% 火元素伤害加成。",
+    },
+  ],
   damageProfile: {
     kind: "klee",
     talentLabel: "砰砰 / 火花魔法",
@@ -37,6 +104,7 @@ export const klee: CharacterPreset = {
       },
     ],
     evaluateTargets: ({
+      constellation,
       hexereiSecretRite,
       panel,
       selection,
@@ -52,7 +120,7 @@ export const klee: CharacterPreset = {
         talentValue(chargedAttack, settings.normalTalentLevel) *
         1.5 *
         medalMultiplier;
-      return [
+      const targets: DamageTarget[] = [
         {
           id: "klee-special-charged",
           name: "特殊重击·嘭嘭轰击",
@@ -65,6 +133,34 @@ export const klee: CharacterPreset = {
           reactions: ["none", "vaporize", "melt"],
         },
       ];
+      if (constellation >= 1) {
+        const spark =
+          talentValue(
+            sparklyExplosion,
+            settings.burstTalentLevel,
+          ) * 1.2;
+        targets.push({
+          id: "klee-c1-spark",
+          name: "C1·连环轰隆火花",
+          description: "按触发一次火花轰击计算。",
+          multiplierLabel: `${(spark * 100).toFixed(1)}% 攻击力`,
+          baseDamage: panel.atk * spark,
+          category: "burst",
+          reactions: ["none", "vaporize", "melt"],
+        });
+      }
+      if (constellation >= 4) {
+        targets.push({
+          id: "klee-c4-explosion",
+          name: "C4·一触即发",
+          description: "轰轰火花持续期间退场产生的爆炸。",
+          multiplierLabel: "555% 攻击力",
+          baseDamage: panel.atk * 5.55,
+          category: "burst",
+          reactions: ["none", "vaporize", "melt"],
+        });
+      }
+      return targets;
     },
   },
 };

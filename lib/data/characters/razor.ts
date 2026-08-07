@@ -1,3 +1,4 @@
+import type { DamageTarget } from "../../damage-types.ts";
 import type { CharacterPreset } from "./types.ts";
 
 const clawDamage = [
@@ -20,11 +21,84 @@ export const razor: CharacterPreset = {
   defaultWeaponId: "wolfs-gravestone",
   burstEnergyCost: 80,
   hexerei: true,
+  teamBuffs: [
+    {
+      id: "razor-c1-damage",
+      name: "C1·狼性",
+      description: "获取元素晶球或元素微粒后，造成的伤害提高 10%。",
+      minConstellation: 1,
+      appliesToSelf: true,
+      appliesToTeammates: false,
+      evaluate: () => [
+        { kind: "damage", stat: "damageBonus", value: 10 },
+      ],
+    },
+    {
+      id: "razor-c2-crit-rate",
+      name: "C2·压制",
+      description: "攻击生命值低于 30% 的敌人时，暴击率提高 10%。",
+      minConstellation: 2,
+      appliesToSelf: true,
+      appliesToTeammates: false,
+      evaluate: () => [
+        { kind: "damage", stat: "critRate", value: 10 },
+      ],
+    },
+    {
+      id: "razor-c4-defense-down",
+      name: "C4·撕咬",
+      description: "元素战技点按命中后，敌人防御力降低 15%。",
+      minConstellation: 4,
+      appliesToSelf: true,
+      evaluate: () => [
+        {
+          kind: "damage",
+          stat: "enemyDefenseReduction",
+          value: 15,
+        },
+      ],
+    },
+  ],
+  constellations: [
+    {
+      level: 1,
+      name: "狼性",
+      description: "获取元素晶球或元素微粒后，造成的伤害提高 10%。",
+    },
+    {
+      level: 2,
+      name: "压制",
+      description: "攻击生命值低于 30% 的敌人时，暴击率提高 10%。",
+    },
+    {
+      level: 3,
+      name: "兽魂",
+      description: "元素爆发等级提高 3 级。",
+      talentLevelBonuses: { burst: 3 },
+    },
+    {
+      level: 4,
+      name: "撕咬",
+      description: "元素战技点按使敌人防御力降低 15%。",
+    },
+    {
+      level: 5,
+      name: "利爪",
+      description: "元素战技等级提高 3 级。",
+      talentLevelBonuses: { skill: 3 },
+    },
+    {
+      level: 6,
+      name: "天狼",
+      description: "下一次普通攻击附带 100% 攻击力的雷元素落雷。",
+    },
+  ],
   damageProfile: {
     kind: "razor",
     talentLabel: "利爪与苍雷 / 雷牙",
     controls: [],
     evaluateTargets: ({
+      constellation,
       hexereiSecretRite,
       panel,
       settings,
@@ -34,7 +108,7 @@ export const razor: CharacterPreset = {
         clawDamage,
         settings.skillTalentLevel,
       );
-      return [
+      const targets: DamageTarget[] = [
         {
           id: "razor-claw",
           name: "利爪与苍雷（点按）",
@@ -57,6 +131,18 @@ export const razor: CharacterPreset = {
           reactions: ["none"],
         },
       ];
+      if (constellation >= 6) {
+        targets.push({
+          id: "razor-c6-lightning",
+          name: "C6·天狼落雷",
+          description: "充能后的下一次普通攻击引发的雷元素伤害。",
+          multiplierLabel: "100% 攻击力",
+          baseDamage: panel.atk,
+          category: "normal",
+          reactions: ["none"],
+        });
+      }
+      return targets;
     },
   },
 };

@@ -1,3 +1,4 @@
+import type { DamageTarget } from "../../damage-types.ts";
 import type { CharacterPreset } from "./types.ts";
 import { talentCurve } from "./lunar-common.ts";
 
@@ -57,17 +58,97 @@ export const prune: CharacterPreset = {
           ? [{ kind: "panel", stat: "atkPct", value: 30 }]
           : [],
     },
+    {
+      id: "prune-c6-rally-attack",
+      name: "C6·故事结尾在这儿",
+      description:
+        "处于振铃鼓舞影响下的角色触发元素反应后，布伦妮与当前场上受影响角色攻击力提高 350 点。",
+      minConstellation: 6,
+      appliesToSelf: true,
+      evaluate: () => [
+        { kind: "panel", stat: "flatAtk", value: 350 },
+      ],
+    },
+  ],
+  constellations: [
+    {
+      level: 1,
+      name: "立下寻救的誓言，旅途由此开端",
+      description: "元素转化后的狩灾誓锤命中时恢复元素能量。",
+    },
+    {
+      level: 2,
+      name: "整理杂乱的包袱，元素妙力果然",
+      description:
+        "寻猎模式下攻击力先提高 10%，命中继续叠加，最高提高 40%。",
+      panelEffects: [
+        {
+          id: "prune-c2-witch-hunter-attack",
+          stage: "additive",
+          conditional: true,
+          evaluate: ({ damageSelections }) => {
+            const stacks = Math.min(
+              6,
+              Math.max(
+                0,
+                Number(damageSelections.pruneC2AttackStacks) || 0,
+              ),
+            );
+            return [{ stat: "atkPct", value: 10 + stacks * 5 }];
+          },
+        },
+      ],
+    },
+    {
+      level: 3,
+      name: "同旅商队过山关，眼眸景色又转",
+      description: "元素爆发等级提高 3 级。",
+      talentLevelBonuses: { burst: 3 },
+    },
+    {
+      level: 4,
+      name: "循风同行回头看，影子还缺一半",
+      description:
+        "元素转化后的狩灾誓锤命中后，再造成 80% 攻击力的对应元素伤害。",
+    },
+    {
+      level: 5,
+      name: "输了一百次不算，明日接着再战",
+      description: "元素战技等级提高 3 级。",
+      talentLevelBonuses: { skill: 3 },
+    },
+    {
+      level: 6,
+      name: "故事结尾在这儿，念给伙伴听完",
+      description:
+        "寻猎模式延长；触发元素反应后，受振铃鼓舞角色攻击力提高 350 点。",
+    },
   ],
   damageProfile: {
     kind: "prune",
     talentLabel: "叮铃铃·猎魔之音",
-    controls: [],
-    evaluateTargets: ({ panel, settings, talentValue }) => {
+    controls: [
+      {
+        key: "pruneC2AttackStacks",
+        label: "C2 寻猎魔女命中层数",
+        defaultValue: "6",
+        options: [0, 1, 2, 3, 4, 5, 6].map((value) => ({
+          value: String(value),
+          label: `${value} 层`,
+        })),
+      },
+    ],
+    evaluateTargets: ({
+      constellation,
+      panel,
+      settings,
+      talentValue,
+    }) => {
       const multiplier = talentValue(
         transformedHammer,
         settings.skillTalentLevel,
       );
-      return [
+      const targets: DamageTarget[] = [
         {
           id: "prune-transformed-hammer",
           name: "咚锵锵·裁魔之惩",
@@ -79,6 +160,18 @@ export const prune: CharacterPreset = {
           reactions: ["none"],
         },
       ];
+      if (constellation >= 4) {
+        targets.push({
+          id: "prune-c4-ricochet",
+          name: "C4·狩灾誓锤弹跳",
+          description: "元素转化后的狩灾誓锤命中后追加的对应元素伤害。",
+          multiplierLabel: "80% 攻击力",
+          baseDamage: panel.atk * 0.8,
+          category: "skill",
+          reactions: ["none"],
+        });
+      }
+      return targets;
     },
   },
 };
