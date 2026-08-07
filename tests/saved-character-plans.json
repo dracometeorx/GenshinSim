@@ -1,0 +1,719 @@
+{
+  "schemaVersion": 3,
+  "activeCharacterId": "ayaka",
+  "activePlanIds": {
+    "hutao": "54e02542-09f7-451a-97ba-20d57fdff17f",
+    "nahida": "3e4238c3-5ac2-404d-a72b-cae4e9e4bfcc",
+    "cyno": "c9112e6b-c003-48d4-9f22-293c43132e91",
+    "sandrone": "7b584723-60bd-42c0-bf8e-a79a90d0532b",
+    "ineffa": "0e3ca552-bf15-41fb-986c-fbd04943b710",
+    "yae-miko": "5c74a44b-e2c5-4a26-9a8e-709295303168",
+    "ayaka": "c633d3fd-e625-4185-a9aa-3df4b4671030",
+    "qiqi": "99904ff4-e7f2-4861-9b15-052a2fb987a7",
+    "sucrose": "bc14ba54-175e-4671-bd4c-1b229b2b2fd0",
+    "mona": "4dff1dc9-e906-4833-a6d0-aea3914940ee"
+  },
+  "plans": [
+    {
+      "id": "54e02542-09f7-451a-97ba-20d57fdff17f",
+      "name": "胡桃方案 1",
+      "createdAt": "2026-07-24T09:11:43.955Z",
+      "updatedAt": "2026-07-24T11:23:32.739Z",
+      "snapshot": {
+        "element": "pyro",
+        "characterId": "hutao",
+        "weaponId": "homa",
+        "weaponRefinement": 1,
+        "weaponPassiveSelections": {
+          "homaHpState": "below50"
+        },
+        "artifactSetId": "blizzard-strayer",
+        "artifactSetPieces": 4,
+        "artifactSetSelections": {
+          "blizzardEnemyState": "frozen"
+        },
+        "artifact": {
+          "flatHp": 9615,
+          "flatAtk": 1110,
+          "flatDef": 62,
+          "critRate": 37.7,
+          "critDmg": 96.1,
+          "energyRecharge": 18.1,
+          "elementalMastery": 0,
+          "elementalDmg": 61.6,
+          "healingBonus": 0
+        },
+        "talentBonuses": {
+          "skill": 0,
+          "burst": 0,
+          "normal": 0,
+          "charged": 0,
+          "plunge": 0
+        },
+        "damageSettings": {
+          "enemyLevel": 105,
+          "enemyResistance": 10,
+          "normalTalentLevel": 10,
+          "skillTalentLevel": 10,
+          "burstTalentLevel": 10,
+          "selections": {
+            "ayakaDashBonus": "active",
+            "hutaoHpState": "below50",
+            "raidenResolveStacks": "60",
+            "raidenEyeState": "active",
+            "stellarElementalPower": "12"
+          }
+        },
+        "constellation": 4,
+        "team": {
+          "slots": [
+            {
+              "characterId": "nahida",
+              "planId": "3e4238c3-5ac2-404d-a72b-cae4e9e4bfcc"
+            },
+            {
+              "characterId": null,
+              "planId": null
+            },
+            {
+              "characterId": null,
+              "planId": null
+            }
+          ],
+          "buffToggles": {
+            "slot:0:weapon:dreams-party-elemental-mastery": false
+          }
+        }
+      }
+    },
+    {
+      "id": "3e4238c3-5ac2-404d-a72b-cae4e9e4bfcc",
+      "name": "纳西妲方案 1",
+      "createdAt": "2026-07-24T11:22:00.691Z",
+      "updatedAt": "2026-07-24T11:22:00.691Z",
+      "snapshot": {
+        "element": "dendro",
+        "characterId": "nahida",
+        "weaponId": "dreams",
+        "weaponRefinement": 1,
+        "weaponPassiveSelections": {},
+        "artifactSetId": "blizzard-strayer",
+        "artifactSetPieces": 4,
+        "artifactSetSelections": {
+          "blizzardEnemyState": "frozen"
+        },
+        "artifact": {
+          "flatHp": 9615,
+          "flatAtk": 1110,
+          "flatDef": 62,
+          "critRate": 37.7,
+          "critDmg": 96.1,
+          "energyRecharge": 18.1,
+          "elementalMastery": 0,
+          "elementalDmg": 61.6,
+          "healingBonus": 0
+        },
+        "talentBonuses": {
+          "skill": 0,
+          "burst": 0,
+          "normal": 0,
+          "charged": 0,
+          "plunge": 0
+        },
+        "damageSettings": {
+          "enemyLevel": 105,
+          "enemyResistance": 10,
+          "normalTalentLevel": 10,
+          "skillTalentLevel": 10,
+          "burstTalentLevel": 10,
+          "selections": {
+            "ayakaDashBonus": "active",
+            "hutaoHpState": "below50",
+            "raidenResolveStacks": "60",
+            "raidenEyeState": "active",
+            "stellarElementalPower": "12"
+          }
+        },
+        "constellation": 0,
+        "team": {
+          "slots": [
+            {
+              "characterId": null,
+              "planId": null
+            },
+            {
+              "characterId": null,
+              "planId": null
+            },
+            {
+              "characterId": null,
+              "planId": null
+            }
+          ],
+          "buffToggles": {}
+        }
+      }
+    },
+    {
+      "id": "c9112e6b-c003-48d4-9f22-293c43132e91",
+      "name": "赛诺方案 1",
+      "createdAt": "2026-07-25T07:47:14.264Z",
+      "updatedAt": "2026-07-25T07:48:39.379Z",
+      "snapshot": {
+        "element": "electro",
+        "characterId": "cyno",
+        "weaponId": "homa",
+        "weaponRefinement": 1,
+        "weaponPassiveSelections": {
+          "homaHpState": "below50"
+        },
+        "artifactSetId": "delusion-of-immolated-shadow",
+        "artifactSetPieces": 4,
+        "artifactSetSelections": {
+          "delusionStellarState": "active"
+        },
+        "artifact": {
+          "flatHp": 9615,
+          "flatAtk": 1110,
+          "flatDef": 62,
+          "critRate": 37.7,
+          "critDmg": 96.1,
+          "energyRecharge": 18.1,
+          "elementalMastery": 0,
+          "elementalDmg": 61.6,
+          "healingBonus": 0
+        },
+        "talentBonuses": {
+          "skill": 0,
+          "burst": 0,
+          "normal": 0,
+          "charged": 0,
+          "plunge": 0
+        },
+        "damageSettings": {
+          "enemyLevel": 105,
+          "enemyResistance": 10,
+          "normalTalentLevel": 10,
+          "skillTalentLevel": 10,
+          "burstTalentLevel": 10,
+          "selections": {
+            "ayakaDashBonus": "active",
+            "hutaoHpState": "below50",
+            "raidenResolveStacks": "60",
+            "raidenEyeState": "active",
+            "stellarElementalPower": "12"
+          }
+        },
+        "constellation": 0,
+        "team": {
+          "slots": [
+            {
+              "characterId": "yae-miko",
+              "planId": "5c74a44b-e2c5-4a26-9a8e-709295303168"
+            },
+            {
+              "characterId": "sandrone",
+              "planId": "7b584723-60bd-42c0-bf8e-a79a90d0532b"
+            },
+            {
+              "characterId": null,
+              "planId": null
+            }
+          ],
+          "buffToggles": {}
+        }
+      }
+    },
+    {
+      "id": "7b584723-60bd-42c0-bf8e-a79a90d0532b",
+      "name": "桑多涅方案 1",
+      "createdAt": "2026-07-25T07:48:08.314Z",
+      "updatedAt": "2026-07-25T07:48:08.314Z",
+      "snapshot": {
+        "element": "cryo",
+        "characterId": "sandrone",
+        "weaponId": "a-teaspoon-of-transcendence",
+        "weaponRefinement": 1,
+        "weaponPassiveSelections": {
+          "transcendenceStacks": "3"
+        },
+        "artifactSetId": "delusion-of-immolated-shadow",
+        "artifactSetPieces": 4,
+        "artifactSetSelections": {
+          "delusionStellarState": "active"
+        },
+        "artifact": {
+          "flatHp": 9615,
+          "flatAtk": 1110,
+          "flatDef": 62,
+          "critRate": 37.7,
+          "critDmg": 96.1,
+          "energyRecharge": 18.1,
+          "elementalMastery": 0,
+          "elementalDmg": 61.6,
+          "healingBonus": 0
+        },
+        "talentBonuses": {
+          "skill": 0,
+          "burst": 0,
+          "normal": 0,
+          "charged": 0,
+          "plunge": 0
+        },
+        "damageSettings": {
+          "enemyLevel": 105,
+          "enemyResistance": 10,
+          "normalTalentLevel": 10,
+          "skillTalentLevel": 10,
+          "burstTalentLevel": 10,
+          "selections": {
+            "ayakaDashBonus": "active",
+            "hutaoHpState": "below50",
+            "raidenResolveStacks": "60",
+            "raidenEyeState": "active",
+            "stellarElementalPower": "12",
+            "sandroneDecodingPower": "above50",
+            "sandroneTacticsStacks": "10"
+          }
+        },
+        "constellation": 0,
+        "team": {
+          "slots": [
+            {
+              "characterId": null,
+              "planId": null
+            },
+            {
+              "characterId": null,
+              "planId": null
+            },
+            {
+              "characterId": null,
+              "planId": null
+            }
+          ],
+          "buffToggles": {}
+        }
+      }
+    },
+    {
+      "id": "0e3ca552-bf15-41fb-986c-fbd04943b710",
+      "name": "伊涅芙方案 1",
+      "createdAt": "2026-07-25T07:48:27.779Z",
+      "updatedAt": "2026-07-25T07:48:27.779Z",
+      "snapshot": {
+        "element": "electro",
+        "characterId": "ineffa",
+        "weaponId": "homa",
+        "weaponRefinement": 1,
+        "weaponPassiveSelections": {
+          "homaHpState": "below50"
+        },
+        "artifactSetId": "delusion-of-immolated-shadow",
+        "artifactSetPieces": 4,
+        "artifactSetSelections": {
+          "delusionStellarState": "active"
+        },
+        "artifact": {
+          "flatHp": 9615,
+          "flatAtk": 1110,
+          "flatDef": 62,
+          "critRate": 37.7,
+          "critDmg": 96.1,
+          "energyRecharge": 18.1,
+          "elementalMastery": 0,
+          "elementalDmg": 61.6,
+          "healingBonus": 0
+        },
+        "talentBonuses": {
+          "skill": 0,
+          "burst": 0,
+          "normal": 0,
+          "charged": 0,
+          "plunge": 0
+        },
+        "damageSettings": {
+          "enemyLevel": 105,
+          "enemyResistance": 10,
+          "normalTalentLevel": 10,
+          "skillTalentLevel": 10,
+          "burstTalentLevel": 10,
+          "selections": {
+            "ayakaDashBonus": "active",
+            "hutaoHpState": "below50",
+            "raidenResolveStacks": "60",
+            "raidenEyeState": "active",
+            "stellarElementalPower": "12"
+          }
+        },
+        "constellation": 0,
+        "team": {
+          "slots": [
+            {
+              "characterId": null,
+              "planId": null
+            },
+            {
+              "characterId": null,
+              "planId": null
+            },
+            {
+              "characterId": null,
+              "planId": null
+            }
+          ],
+          "buffToggles": {}
+        }
+      }
+    },
+    {
+      "id": "5c74a44b-e2c5-4a26-9a8e-709295303168",
+      "name": "八重神子方案 1",
+      "createdAt": "2026-07-25T07:48:39.379Z",
+      "updatedAt": "2026-07-25T07:48:39.379Z",
+      "snapshot": {
+        "element": "electro",
+        "characterId": "yae-miko",
+        "weaponId": "the-widsith",
+        "weaponRefinement": 1,
+        "weaponPassiveSelections": {
+          "widsithState": "recitative"
+        },
+        "artifactSetId": "delusion-of-immolated-shadow",
+        "artifactSetPieces": 4,
+        "artifactSetSelections": {
+          "delusionStellarState": "active"
+        },
+        "artifact": {
+          "flatHp": 9615,
+          "flatAtk": 1110,
+          "flatDef": 62,
+          "critRate": 37.7,
+          "critDmg": 96.1,
+          "energyRecharge": 18.1,
+          "elementalMastery": 0,
+          "elementalDmg": 61.6,
+          "healingBonus": 0
+        },
+        "talentBonuses": {
+          "skill": 0,
+          "burst": 0,
+          "normal": 0,
+          "charged": 0,
+          "plunge": 0
+        },
+        "damageSettings": {
+          "enemyLevel": 105,
+          "enemyResistance": 10,
+          "normalTalentLevel": 10,
+          "skillTalentLevel": 10,
+          "burstTalentLevel": 10,
+          "selections": {
+            "ayakaDashBonus": "active",
+            "hutaoHpState": "below50",
+            "raidenResolveStacks": "60",
+            "raidenEyeState": "active",
+            "stellarElementalPower": "12"
+          }
+        },
+        "constellation": 0,
+        "team": {
+          "slots": [
+            {
+              "characterId": null,
+              "planId": null
+            },
+            {
+              "characterId": null,
+              "planId": null
+            },
+            {
+              "characterId": null,
+              "planId": null
+            }
+          ],
+          "buffToggles": {}
+        }
+      }
+    },
+    {
+      "id": "c633d3fd-e625-4185-a9aa-3df4b4671030",
+      "name": "神里绫华方案 1",
+      "createdAt": "2026-07-25T19:26:34.702Z",
+      "updatedAt": "2026-07-29T19:49:11.648Z",
+      "snapshot": {
+        "element": "cryo",
+        "characterId": "ayaka",
+        "weaponId": "mistsplitter",
+        "weaponRefinement": 1,
+        "weaponPassiveSelections": {
+          "mistsplitterStacks": "0"
+        },
+        "artifactSetId": "blizzard-strayer",
+        "artifactSetPieces": 4,
+        "artifactSetSelections": {
+          "blizzardEnemyState": "frozen"
+        },
+        "artifact": {
+          "flatHp": 9615,
+          "flatAtk": 1110,
+          "flatDef": 62,
+          "critRate": 37.7,
+          "critDmg": 96.1,
+          "energyRecharge": 18.1,
+          "elementalMastery": 0,
+          "elementalDmg": 61.6,
+          "healingBonus": 0
+        },
+        "talentBonuses": {
+          "skill": 0,
+          "burst": 0,
+          "normal": 0,
+          "charged": 0,
+          "plunge": 0
+        },
+        "damageSettings": {
+          "enemyLevel": 105,
+          "enemyResistance": 10,
+          "normalTalentLevel": 10,
+          "skillTalentLevel": 10,
+          "burstTalentLevel": 10,
+          "selections": {
+            "ayakaDashBonus": "active",
+            "hutaoHpState": "below50",
+            "raidenResolveStacks": "60",
+            "raidenEyeState": "active",
+            "stellarElementalPower": "12"
+          }
+        },
+        "constellation": 0,
+        "team": {
+          "slots": [
+            {
+              "characterId": null,
+              "planId": null
+            },
+            {
+              "characterId": null,
+              "planId": null
+            },
+            {
+              "characterId": null,
+              "planId": null
+            }
+          ],
+          "buffToggles": {}
+        }
+      }
+    },
+    {
+      "id": "99904ff4-e7f2-4861-9b15-052a2fb987a7",
+      "name": "七七方案 1",
+      "createdAt": "2026-07-25T19:27:09.183Z",
+      "updatedAt": "2026-07-25T19:27:09.183Z",
+      "snapshot": {
+        "element": "cryo",
+        "characterId": "qiqi",
+        "weaponId": "mistsplitter",
+        "weaponRefinement": 1,
+        "weaponPassiveSelections": {
+          "mistsplitterStacks": "0"
+        },
+        "artifactSetId": "delusion-of-immolated-shadow",
+        "artifactSetPieces": 4,
+        "artifactSetSelections": {
+          "delusionStellarState": "active"
+        },
+        "artifact": {
+          "flatHp": 9615,
+          "flatAtk": 1110,
+          "flatDef": 62,
+          "critRate": 37.7,
+          "critDmg": 96.1,
+          "energyRecharge": 18.1,
+          "elementalMastery": 0,
+          "elementalDmg": 61.6,
+          "healingBonus": 0
+        },
+        "talentBonuses": {
+          "skill": 0,
+          "burst": 0,
+          "normal": 0,
+          "charged": 0,
+          "plunge": 0
+        },
+        "damageSettings": {
+          "enemyLevel": 105,
+          "enemyResistance": 10,
+          "normalTalentLevel": 10,
+          "skillTalentLevel": 10,
+          "burstTalentLevel": 10,
+          "selections": {
+            "ayakaDashBonus": "active",
+            "hutaoHpState": "below50",
+            "raidenResolveStacks": "60",
+            "raidenEyeState": "active",
+            "stellarElementalPower": "12"
+          }
+        },
+        "constellation": 0,
+        "team": {
+          "slots": [
+            {
+              "characterId": null,
+              "planId": null
+            },
+            {
+              "characterId": null,
+              "planId": null
+            },
+            {
+              "characterId": null,
+              "planId": null
+            }
+          ],
+          "buffToggles": {}
+        }
+      }
+    },
+    {
+      "id": "bc14ba54-175e-4671-bd4c-1b229b2b2fd0",
+      "name": "砂糖方案 1",
+      "createdAt": "2026-07-25T19:27:17.200Z",
+      "updatedAt": "2026-07-25T20:01:03.233Z",
+      "snapshot": {
+        "element": "anemo",
+        "characterId": "sucrose",
+        "weaponId": "thrilling-tales",
+        "weaponRefinement": 1,
+        "weaponPassiveSelections": {
+          "thrillingTalesState": "active"
+        },
+        "artifactSetId": "viridescent-venerer",
+        "artifactSetPieces": 4,
+        "artifactSetSelections": {},
+        "artifact": {
+          "flatHp": 9615,
+          "flatAtk": 1110,
+          "flatDef": 62,
+          "critRate": 37.7,
+          "critDmg": 96.1,
+          "energyRecharge": 18.1,
+          "elementalMastery": 0,
+          "elementalDmg": 61.6,
+          "healingBonus": 0
+        },
+        "talentBonuses": {
+          "skill": 0,
+          "burst": 0,
+          "normal": 0,
+          "charged": 0,
+          "plunge": 0
+        },
+        "damageSettings": {
+          "enemyLevel": 105,
+          "enemyResistance": 10,
+          "normalTalentLevel": 10,
+          "skillTalentLevel": 10,
+          "burstTalentLevel": 10,
+          "selections": {
+            "ayakaDashBonus": "active",
+            "hutaoHpState": "below50",
+            "raidenResolveStacks": "60",
+            "raidenEyeState": "active",
+            "stellarElementalPower": "12",
+            "sucroseBurstAbsorption": "none"
+          }
+        },
+        "constellation": 0,
+        "team": {
+          "slots": [
+            {
+              "characterId": null,
+              "planId": null
+            },
+            {
+              "characterId": null,
+              "planId": null
+            },
+            {
+              "characterId": null,
+              "planId": null
+            }
+          ],
+          "buffToggles": {}
+        }
+      }
+    },
+    {
+      "id": "4dff1dc9-e906-4833-a6d0-aea3914940ee",
+      "name": "莫娜方案 1",
+      "createdAt": "2026-07-25T20:02:35.914Z",
+      "updatedAt": "2026-07-25T20:02:35.914Z",
+      "snapshot": {
+        "element": "hydro",
+        "characterId": "mona",
+        "weaponId": "the-widsith",
+        "weaponRefinement": 1,
+        "weaponPassiveSelections": {
+          "widsithState": "recitative"
+        },
+        "artifactSetId": "delusion-of-immolated-shadow",
+        "artifactSetPieces": 4,
+        "artifactSetSelections": {
+          "delusionStellarState": "active"
+        },
+        "artifact": {
+          "flatHp": 9615,
+          "flatAtk": 1110,
+          "flatDef": 62,
+          "critRate": 37.7,
+          "critDmg": 96.1,
+          "energyRecharge": 18.1,
+          "elementalMastery": 0,
+          "elementalDmg": 61.6,
+          "healingBonus": 0
+        },
+        "talentBonuses": {
+          "skill": 0,
+          "burst": 0,
+          "normal": 0,
+          "charged": 0,
+          "plunge": 0
+        },
+        "damageSettings": {
+          "enemyLevel": 105,
+          "enemyResistance": 10,
+          "normalTalentLevel": 10,
+          "skillTalentLevel": 10,
+          "burstTalentLevel": 10,
+          "selections": {
+            "ayakaDashBonus": "active",
+            "hutaoHpState": "below50",
+            "raidenResolveStacks": "60",
+            "raidenEyeState": "active",
+            "stellarElementalPower": "12"
+          }
+        },
+        "constellation": 0,
+        "team": {
+          "slots": [
+            {
+              "characterId": null,
+              "planId": null
+            },
+            {
+              "characterId": null,
+              "planId": null
+            },
+            {
+              "characterId": null,
+              "planId": null
+            }
+          ],
+          "buffToggles": {}
+        }
+      }
+    }
+  ]
+}

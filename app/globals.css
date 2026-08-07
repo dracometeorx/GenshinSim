@@ -151,6 +151,73 @@ a:focus-visible {
   font-size: 20px;
 }
 
+.file-input-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.plan-transfer-preview {
+  display: grid;
+  width: min(1360px, calc(100% - 40px));
+  gap: 10px;
+  margin: 16px auto 0;
+  padding: 14px;
+  border: 1px solid #bcd2ed;
+  border-radius: 12px;
+  background: #f5f9ff;
+  box-shadow: var(--shadow-small);
+}
+
+.plan-transfer-preview header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.plan-transfer-preview header span {
+  display: grid;
+  gap: 3px;
+}
+
+.plan-transfer-preview strong {
+  color: #314765;
+  font-size: 12px;
+}
+
+.plan-transfer-preview small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.plan-transfer-preview button {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: white;
+  color: var(--muted);
+  font-size: 18px;
+}
+
+.plan-transfer-preview textarea {
+  width: 100%;
+  min-height: 116px;
+  resize: vertical;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  color: #405775;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
 .workspace {
   width: min(1400px, 100%);
   margin: 0 auto;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ArtifactInput } from "./components/artifact-input";
 import { BuildComparison } from "./components/build-comparison";
 import { CharacterWeaponSelection } from "./components/character-weapon-selection";
@@ -57,7 +57,9 @@ export default function Home() {
     damageSettings,
     deletePlan,
     duplicatePlan,
+    exportPlanData,
     hydrated,
+    importPlanData,
     constellation,
     openPlan,
     plans,
@@ -82,11 +84,13 @@ export default function Home() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [operationNotice, setOperationNotice] = useState("");
+  const [exportPreview, setExportPreview] = useState("");
   const [planDialog, setPlanDialog] =
     useState<PlanDialogState | null>(null);
   const [view, setView] = useState<"editor" | "comparison">(
     "editor",
   );
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const activeElement = useMemo(
     () =>
@@ -353,6 +357,51 @@ export default function Home() {
     }
   }
 
+  async function exportSavedPlans() {
+    const planData = exportPlanData();
+    setExportPreview(planData);
+    const blob = new Blob([planData], {
+      type: "application/json;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `genshin-character-plans-${new Date()
+      .toISOString()
+      .slice(0, 10)}.json`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(planData);
+      setOperationNotice(
+        "已下载全部角色方案，并复制 JSON 以便跨环境继续测试。",
+      );
+    } catch {
+      setOperationNotice(
+        "已下载全部角色方案，可在其他环境中导入继续测试。",
+      );
+    }
+  }
+
+  async function importSavedPlans(file?: File) {
+    if (!file) return;
+    try {
+      const imported = importPlanData(await file.text());
+      setOperationNotice(
+        imported
+          ? "已导入角色方案并恢复测试状态。"
+          : "导入失败：文件不是有效的角色方案数据。",
+      );
+    } catch {
+      setOperationNotice("导入失败：无法读取所选文件。");
+    } finally {
+      if (importInputRef.current) importInputRef.current.value = "";
+    }
+  }
+
   function editComparedPlan(planId: string) {
     openPlan(planId);
     setView("editor");
@@ -404,6 +453,30 @@ export default function Home() {
             <span>◫</span>
             <span className="action-copy">使用说明</span>
           </button>
+          <button
+            className="ghost-button"
+            onClick={() => void exportSavedPlans()}
+          >
+            <span>⇩</span>
+            <span className="action-copy">导出方案</span>
+          </button>
+          <button
+            className="ghost-button"
+            onClick={() => importInputRef.current?.click()}
+          >
+            <span>⇧</span>
+            <span className="action-copy">导入方案</span>
+          </button>
+          <input
+            ref={importInputRef}
+            className="file-input-hidden"
+            type="file"
+            accept="application/json,.json"
+            aria-label="选择角色方案文件"
+            onChange={(event) =>
+              void importSavedPlans(event.target.files?.[0])
+            }
+          />
           {view === "editor" ? (
             <button className="ghost-button" onClick={reset}>
               <span>↻</span>
@@ -412,6 +485,29 @@ export default function Home() {
           ) : null}
         </nav>
       </header>
+
+      {exportPreview ? (
+        <section className="plan-transfer-preview" aria-label="方案导出结果">
+          <header>
+            <span>
+              <strong>角色方案 JSON 已导出</strong>
+              <small>可保存这段数据，或在其他环境选择下载的 JSON 文件导入。</small>
+            </span>
+            <button
+              type="button"
+              aria-label="关闭方案导出结果"
+              onClick={() => setExportPreview("")}
+            >
+              ×
+            </button>
+          </header>
+          <textarea
+            aria-label="导出的角色方案 JSON"
+            readOnly
+            value={exportPreview}
+          />
+        </section>
+      ) : null}
 
       {view === "comparison" ? (
         <BuildComparison

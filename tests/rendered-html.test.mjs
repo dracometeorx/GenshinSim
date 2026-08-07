@@ -39,6 +39,8 @@ test("renders production product and social metadata", async () => {
   assert.match(html, /复制当前配置为新方案/);
   assert.match(html, /复制当前角色方案/);
   assert.match(html, /编辑队友 1 的方案/);
+  assert.match(html, /导出方案/);
+  assert.match(html, /导入方案/);
   assert.match(html, /擢升/);
   assert.match(html, /武器精炼等级/);
 });

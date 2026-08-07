@@ -356,3 +356,11 @@ export function parseBuildPlanStore(raw: string | null): BuildPlanStore | null {
     return null;
   }
 }
+
+export function serializeBuildPlanStore(store: BuildPlanStore) {
+  return JSON.stringify(
+    { ...store, schemaVersion: buildPlansSchemaVersion },
+    null,
+    2,
+  );
+}

@@ -14,6 +14,7 @@ import {
   createBuildPlanSnapshot,
   legacyBuildPlansStorageKeys,
   parseBuildPlanStore,
+  serializeBuildPlanStore,
   type BuildPlanStore,
 } from "../../lib/build-plans.ts";
 import {
@@ -717,6 +718,20 @@ export function useBuildPlans() {
       update: (draft) => ({ ...draft, weaponId }),
     });
   }, []);
+  const exportPlanData = useCallback(
+    () => serializeBuildPlanStore(state.store),
+    [state.store],
+  );
+  const importPlanData = useCallback((raw: string) => {
+    const parsed = parseBuildPlanStore(raw);
+    if (!parsed) return false;
+    dispatch({
+      type: "hydrate",
+      store: normalizeBuildPlanStore(parsed),
+      status: "已导入角色方案",
+    });
+    return true;
+  }, []);
 
   return {
     ...state,
@@ -727,6 +742,8 @@ export function useBuildPlans() {
     constellation: state.draft.constellation,
     team: state.draft.team,
     plans: state.store.plans,
+    exportPlanData,
+    importPlanData,
     setBuild,
     setDamageSettings,
     setWeaponId,
