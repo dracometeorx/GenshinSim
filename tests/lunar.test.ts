@@ -352,6 +352,18 @@ test("applies teammate Lunar buffs and full-Moonsign character passives", () => 
   });
 
   assert.equal(withTeam.moonsign.level, "ascendant");
+  assert.equal(
+    withTeam.selectedSkill?.name,
+    "雷霆交响·两段合计",
+  );
+  assert.match(
+    withTeam.selectedSkill?.multiplierLabel ?? "",
+    /\+.*攻击力/,
+  );
+  assert.ok(
+    (withTeam.selectedSkill?.variants[0].expected ?? 0) >
+      (withoutTeam.selectedSkill?.variants[0].expected ?? 0) * 2,
+  );
   assert.ok(
     withTeam.teamBuffs.some(
       (buff) =>

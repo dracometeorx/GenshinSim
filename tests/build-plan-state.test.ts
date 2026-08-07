@@ -6,6 +6,34 @@ import {
   createInitialBuildPlansState,
 } from "../app/hooks/use-build-plans.ts";
 
+test("uses C0 for five-stars and C6 for four-stars by default", () => {
+  let state = createInitialBuildPlansState();
+
+  assert.equal(state.draft.characterId, "ayaka");
+  assert.equal(state.draft.constellation, 0);
+  assert.equal(state.draft.weaponId, "mistsplitter");
+  assert.equal(state.draft.build.weapon.refinement, 1);
+
+  state = buildPlansReducer(state, {
+    type: "switch-character",
+    characterId: "xingqiu",
+  });
+  assert.equal(state.draft.constellation, 6);
+
+  state = buildPlansReducer(state, { type: "reset-plan" });
+  assert.equal(state.draft.constellation, 6);
+  assert.equal(state.draft.weaponId, "favonius-sword");
+  assert.equal(state.draft.build.weapon.refinement, 5);
+
+  state = buildPlansReducer(state, {
+    type: "switch-character",
+    characterId: "zhongli",
+  });
+  assert.equal(state.draft.constellation, 0);
+  assert.equal(state.draft.weaponId, "favonius-lance");
+  assert.equal(state.draft.build.weapon.refinement, 5);
+});
+
 test("keeps an edit when switching characters and back immediately", () => {
   let state = createInitialBuildPlansState();
   state = { ...state, hydrated: true };

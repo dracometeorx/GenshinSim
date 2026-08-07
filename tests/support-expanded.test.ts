@@ -204,6 +204,62 @@ test("adds complete combat presets for Xilonen, Citlali, Zhongli, and Furina", (
   );
 });
 
+test("applies Escoffier's Cryo-Hydro resistance, C1, and C2 support", () => {
+  const createParty = (escoffierConstellation: number) => {
+    const plans = [
+      teammatePlan({
+        characterId: "escoffier",
+        weaponId: "calamity-queller",
+        constellation: escoffierConstellation,
+      }),
+      teammatePlan({
+        characterId: "kokomi",
+        weaponId: "prototype-amber",
+      }),
+      teammatePlan({
+        characterId: "charlotte",
+        weaponId: "oathsworn-eye",
+      }),
+    ];
+    const configuration = createEmptyTeamConfiguration();
+    plans.forEach((plan, slot) => {
+      configuration.slots[slot] = {
+        characterId: plan.snapshot.characterId,
+        planId: plan.id,
+      };
+    });
+    return createTeamCalculationInput(configuration, plans);
+  };
+  const c0 = calculate("ayaka", "mistsplitter", {
+    team: createParty(0),
+  });
+  const c1 = calculate("ayaka", "mistsplitter", {
+    team: createParty(1),
+  });
+  const c2 = calculate("ayaka", "mistsplitter", {
+    team: createParty(2),
+  });
+
+  assert.equal(c0.effectiveResistance, -45);
+  assert.equal(
+    c1.teamBuffs
+      .find((buff) => buff.name === "C1·味蕾绽放的餐前旋舞")
+      ?.modifiers.find(
+        (modifier) =>
+          modifier.kind === "damage" &&
+          modifier.stat === "critDmg",
+      )?.value,
+    60,
+  );
+  assert.ok(
+    c2.selectedSkill!.variants[0].nonCrit >
+      c1.selectedSkill!.variants[0].nonCrit,
+  );
+  assert.ok(
+    c2.teamBuffs.some((buff) => buff.name === "C2·冷煮"),
+  );
+});
+
 test("scales Xilonen Source Sample resistance shred and C2/C4 buffs", () => {
   const c0Plan = teammatePlan({
     characterId: "xilonen",

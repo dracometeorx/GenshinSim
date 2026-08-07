@@ -27,6 +27,7 @@ import {
 } from "../lib/result-export";
 import {
   getCompatibleWeapons,
+  getDefaultWeaponRefinement,
   isWeaponCompatible,
   weapons,
 } from "../lib/data/weapons";
@@ -138,6 +139,7 @@ export default function Home() {
         settings: damageSettings,
         constellation,
         team: calculationTeam,
+        analyzeArtifactSubstats: true,
       }),
     [
       build,
@@ -197,7 +199,10 @@ export default function Home() {
     setWeaponId(id);
     setBuild((current) => ({
       ...current,
-      weapon,
+      weapon: {
+        ...weapon,
+        refinement: getDefaultWeaponRefinement(weapon),
+      },
       weaponPassiveSelections: getWeaponPassiveSelections(
         weapon,
         selectedCharacter,

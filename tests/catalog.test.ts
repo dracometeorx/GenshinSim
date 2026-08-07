@@ -8,13 +8,19 @@ import {
   defaultDamageSettings,
 } from "../lib/damage.ts";
 import { artifactSets } from "../lib/data/artifacts/index.ts";
-import { characters } from "../lib/data/characters/index.ts";
+import {
+  characters,
+  getCharacterRarity,
+  getDefaultConstellation,
+} from "../lib/data/characters/index.ts";
 import {
   getRepresentativeSkillCharacterIds,
   getRepresentativeSkillId,
 } from "../lib/data/characters/representative-skills.ts";
 import {
   getCompatibleWeapons,
+  getDefaultWeaponRefinement,
+  getWeaponRarity,
   isWeaponCompatible,
   weapons,
 } from "../lib/data/weapons/index.ts";
@@ -32,6 +38,9 @@ test("exports every character preset with a unique id", () => {
       "citlali",
       "zhongli",
       "furina",
+      "kokomi",
+      "escoffier",
+      "charlotte",
       "yelan",
       "xingqiu",
       "arlecchino",
@@ -81,6 +90,9 @@ test("exports every character preset with a unique id", () => {
       "citlali",
       "zhongli",
       "furina",
+      "kokomi",
+      "escoffier",
+      "charlotte",
       "yelan",
       "xingqiu",
       "arlecchino",
@@ -126,6 +138,9 @@ test("exports every character preset with a unique id", () => {
       "catalyst",
       "polearm",
       "sword",
+      "catalyst",
+      "polearm",
+      "catalyst",
       "bow",
       "sword",
       "polearm",
@@ -161,6 +176,38 @@ test("exports every character preset with a unique id", () => {
       "any",
     ],
   );
+});
+
+test("classifies every combat character and derives its default constellation", () => {
+  const combatCharacters = characters.filter(({ id }) => id !== "custom");
+  const fourStarIds = combatCharacters
+    .filter((character) => getCharacterRarity(character) === 4)
+    .map(({ id }) => id);
+
+  assert.deepEqual(fourStarIds, [
+    "charlotte",
+    "xingqiu",
+    "beidou",
+    "diona",
+    "fischl",
+    "sucrose",
+    "razor",
+    "prune",
+  ]);
+  assert.ok(
+    combatCharacters.every(
+      (character) => getCharacterRarity(character) !== null,
+    ),
+  );
+  assert.ok(
+    combatCharacters.every(
+      (character) =>
+        getDefaultConstellation(character) ===
+        (getCharacterRarity(character) === 4 ? 6 : 0),
+    ),
+  );
+  assert.equal(getCharacterRarity("custom"), null);
+  assert.equal(getDefaultConstellation("custom"), 0);
 });
 
 test("defines one fixed representative skill for every combat character", () => {
@@ -362,6 +409,31 @@ test("exports every weapon preset with a unique id", () => {
       .filter(({ id }) => id !== "custom")
       .every(({ passive }) => passive.refinementDescriptions?.length === 5),
   );
+});
+
+test("classifies every standard weapon and derives its default refinement", () => {
+  const standardWeapons = weapons.filter(({ id }) => id !== "custom");
+
+  assert.ok(
+    standardWeapons.every((weapon) => getWeaponRarity(weapon) !== null),
+  );
+  assert.deepEqual(
+    standardWeapons
+      .filter((weapon) => getWeaponRarity(weapon) === 3)
+      .map(({ id }) => id),
+    ["thrilling-tales", "slingshot"],
+  );
+  assert.ok(
+    standardWeapons.every((weapon) => {
+      const rarity = getWeaponRarity(weapon);
+      return (
+        getDefaultWeaponRefinement(weapon) ===
+        (rarity === 3 || rarity === 4 ? 5 : 1)
+      );
+    }),
+  );
+  assert.equal(getWeaponRarity("custom"), null);
+  assert.equal(getDefaultWeaponRefinement("custom"), 1);
 });
 
 test("keeps constellation and team buff definitions catalog-owned", () => {

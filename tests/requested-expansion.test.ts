@@ -110,6 +110,53 @@ test("adds the six requested characters with fixed representative damage", () =>
   }
 });
 
+test("adds Kokomi, Escoffier, and Charlotte with fixed representative damage", () => {
+  const expected = [
+    ["kokomi", 13471, 234, 657, "kokomi-ceremonial-normal-third"],
+    ["escoffier", 13348, 347, 732, "escoffier-frosty-parfait"],
+    ["charlotte", 10766, 173, 546, "charlotte-hold-photo"],
+  ] as const;
+
+  for (const [id, baseHp, baseAtk, baseDef, skillId] of expected) {
+    const preset = character(id);
+    const result = calculate(id);
+    assert.deepEqual(
+      [preset.baseHp, preset.baseAtk, preset.baseDef],
+      [baseHp, baseAtk, baseDef],
+    );
+    assert.equal(result.selectedSkill?.id, skillId);
+    assert.ok((result.selectedSkill?.variants[0]?.nonCrit ?? 0) > 0);
+    assert.equal(preset.constellations?.length, 6);
+  }
+});
+
+test("applies Kokomi and Charlotte character mechanics", () => {
+  const kokomiBase = calculate("kokomi");
+  const kokomiHp = calculate("kokomi", {
+    artifact: { flatHp: 10000 },
+  });
+  const charlotteC5 = calculate("charlotte", { constellation: 5 });
+  const charlotteC6 = calculate("charlotte", { constellation: 6 });
+
+  assert.equal(kokomiBase.panel.critRate, -95);
+  assert.equal(kokomiBase.panel.healingBonus, 25);
+  assert.ok(
+    kokomiHp.selectedSkill!.variants[0].nonCrit >
+      kokomiBase.selectedSkill!.variants[0].nonCrit,
+  );
+  assert.equal(
+    charlotteC6.skills.some(
+      (skill) => skill.id === "charlotte-c6-coordinated",
+    ),
+    true,
+  );
+  assert.ok(
+    charlotteC5.selectedSkill!.variants[0].nonCrit >
+      calculate("charlotte", { constellation: 4 }).selectedSkill!
+        .variants[0].nonCrit,
+  );
+});
+
 test("scales the requested characters' representative mechanics", () => {
   const arlecchinoLow = calculate("arlecchino", {
     selections: { arlecchinoBondOfLife: "65" },

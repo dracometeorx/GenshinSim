@@ -62,6 +62,92 @@ import type { WeaponType } from "../../calculator.ts";
 
 export type { WeaponPreset } from "./types.ts";
 
+export type WeaponRarity = 3 | 4 | 5;
+
+const threeStarWeaponIds = new Set([
+  "thrilling-tales",
+  "slingshot",
+]);
+
+const fourStarWeaponIds = new Set([
+  "the-catch",
+  "deathmatch",
+  "dragons-bane",
+  "favonius-lance",
+  "ballad-of-the-fjords",
+  "tamayuratei-no-ohanashi",
+  "prospectors-shovel",
+  "missive-windspear",
+  "dawning-frost",
+  "etherlight-spindlelute",
+  "wandering-evenstar",
+  "sacrificial-jade",
+  "oathsworn-eye",
+  "sacrificial-fragments",
+  "the-widsith",
+  "solar-pearl",
+  "prototype-amber",
+  "wolf-fang",
+  "the-black-sword",
+  "the-dockhands-assistant",
+  "xiphos-moonlight",
+  "calamity-of-eshu",
+  "favonius-sword",
+  "cinnabar-spindle",
+  "favonius-warbow",
+  "the-stringless",
+  "rust",
+  "the-viridescent-hunt",
+  "ultimate-overlords-mega-magic-sword",
+  "makhaira-aquamarine",
+  "talking-stick",
+  "tidal-shadow",
+  "serpent-spine",
+]);
+
+const fiveStarWeaponIds = new Set([
+  "mistsplitter",
+  "homa",
+  "engulfing",
+  "dreams",
+  "fractured-halo",
+  "bloodsoaked-ruins",
+  "nightweavers-looking-glass",
+  "reliquary-of-truth",
+  "nocturnes-curtain-call",
+  "lightbearing-moonshard",
+  "frostbound-oath",
+  "calamity-queller",
+  "lost-prayer",
+  "azurelight",
+  "splendor-of-tranquil-waters",
+  "skyward-blade",
+  "skyward-harp",
+  "the-first-great-magic",
+  "amos-bow",
+  "a-thousand-blazing-suns",
+  "wolfs-gravestone",
+  "skyward-pride",
+  "a-teaspoon-of-transcendence",
+]);
+
+export function getWeaponRarity(
+  weapon: WeaponPreset | string,
+): WeaponRarity | null {
+  const id = typeof weapon === "string" ? weapon : weapon.id;
+  if (threeStarWeaponIds.has(id)) return 3;
+  if (fourStarWeaponIds.has(id)) return 4;
+  if (fiveStarWeaponIds.has(id)) return 5;
+  return null;
+}
+
+export function getDefaultWeaponRefinement(
+  weapon: WeaponPreset | string,
+) {
+  const rarity = getWeaponRarity(weapon);
+  return rarity === 3 || rarity === 4 ? 5 : 1;
+}
+
 export const weapons: WeaponPreset[] = [
   mistsplitter,
   homa,

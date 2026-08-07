@@ -36,8 +36,12 @@ import {
 } from "../../lib/build-plan-runtime.ts";
 import type { BuildInput } from "../../lib/calculator.ts";
 import type { DamageSettings } from "../../lib/damage.ts";
-import { characters } from "../../lib/data/characters/index.ts";
 import {
+  characters,
+  getDefaultConstellation,
+} from "../../lib/data/characters/index.ts";
+import {
+  getDefaultWeaponRefinement,
   isWeaponCompatible,
   weapons,
 } from "../../lib/data/weapons/index.ts";
@@ -573,7 +577,7 @@ function legacyStoreFromRaw(
       characterId: character.id,
       weaponId: weaponPreset.id,
       damageSettings,
-      constellation: 0,
+      constellation: getDefaultConstellation(character),
       team: createEmptyTeamConfiguration(),
       build: {
         ...restoredBuild,
@@ -583,7 +587,7 @@ function legacyStoreFromRaw(
           refinement: clampRefinement(
             requestedWeapon?.id === weaponPreset.id
               ? restoredBuild.weapon.refinement
-              : weaponPreset.refinement,
+              : getDefaultWeaponRefinement(weaponPreset),
           ),
         },
         element:

@@ -446,6 +446,41 @@ export function ResultPanel({
           </div>
         )}
 
+        {calculation.artifactSubstatImpacts.length ? (
+          <section
+            className="artifact-substat-impact"
+            aria-label="有效圣遗物词条收益"
+          >
+            <header>
+              <span>
+                <strong>有效圣遗物词条收益</strong>
+                <small>
+                  按当前最高期望伤害 · 每次增加 1 个平均档副词条
+                </small>
+              </span>
+              <b>伤害提升</b>
+            </header>
+            <div className="artifact-substat-impact-grid">
+              {calculation.artifactSubstatImpacts.map((impact) => (
+                <div key={impact.key}>
+                  <span>
+                    <strong>{impact.label}</strong>
+                    <small>{impact.rollLabel}</small>
+                  </span>
+                  <span>
+                    <strong>
+                      +{formatNumber(impact.damageIncrease)}
+                    </strong>
+                    <small>
+                      +{formatNumber(impact.percentIncrease, 2)}%
+                    </small>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         <p className="damage-formula-note">
           {displayedSkills.some(
             (skill) => skill.model === "directLunar",

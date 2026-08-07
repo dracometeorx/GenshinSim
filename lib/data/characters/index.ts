@@ -17,6 +17,9 @@ import { xilonen } from "./xilonen.ts";
 import { citlali } from "./citlali.ts";
 import { zhongli } from "./zhongli.ts";
 import { furina } from "./furina.ts";
+import { kokomi } from "./kokomi.ts";
+import { escoffier } from "./escoffier.ts";
+import { charlotte } from "./charlotte.ts";
 import { yelan } from "./yelan.ts";
 import { xingqiu } from "./xingqiu.ts";
 import { arlecchino } from "./arlecchino.ts";
@@ -43,6 +46,73 @@ import type { CharacterPreset } from "./types.ts";
 
 export type { CharacterPreset } from "./types.ts";
 
+export type CharacterRarity = 4 | 5;
+
+const fourStarCharacterIds = new Set([
+  "xingqiu",
+  "beidou",
+  "diona",
+  "fischl",
+  "sucrose",
+  "razor",
+  "prune",
+  "charlotte",
+]);
+
+const fiveStarCharacterIds = new Set([
+  "ayaka",
+  "hutao",
+  "raiden",
+  "nahida",
+  "xilonen",
+  "citlali",
+  "zhongli",
+  "furina",
+  "yelan",
+  "arlecchino",
+  "mavuika",
+  "skirk",
+  "chiori",
+  "columbina",
+  "flins",
+  "ineffa",
+  "lauma",
+  "nefer",
+  "linnea",
+  "zibai",
+  "sandrone",
+  "qiqi",
+  "yae-miko",
+  "wriothesley",
+  "cyno",
+  "durin",
+  "venti",
+  "klee",
+  "albedo",
+  "mona",
+  "varka",
+  "nicole",
+  "lohen",
+  "kokomi",
+  "escoffier",
+]);
+
+export function getCharacterRarity(
+  character: CharacterPreset | string,
+): CharacterRarity | null {
+  const id = typeof character === "string" ? character : character.id;
+  if (fourStarCharacterIds.has(id)) return 4;
+  if (fiveStarCharacterIds.has(id)) return 5;
+  return null;
+}
+
+export function getDefaultConstellation(
+  character: CharacterPreset | string,
+) {
+  const rarity = getCharacterRarity(character);
+  return rarity === 4 ? 6 : 0;
+}
+
 export const characters: CharacterPreset[] = [
   ayaka,
   hutao,
@@ -52,6 +122,9 @@ export const characters: CharacterPreset[] = [
   citlali,
   zhongli,
   furina,
+  kokomi,
+  escoffier,
+  charlotte,
   yelan,
   xingqiu,
   arlecchino,
