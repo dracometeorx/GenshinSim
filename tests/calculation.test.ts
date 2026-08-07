@@ -534,6 +534,10 @@ test("exports panel and damage from the same recalculation", () => {
     result.damageBonusSummary.lunarReactions,
   );
   assert.deepEqual(
+    payload.月反应擢升,
+    result.damageBonusSummary.lunarElevations,
+  );
+  assert.deepEqual(
     payload.星反应伤害提升,
     result.damageBonusSummary.stellarReactions,
   );

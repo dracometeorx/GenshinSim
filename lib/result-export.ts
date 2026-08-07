@@ -49,6 +49,7 @@ export function createResultPayload({
     [`${elementLabel}伤害加成`]: `${panel.elementalDmg}%`,
     额外伤害加成: result.damageBonusSummary.categories,
     月反应伤害提升: result.damageBonusSummary.lunarReactions,
+    月反应擢升: result.damageBonusSummary.lunarElevations,
     星反应伤害提升: result.damageBonusSummary.stellarReactions,
     队伍增益: result.teamBuffs
       .filter((buff) => buff.enabled)

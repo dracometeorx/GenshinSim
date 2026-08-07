@@ -110,14 +110,11 @@ export const columbina: CharacterPreset = {
         "每 1000 点生命值使全部月曜反应基础伤害提高 0.2%，至多 7%。",
       appliesToSelf: true,
       evaluate: ({ source }) => {
-        const effectiveHp =
-          source.panel.hp +
-          (source.constellation >= 2 ? 14695 * 0.4 : 0);
         return [
           {
             kind: "damage",
             stat: "lunarBaseDamageBonus",
-            value: Math.min(7, (effectiveHp / 1000) * 0.2),
+            value: Math.min(7, (source.panel.hp / 1000) * 0.2),
             lunarReactions: [
               "lunarCharged",
               "lunarBloom",
@@ -154,6 +151,7 @@ export const columbina: CharacterPreset = {
       description:
         "各命座提供的队伍月曜反应擢升累计计算，C6 合计 20%。",
       minConstellation: 1,
+      toggleable: false,
       appliesToSelf: true,
       evaluate: ({ source }) => [
         {
@@ -170,43 +168,33 @@ export const columbina: CharacterPreset = {
     },
     {
       id: "columbina-c2-radiance",
-      name: "C2·皎辉",
+      name: "C2·皎辉·前台强化",
       description:
-        "引力干涉后哥伦比娅生命值提高 40%；满辉时按干涉类型提高前台攻击/精通/防御。",
+        "月兆·满辉时，按引力干涉类型提高前台角色的攻击力、元素精通或防御力。",
       minConstellation: 2,
       appliesToSelf: true,
-      evaluate: ({ source, target, party }) => {
-        const effectiveHp = source.panel.hp + 14695 * 0.4;
-        const modifiers = [];
-        if (target.characterId === "columbina") {
-          modifiers.push({
-            kind: "panel" as const,
-            stat: "hpPct" as const,
-            value: 40,
-          });
-        }
-        if (party.moonsignLevel !== "ascendant") return modifiers;
+      evaluate: ({ source, party }) => {
+        if (party.moonsignLevel !== "ascendant") return [];
         const choice = selectedInterference(source.settings);
         if (choice.reaction === "lunarCharged") {
-          modifiers.push({
+          return [{
             kind: "panel" as const,
             stat: "flatAtk" as const,
-            value: effectiveHp * 0.01,
-          });
-        } else if (choice.reaction === "lunarBloom") {
-          modifiers.push({
+            value: source.panel.hp * 0.01,
+          }];
+        }
+        if (choice.reaction === "lunarBloom") {
+          return [{
             kind: "panel" as const,
             stat: "elementalMastery" as const,
-            value: effectiveHp * 0.0035,
-          });
-        } else {
-          modifiers.push({
-            kind: "panel" as const,
-            stat: "flatDef" as const,
-            value: effectiveHp * 0.01,
-          });
+            value: source.panel.hp * 0.0035,
+          }];
         }
-        return modifiers;
+        return [{
+          kind: "panel" as const,
+          stat: "flatDef" as const,
+          value: source.panel.hp * 0.01,
+        }];
       },
     },
     {
@@ -239,6 +227,13 @@ export const columbina: CharacterPreset = {
       level: 2,
       name: "为夜增辉，与君遥伴",
       description: "获得皎辉生命加成，并按反应类型强化前台角色。",
+      panelEffects: [
+        {
+          id: "columbina-c2-hp",
+          stage: "additive",
+          evaluate: () => [{ stat: "hpPct", value: 40 }],
+        },
+      ],
     },
     {
       level: 3,

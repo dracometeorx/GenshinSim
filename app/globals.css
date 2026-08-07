@@ -638,6 +638,24 @@ a:focus-visible {
   background: #f2f7ff;
 }
 
+.team-buff-always-on {
+  border-color: #a8c9ff;
+  background: #f2f7ff;
+  cursor: default;
+}
+
+.team-buff-status {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  padding: 2px 5px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: white;
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 850;
+}
+
 .team-buff input {
   width: 15px;
   height: 15px;

@@ -239,13 +239,17 @@ function createResolvedBuff({
     .evaluate(context)
     .filter((modifier) => Number.isFinite(modifier.value));
   if (!modifiers.length) return null;
+  const toggleable = definition.toggleable !== false;
   return {
     id,
     sourceKind,
     sourceName,
     name: definition.name,
     description: definition.description,
-    enabled: configuration.buffToggles[id] ?? true,
+    toggleable,
+    enabled: toggleable
+      ? (configuration.buffToggles[id] ?? true)
+      : true,
     modifiers,
   };
 }

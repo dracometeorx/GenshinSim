@@ -98,6 +98,8 @@ export interface TeamBuffDefinition {
   stackingGroup?: string;
   minConstellation?: number;
   minArtifactPieces?: 2 | 4;
+  /** Intrinsic effects stay enabled and are shown as always active. */
+  toggleable?: boolean;
   appliesToSelf?: boolean;
   appliesToTeammates?: boolean;
   evaluate(
@@ -121,6 +123,7 @@ export interface ResolvedTeamBuff {
   sourceName: string;
   name: string;
   description: string;
+  toggleable: boolean;
   enabled: boolean;
   modifiers: readonly TeamBuffModifier[];
 }

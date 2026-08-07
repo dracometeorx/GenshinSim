@@ -71,6 +71,7 @@ export interface DamageCalculationResult {
 export interface DamageBonusSummary {
   categories: TalentBonuses;
   lunarReactions: Record<LunarReactionType, number>;
+  lunarElevations: Record<LunarReactionType, number>;
   stellarReactions: Record<StellarReactionType, number>;
 }
 
@@ -437,6 +438,35 @@ function calculateDamageBonusSummary({
       ];
     }),
   ) as Record<LunarReactionType, number>;
+  const lunarElevations = Object.fromEntries(
+    lunarReactionTypes.map((reaction) => {
+      const target =
+        targets.find(
+          (candidate) =>
+            candidate.model?.kind === "directLunar" &&
+            candidate.model.reaction === reaction,
+        ) ??
+        createSummaryTarget("skill", {
+          kind: "directLunar",
+          reaction,
+        });
+      const effectElevation = evaluate(target).reduce(
+        (total, modifier) =>
+          modifier.stat === "lunarElevation" &&
+          (!modifier.lunarReactions?.length ||
+            modifier.lunarReactions.includes(reaction))
+            ? total + Math.max(0, modifier.value)
+            : total,
+        0,
+      );
+      return [
+        reaction,
+        roundBonus(
+          effectElevation + (target.extraLunarElevation ?? 0),
+        ),
+      ];
+    }),
+  ) as Record<LunarReactionType, number>;
   const stellarReactions = Object.fromEntries(
     stellarReactionTypes.map((reaction) => {
       const target =
@@ -478,7 +508,12 @@ function calculateDamageBonusSummary({
     }),
   ) as Record<StellarReactionType, number>;
 
-  return { categories, lunarReactions, stellarReactions };
+  return {
+    categories,
+    lunarReactions,
+    lunarElevations,
+    stellarReactions,
+  };
 }
 
 function buildTargets(

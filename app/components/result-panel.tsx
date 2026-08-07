@@ -213,6 +213,13 @@ export function ResultPanel({
                   ],
                   1,
                 )}
+                % · 擢升{" "}
+                {formatNumber(
+                  calculation.damageBonusSummary.lunarElevations[
+                    reaction.key
+                  ],
+                  1,
+                )}
                 %
               </b>
             ))}

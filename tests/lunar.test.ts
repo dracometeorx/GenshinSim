@@ -153,6 +153,109 @@ test("derives nascent and ascendant Moonsign from party characters", () => {
   );
 });
 
+test("keeps Columbina C2 HP and elevation intrinsic while the on-field buff stays toggleable", () => {
+  const columbina = characters.find(
+    (character) => character.id === "columbina",
+  );
+  const columbinaWeapon = weapons.find(
+    (weapon) => weapon.id === columbina?.defaultWeaponId,
+  );
+  const ineffaWeapon = weapons.find(
+    (weapon) => weapon.id === ineffa.defaultWeaponId,
+  );
+  assert.ok(columbina);
+  assert.ok(columbinaWeapon);
+  assert.ok(ineffaWeapon);
+
+  const columbinaBuild: BuildInput = {
+    element: columbina.element,
+    character: columbina,
+    weapon: columbinaWeapon,
+    weaponPassiveSelections: {
+      nocturnesCurtainCallState: "inactive",
+    },
+    artifactSetId: "none",
+    artifactSetPieces: 0,
+    artifactSetSelections: {},
+    artifact,
+    talentBonuses,
+  };
+  const ineffaBuild: BuildInput = {
+    ...columbinaBuild,
+    element: ineffa.element,
+    character: ineffa,
+    weapon: ineffaWeapon,
+    weaponPassiveSelections: {
+      fracturedHaloState: "inactive",
+    },
+  };
+  const ineffaPlan = createBuildPlan(
+    createBuildPlanSnapshot({
+      build: ineffaBuild,
+      characterId: ineffa.id,
+      weaponId: ineffaWeapon.id,
+      damageSettings: defaultDamageSettings,
+    }),
+    "伊涅芙月兆队友",
+    { id: "ineffa-columbina-c2-test" },
+  );
+  const createConfiguration = (frontBuffEnabled: boolean) => {
+    const configuration = createEmptyTeamConfiguration();
+    configuration.slots[0] = {
+      characterId: ineffa.id,
+      planId: ineffaPlan.id,
+    };
+    configuration.buffToggles = {
+      "self:character:columbina-constellation-elevation": false,
+      "self:character:columbina-c2-radiance": frontBuffEnabled,
+    };
+    return configuration;
+  };
+  const calculate = (
+    constellation: number,
+    frontBuffEnabled: boolean,
+  ) => {
+    const configuration = createConfiguration(frontBuffEnabled);
+    return calculateBuild({
+      build: columbinaBuild,
+      character: columbina,
+      weapon: columbinaWeapon,
+      artifactSet: getArtifactSet("none"),
+      settings: {
+        ...defaultDamageSettings,
+        selections: { columbinaInterference: "lunarCharged" },
+      },
+      constellation,
+      team: createTeamCalculationInput(configuration, [ineffaPlan]),
+    });
+  };
+
+  const c0 = calculate(0, false);
+  const c2Disabled = calculate(2, false);
+  const c2Enabled = calculate(2, true);
+  assert.equal(c2Disabled.panel.hp - c0.panel.hp, 14695 * 0.4);
+  assert.deepEqual(c2Disabled.damageBonusSummary.lunarElevations, {
+    lunarCharged: 8.5,
+    lunarBloom: 8.5,
+    lunarCrystallize: 8.5,
+  });
+
+  const elevation = c2Disabled.teamBuffs.find(
+    ({ id }) =>
+      id === "self:character:columbina-constellation-elevation",
+  );
+  const disabledFrontBuff = c2Disabled.teamBuffs.find(
+    ({ id }) => id === "self:character:columbina-c2-radiance",
+  );
+  assert.ok(elevation);
+  assert.equal(elevation.toggleable, false);
+  assert.equal(elevation.enabled, true);
+  assert.ok(disabledFrontBuff);
+  assert.equal(disabledFrontBuff.toggleable, true);
+  assert.equal(disabledFrontBuff.enabled, false);
+  assert.ok(c2Enabled.panel.atk > c2Disabled.panel.atk);
+});
+
 test("applies teammate Lunar buffs and full-Moonsign character passives", () => {
   const targetWeapon = weapons.find(
     (weapon) => weapon.id === flins.defaultWeaponId,
