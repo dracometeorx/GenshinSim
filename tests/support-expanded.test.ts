@@ -249,6 +249,57 @@ test("scales Xilonen Source Sample resistance shred and C2/C4 buffs", () => {
   );
 });
 
+test("applies Nicole C2 attack and matching elemental resistance buffs", () => {
+  const nicoleC1 = teammatePlan({
+    characterId: "nicole",
+    weaponId: "lost-prayer",
+    constellation: 1,
+  });
+  const nicoleC2 = teammatePlan({
+    characterId: "nicole",
+    weaponId: "lost-prayer",
+    constellation: 2,
+  });
+  const c1 = calculate("hutao", "homa", {
+    team: teamFor(nicoleC1),
+  });
+  const c2 = calculate("hutao", "homa", {
+    team: teamFor(nicoleC2),
+  });
+  const c2Buff = c2.teamBuffs.find(
+    (buff) =>
+      buff.name === "C2·我要教导你，指引你应走的路",
+  );
+
+  assert.equal(c2.panel.atk - c1.panel.atk, 300);
+  assert.equal(c1.effectiveResistance, 10);
+  assert.equal(c2.effectiveResistance, -15);
+  assert.equal(
+    c2Buff?.modifiers.find(
+      (modifier) =>
+        modifier.kind === "panel" && modifier.stat === "flatAtk",
+    )?.value,
+    300,
+  );
+  assert.deepEqual(
+    c2Buff?.modifiers.find(
+      (modifier) =>
+        modifier.kind === "damage" &&
+        modifier.stat === "enemyResistanceReduction",
+    ),
+    {
+      kind: "damage",
+      stat: "enemyResistanceReduction",
+      element: "pyro",
+      value: 25,
+    },
+  );
+  assert.equal(
+    c1.teamBuffs.some((buff) => buff.id.includes("nicole-c2")),
+    false,
+  );
+});
+
 test("applies Citlali, Zhongli, and Furina support values", () => {
   const citlaliC0 = teammatePlan({
     characterId: "citlali",
