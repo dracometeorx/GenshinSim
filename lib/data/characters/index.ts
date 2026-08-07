@@ -17,6 +17,12 @@ import { xilonen } from "./xilonen.ts";
 import { citlali } from "./citlali.ts";
 import { zhongli } from "./zhongli.ts";
 import { furina } from "./furina.ts";
+import { yelan } from "./yelan.ts";
+import { xingqiu } from "./xingqiu.ts";
+import { arlecchino } from "./arlecchino.ts";
+import { mavuika } from "./mavuika.ts";
+import { skirk } from "./skirk.ts";
+import { chiori } from "./chiori.ts";
 import { nefer } from "./nefer.ts";
 import { nicole } from "./nicole.ts";
 import { prune } from "./prune.ts";
@@ -46,6 +52,12 @@ export const characters: CharacterPreset[] = [
   citlali,
   zhongli,
   furina,
+  yelan,
+  xingqiu,
+  arlecchino,
+  mavuika,
+  skirk,
+  chiori,
   columbina,
   flins,
   ineffa,

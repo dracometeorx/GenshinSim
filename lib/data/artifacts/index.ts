@@ -4,6 +4,10 @@ import { deepwood } from "./deepwood.ts";
 import { emblem } from "./emblem.ts";
 import { goldenTroupe } from "./golden-troupe.ts";
 import { gildedDreams } from "./gilded-dreams.ts";
+import { obsidianCodex } from "./obsidian-codex.ts";
+import { fragmentOfHarmonicWhimsy } from "./fragment-of-harmonic-whimsy.ts";
+import { marechausseeHunter } from "./marechaussee-hunter.ts";
+import { finaleOfTheDeepGalleries } from "./finale-of-the-deep-galleries.ts";
 import { noArtifactSet } from "./none.ts";
 import { shimenawa } from "./shimenawa.ts";
 import { silkenMoonsSerenade } from "./silken-moons-serenade.ts";
@@ -44,6 +48,10 @@ export const artifactSets: ArtifactSetPreset[] = [
   emblem,
   goldenTroupe,
   gildedDreams,
+  obsidianCodex,
+  fragmentOfHarmonicWhimsy,
+  marechausseeHunter,
+  finaleOfTheDeepGalleries,
   deepwood,
   silkenMoonsSerenade,
   nightOfSkysUnveiling,

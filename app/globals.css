@@ -543,6 +543,18 @@ a:focus-visible {
   font-weight: 800;
 }
 
+.team-plan-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: end;
+  min-width: 0;
+}
+
+.team-plan-field label {
+  min-width: 0;
+}
+
 .team-slot select {
   width: 100%;
   min-width: 0;
@@ -559,6 +571,35 @@ a:focus-visible {
 .team-slot select:disabled {
   background: #f3f6fa;
   color: var(--faint);
+}
+
+.team-plan-edit {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid #bfd2e9;
+  border-radius: 8px;
+  background: #f4f8fd;
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.team-plan-edit:hover:not(:disabled) {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.team-plan-edit:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.team-plan-edit:disabled {
+  border-color: var(--line);
+  background: #f3f6fa;
+  color: var(--faint);
+  cursor: not-allowed;
 }
 
 .team-buffs {

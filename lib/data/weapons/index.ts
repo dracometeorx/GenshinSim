@@ -56,6 +56,7 @@ import { talkingStick } from "./talking-stick.ts";
 import { tidalShadow } from "./tidal-shadow.ts";
 import { serpentSpine } from "./serpent-spine.ts";
 import { aTeaspoonOfTranscendence } from "./a-teaspoon-of-transcendence.ts";
+import { aThousandBlazingSuns } from "./a-thousand-blazing-suns.ts";
 import type { WeaponPreset } from "./types.ts";
 import type { WeaponType } from "../../calculator.ts";
 
@@ -111,6 +112,7 @@ export const weapons: WeaponPreset[] = [
   theStringless,
   rust,
   theViridescentHunt,
+  aThousandBlazingSuns,
   wolfsGravestone,
   skywardPride,
   ultimateOverlordsMegaMagicSword,

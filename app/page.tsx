@@ -486,6 +486,7 @@ export default function Home() {
               plans={plans}
               team={team}
               onBuffToggle={setTeamBuffEnabled}
+              onEditPlan={editComparedPlan}
               onSlotCharacterChange={setTeamSlotCharacter}
               onSlotPlanChange={setTeamSlotPlan}
             />

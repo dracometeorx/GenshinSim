@@ -128,6 +128,7 @@ function calculate(
     artifactSetSelections?: Record<string, string>;
     team?: TeamCalculationInput;
     selections?: Record<string, string>;
+    constellation?: number;
   } = {},
 ) {
   const artifactSetId = options.artifactSetId ?? "none";
@@ -149,6 +150,7 @@ function calculate(
         ...options.selections,
       },
     },
+    constellation: options.constellation,
     team: options.team,
   });
 }
@@ -214,6 +216,79 @@ test("gates character Secret Rite buffs on party composition", () => {
     secret.teamBuffs.some(
       ({ name }) => name === "虚己之赐·圣祝之引",
     ),
+  );
+});
+
+test("applies Sucrose constellation talent levels and C6 absorption buffs", () => {
+  const sucrose = getCharacter("sucrose");
+  assert.equal(sucrose.constellations?.length, 6);
+
+  const c0 = calculate(sucrose, { constellation: 0 });
+  const c3 = calculate(sucrose, { constellation: 3 });
+  const c5 = calculate(sucrose, { constellation: 5 });
+  assert.equal(c3.effectiveSettings.skillTalentLevel, 13);
+  assert.equal(c5.effectiveSettings.burstTalentLevel, 13);
+  assert.ok(
+    c3.skills[0].variants[0].nonCrit >
+      c0.skills[0].variants[0].nonCrit,
+  );
+
+  const c6Member = {
+    ...memberFor(sucrose, 0),
+    constellation: 6,
+    settings: {
+      ...defaultDamageSettings,
+      selections: { sucroseBurstAbsorption: "pyro" },
+    },
+  };
+  const c5Member = { ...c6Member, constellation: 5 };
+  const hutao = getCharacter("hutao");
+  const withoutC6 = calculate(hutao, {
+    team: teamFor(c5Member),
+  });
+  const withC6 = calculate(hutao, {
+    team: teamFor(c6Member),
+  });
+  assert.equal(
+    withC6.panel.elementalDmg - withoutC6.panel.elementalDmg,
+    20,
+  );
+
+  const klee = getCharacter("klee");
+  const kleeWithoutC6 = calculate(klee, {
+    team: teamFor(c5Member),
+  });
+  const kleeWithC6 = calculate(klee, {
+    team: teamFor(c6Member),
+  });
+  assert.ok(
+    Math.abs(
+      kleeWithC6.panel.elementalDmg -
+        kleeWithoutC6.panel.elementalDmg -
+        28.6,
+    ) < 1e-9,
+  );
+  const c6Buff = kleeWithC6.teamBuffs.find(
+    ({ name }) => name === "C6·混元熵增论",
+  );
+  assert.ok(c6Buff);
+  assert.deepEqual(c6Buff.modifiers, [
+    {
+      kind: "panel",
+      stat: "elementalDmg",
+      value: 28.57142,
+    },
+  ]);
+
+  const ayakaWithPyroAbsorption = calculate(
+    getCharacter("ayaka"),
+    { team: teamFor(c6Member) },
+  );
+  assert.equal(
+    ayakaWithPyroAbsorption.teamBuffs.some(
+      ({ name }) => name === "C6·混元熵增论",
+    ),
+    false,
   );
 });
 
