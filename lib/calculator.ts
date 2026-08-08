@@ -344,6 +344,23 @@ export function calculateFinalPanel(
     applyPanelModifier(modifier, totals, talentBonuses, flatStats);
   }
 
+  panel = createPanel(
+    totals,
+    talentBonuses,
+    baseHp,
+    baseAtk,
+    baseDef,
+    flatStats,
+  );
+  for (const modifier of evaluatePanelEffects(
+    effects,
+    "postConversion",
+    includeConditional,
+    effectContext(panel),
+  )) {
+    applyPanelModifier(modifier, totals, talentBonuses, flatStats);
+  }
+
   for (const modifier of deferredArtifactModifiers) {
     if (modifier.kind === "burstFromEnergyRecharge") {
       talentBonuses.burst += Math.min(

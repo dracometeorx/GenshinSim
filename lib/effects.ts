@@ -12,7 +12,10 @@ import type {
   StellarReactionType,
 } from "./damage-types.ts";
 
-export type PanelEffectStage = "additive" | "conversion";
+export type PanelEffectStage =
+  | "additive"
+  | "conversion"
+  | "postConversion";
 
 export type PanelEffectStat =
   | "hpPct"

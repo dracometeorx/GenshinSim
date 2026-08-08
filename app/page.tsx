@@ -428,7 +428,7 @@ export default function Home() {
         >
           <span className="brand-mark">✦</span>
           <span>
-            <strong>原神伤害计算器</strong>
+            <strong>队伍计算器</strong>
             <small>命座、队伍与方案对比 · v0.9</small>
           </span>
         </a>

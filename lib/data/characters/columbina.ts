@@ -7,12 +7,29 @@ import type { LunarReactionType } from "../../damage-types.ts";
 import {
   directLunarModel,
   talentCurve,
-  talentValueAt,
 } from "./lunar-common.ts";
 
 const chargedInterference = talentCurve(0.047);
 const bloomInterference = talentCurve(0.0141 * 5);
 const crystallizeInterference = talentCurve(0.0882);
+const lunarDomainDamageBonus = [
+  13, 16, 19, 22, 25, 28, 31, 34, 37, 40, 43, 46, 49, 52,
+  55,
+] as const;
+
+function talentTableValue(
+  values: readonly number[],
+  talentLevel: number,
+) {
+  const level = Number.isFinite(talentLevel)
+    ? Math.round(talentLevel)
+    : 1;
+  const index = Math.min(
+    values.length - 1,
+    Math.max(0, level - 1),
+  );
+  return values[index] ?? values[0] ?? 0;
+}
 
 const lunarChoice: Record<
   string,
@@ -133,8 +150,8 @@ export const columbina: CharacterPreset = {
         {
           kind: "damage",
           stat: "lunarReactionDamageBonus",
-          value: talentValueAt(
-            13,
+          value: talentTableValue(
+            lunarDomainDamageBonus,
             source.settings.burstTalentLevel,
           ),
           lunarReactions: [

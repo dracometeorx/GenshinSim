@@ -12,6 +12,8 @@ const representativeSkillIds: Record<string, string> = {
   charlotte: "charlotte-hold-photo",
   yelan: "yelan-exquisite-throw",
   xingqiu: "xingqiu-rain-sword",
+  bennett: "bennett-fantastic-voyage",
+  "lan-yan": "lan-yan-feathermoon-rings",
   arlecchino: "arlecchino-masque-normal",
   mavuika: "mavuika-sunfell-slice",
   skirk: "skirk-burst",

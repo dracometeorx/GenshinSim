@@ -33,6 +33,7 @@ export const lohen: CharacterPreset = {
       description:
         "破邪之刃触发后，队伍中附近的其他角色元素精通提高 200 点。",
       minConstellation: 2,
+      contributesToBuffSourcePanel: true,
       appliesToSelf: false,
       evaluate: () => [
         { kind: "panel", stat: "elementalMastery", value: 200 },

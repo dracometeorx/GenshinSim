@@ -323,6 +323,23 @@ test("lets Sucrose convert fixed party mastery from Silken Moon without double c
     assert.ok(modifier && modifier.kind === "panel");
     return modifier.value;
   };
+  const getSucroseMoonsignBonus = (
+    result: ReturnType<typeof calculate>,
+  ) => {
+    const buff = result.teamBuffs.find(
+      ({ sourceName, name }) =>
+        sourceName === "砂糖" &&
+        name === "月兆·满辉队伍增益",
+    );
+    assert.ok(buff);
+    const modifier = buff.modifiers.find(
+      (candidate) =>
+        candidate.kind === "damage" &&
+        candidate.stat === "lunarReactionDamageBonus",
+    );
+    assert.ok(modifier && modifier.kind === "damage");
+    return modifier.value;
+  };
 
   const baseline = calculate(flins, {
     team: teamFor(sucroseMember, columbinaMember),
@@ -352,8 +369,68 @@ test("lets Sucrose convert fixed party mastery from Silken Moon without double c
   assert.equal(getSucroseShare(teammateSilken) - getSucroseShare(baseline), 24);
   assert.equal(getSucroseShare(sucroseSilken) - getSucroseShare(baseline), 24);
   assert.equal(getSucroseShare(disabled), getSucroseShare(baseline));
+  assert.ok(
+    Math.abs(
+      getSucroseMoonsignBonus(teammateSilken) -
+        getSucroseMoonsignBonus(baseline) -
+        2.7,
+    ) < 1e-9,
+  );
+  assert.ok(
+    Math.abs(
+      getSucroseMoonsignBonus(sucroseSilken) -
+        getSucroseMoonsignBonus(baseline) -
+        2.7,
+    ) < 1e-9,
+  );
+  assert.equal(
+    getSucroseMoonsignBonus(disabled),
+    getSucroseMoonsignBonus(baseline),
+  );
   assert.equal(teammateSilken.panel.elementalMastery - baseline.panel.elementalMastery, 144);
   assert.equal(sucroseSilken.panel.elementalMastery - baseline.panel.elementalMastery, 144);
+});
+
+test("does not snapshot Ineffa's active-character mastery into off-field Sucrose", () => {
+  const flins = getCharacter("flins");
+  const sucrose = getCharacter("sucrose");
+  const ineffa = getCharacter("ineffa");
+  const team = teamFor(
+    memberFor(sucrose, 0),
+    memberFor(ineffa, 1),
+  );
+  const enabled = calculate(flins, { team });
+  const disabledTeam = teamFor(
+    memberFor(sucrose, 0),
+    memberFor(ineffa, 1),
+  );
+  disabledTeam.configuration.buffToggles[
+    "slot:1:character:ineffa-parameter-reconstruction"
+  ] = false;
+  const disabled = calculate(flins, { team: disabledTeam });
+  const getSucroseMoonsignBonus = (
+    result: ReturnType<typeof calculate>,
+  ) => {
+    const buff = result.teamBuffs.find(
+      ({ sourceName, name }) =>
+        sourceName === "砂糖" &&
+        name === "月兆·满辉队伍增益",
+    );
+    assert.ok(buff);
+    const modifier = buff.modifiers.find(
+      (candidate) =>
+        candidate.kind === "damage" &&
+        candidate.stat === "lunarReactionDamageBonus",
+    );
+    assert.ok(modifier && modifier.kind === "damage");
+    return modifier.value;
+  };
+
+  assert.ok(enabled.panel.elementalMastery > disabled.panel.elementalMastery);
+  assert.equal(
+    getSucroseMoonsignBonus(enabled),
+    getSucroseMoonsignBonus(disabled),
+  );
 });
 
 test("defines all six constellations for the requested Hexerei characters", () => {

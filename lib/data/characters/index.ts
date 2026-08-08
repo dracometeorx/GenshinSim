@@ -42,6 +42,8 @@ import { wriothesley } from "./wriothesley.ts";
 import { cyno } from "./cyno.ts";
 import { beidou } from "./beidou.ts";
 import { diona } from "./diona.ts";
+import { bennett } from "./bennett.ts";
+import { lanYan } from "./lan-yan.ts";
 import type { CharacterPreset } from "./types.ts";
 
 export type { CharacterPreset } from "./types.ts";
@@ -57,6 +59,8 @@ const fourStarCharacterIds = new Set([
   "razor",
   "prune",
   "charlotte",
+  "bennett",
+  "lan-yan",
 ]);
 
 const fiveStarCharacterIds = new Set([
@@ -127,6 +131,8 @@ export const characters: CharacterPreset[] = [
   charlotte,
   yelan,
   xingqiu,
+  bennett,
+  lanYan,
   arlecchino,
   mavuika,
   skirk,

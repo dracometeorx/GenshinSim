@@ -233,6 +233,25 @@ test("keeps Columbina C2 HP and elevation intrinsic while the on-field buff stay
   const c0 = calculate(0, false);
   const c2Disabled = calculate(2, false);
   const c2Enabled = calculate(2, true);
+  const c5 = calculate(5, false);
+  const lunarDomainBonus = (
+    result: ReturnType<typeof calculate>
+  ) => {
+    const buff = result.teamBuffs.find(
+      ({ id }) => id === "self:character:columbina-lunar-domain",
+    );
+    assert.ok(buff);
+    const modifier = buff.modifiers.find(
+      (candidate) =>
+        candidate.kind === "damage" &&
+        candidate.stat === "lunarReactionDamageBonus",
+    );
+    assert.ok(modifier && modifier.kind === "damage");
+    return modifier.value;
+  };
+  assert.equal(lunarDomainBonus(c0), 40);
+  assert.equal(c5.effectiveSettings.burstTalentLevel, 13);
+  assert.equal(lunarDomainBonus(c5), 49);
   assert.equal(c2Disabled.panel.hp - c0.panel.hp, 14695 * 0.4);
   assert.deepEqual(c2Disabled.damageBonusSummary.lunarElevations, {
     lunarCharged: 8.5,

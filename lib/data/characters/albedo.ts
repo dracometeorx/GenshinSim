@@ -30,6 +30,7 @@ export const albedo: CharacterPreset = {
       id: "albedo-burst-mastery",
       name: "瓶中人的天慧",
       description: "施放元素爆发后，附近队伍角色元素精通提高 125 点。",
+      contributesToBuffSourcePanel: true,
       appliesToSelf: true,
       evaluate: () => [
         { kind: "panel", stat: "elementalMastery", value: 125 },

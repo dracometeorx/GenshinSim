@@ -304,6 +304,7 @@ function createContext(
       ),
       constellation: source.constellation,
       element: source.element,
+      baseAtk: source.character.baseAtk + source.weapon.baseAtk,
       panel: source.panel,
       settings: source.settings,
       weaponRefinement: source.weapon.refinement,
@@ -313,6 +314,7 @@ function createContext(
     target: {
       characterId: target.character.id,
       element: target.build.element,
+      weaponType: target.character.weaponType,
       burstEnergyCost: target.character.burstEnergyCost ?? 60,
       moonsign: getCharacterMoonsignLevels(target.character) > 0,
       hexerei: Boolean(target.character.hexerei),
@@ -453,6 +455,9 @@ export function resolveTeamBuffs({
   type SourcePanelBuff = {
     key: string;
     modifiers: PanelModifier[];
+    sourceSlot: number | null;
+    appliesToSelf: boolean;
+    appliesToTeammates: boolean;
   };
   const sourcePanelBuffs: SourcePanelBuff[] = [];
   const occupiedSourcePanelGroups = new Set<string>();
@@ -462,6 +467,7 @@ export function resolveTeamBuffs({
     context: TeamBuffEvaluationContext,
     constellation: number,
     artifactPieces: 0 | 2 | 4,
+    sourceSlot: number | null,
   ) => {
     if (
       !definition.contributesToBuffSourcePanel ||
@@ -485,7 +491,16 @@ export function resolveTeamBuffs({
     const enabled =
       definition.toggleable === false ||
       (configuration.buffToggles[id] ?? true);
-    if (enabled) sourcePanelBuffs.push({ key, modifiers });
+    if (enabled) {
+      sourcePanelBuffs.push({
+        key,
+        modifiers,
+        sourceSlot,
+        appliesToSelf: definition.appliesToSelf === true,
+        appliesToTeammates:
+          definition.appliesToTeammates !== false,
+      });
+    }
   };
 
   const preliminaryTargetContext = createContext(
@@ -502,6 +517,26 @@ export function resolveTeamBuffs({
     target,
     preliminaryParty,
   );
+  for (const definition of target.character.teamBuffs ?? []) {
+    collectSourcePanelBuff(
+      definition,
+      `self:character:${definition.id}`,
+      preliminaryTargetContext,
+      targetConstellation,
+      0,
+      null,
+    );
+  }
+  for (const definition of target.weapon.passive.teamBuffs ?? []) {
+    collectSourcePanelBuff(
+      definition,
+      `self:weapon:${definition.id}`,
+      preliminaryTargetContext,
+      targetConstellation,
+      0,
+      null,
+    );
+  }
   for (const definition of target.artifactSet.teamBuffs ?? []) {
     collectSourcePanelBuff(
       definition,
@@ -509,6 +544,7 @@ export function resolveTeamBuffs({
       preliminaryTargetContext,
       targetConstellation,
       target.build.artifactSetPieces,
+      null,
     );
   }
   for (const {
@@ -530,6 +566,26 @@ export function resolveTeamBuffs({
       target,
       preliminaryParty,
     );
+    for (const definition of member.character.teamBuffs ?? []) {
+      collectSourcePanelBuff(
+        definition,
+        `slot:${member.slot}:character:${definition.id}`,
+        context,
+        member.constellation,
+        0,
+        member.slot,
+      );
+    }
+    for (const definition of member.weapon.passive.teamBuffs ?? []) {
+      collectSourcePanelBuff(
+        definition,
+        `slot:${member.slot}:weapon:${definition.id}`,
+        context,
+        member.constellation,
+        0,
+        member.slot,
+      );
+    }
     for (const definition of member.artifactSet.teamBuffs ?? []) {
       collectSourcePanelBuff(
         definition,
@@ -537,6 +593,7 @@ export function resolveTeamBuffs({
         context,
         member.constellation,
         member.build.artifactSetPieces,
+        member.slot,
       );
     }
   }
@@ -579,9 +636,15 @@ export function resolveTeamBuffs({
             (definition) => definition.stackingGroup ?? definition.id,
           ),
       );
-      const externalModifiers = sourcePanelBuffs.flatMap((buff) =>
-        ownSourcePanelBuffKeys.has(buff.key) ? [] : buff.modifiers,
-      );
+      const externalModifiers = sourcePanelBuffs.flatMap((buff) => {
+        const comesFromMember = buff.sourceSlot === member.slot;
+        if (comesFromMember && ownSourcePanelBuffKeys.has(buff.key)) {
+          return [];
+        }
+        if (comesFromMember && !buff.appliesToSelf) return [];
+        if (!comesFromMember && !buff.appliesToTeammates) return [];
+        return buff.modifiers;
+      });
       return {
         member,
         panel: externalModifiers.length
@@ -776,30 +839,41 @@ export function resolveTeamBuffs({
   const activeModifiers = buffs
     .filter((buff) => buff.enabled)
     .flatMap((buff) => buff.modifiers);
-  const panelModifiers: PanelModifier[] = activeModifiers
+  const panelModifiers = activeModifiers
     .filter(
       (
         modifier,
       ): modifier is Extract<TeamBuffModifier, { kind: "panel" }> =>
         modifier.kind === "panel",
     )
-    .map(({ stat, value }) => ({ stat, value }));
+    .map(({ stat, value, stage }) => ({ stat, value, stage }));
   const damageModifiers = activeModifiers.filter(
     (
       modifier,
     ): modifier is Extract<TeamBuffModifier, { kind: "damage" }> =>
       modifier.kind === "damage",
   );
-  const panelEffects: PanelEffect[] = panelModifiers.length
-    ? [
-        {
-          id: "active-team-panel-buffs",
-          stage: "additive",
-          conditional: true,
-          evaluate: () => panelModifiers,
-        },
-      ]
-    : [];
+  const panelEffects: PanelEffect[] = [
+    "additive",
+    "postConversion",
+  ].flatMap((stage) => {
+    const modifiers = panelModifiers
+      .filter(
+        (modifier) =>
+          (modifier.stage ?? "additive") === stage,
+      )
+      .map(({ stat, value }) => ({ stat, value }));
+    return modifiers.length
+      ? [
+          {
+            id: `active-team-panel-buffs-${stage}`,
+            stage: stage as "additive" | "postConversion",
+            conditional: true,
+            evaluate: () => modifiers,
+          },
+        ]
+      : [];
+  });
   const damageEffects: DamageEffect[] = damageModifiers.length
     ? [
         {

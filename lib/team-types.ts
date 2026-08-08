@@ -10,6 +10,7 @@ import type {
   StellarReactionType,
 } from "./damage-types.ts";
 import type { PanelEffectStat } from "./effects.ts";
+import type { PanelEffectStage } from "./effects.ts";
 
 export type TeamBuffSourceKind =
   | "constellation"
@@ -24,6 +25,7 @@ export type TeamBuffModifier =
       kind: "panel";
       stat: PanelEffectStat;
       value: number;
+      stage?: Exclude<PanelEffectStage, "conversion">;
     }
   | {
       kind: "damage";
@@ -62,6 +64,7 @@ export interface TeamBuffEvaluationContext {
     stellarConductRelated?: boolean;
     constellation: number;
     element: ElementKey;
+    baseAtk: number;
     panel: Readonly<FinalPanel>;
     settings: Readonly<DamageSettings>;
     weaponRefinement: number;
@@ -71,6 +74,7 @@ export interface TeamBuffEvaluationContext {
   target: {
     characterId: string;
     element: ElementKey;
+    weaponType: CharacterPreset["weaponType"];
     burstEnergyCost: number;
     moonsign: boolean;
     hexerei: boolean;

@@ -143,6 +143,7 @@ function calculate(
     artifactSetPieces?: 0 | 2 | 4;
     artifactSetSelections?: Record<string, string>;
     team?: CalculationRequest["team"];
+    damageSelections?: Record<string, string>;
   } = {},
 ) {
   const characterPreset = character(characterId);
@@ -153,7 +154,13 @@ function calculate(
     character: characterPreset,
     weapon: weaponPreset,
     artifactSet: getArtifactSet(build.artifactSetId),
-    settings: defaultDamageSettings,
+    settings: {
+      ...defaultDamageSettings,
+      selections: {
+        ...defaultDamageSettings.selections,
+        ...options.damageSelections,
+      },
+    },
     constellation: options.constellation,
     team: options.team,
   });
@@ -201,6 +208,179 @@ test("adds complete combat presets for Xilonen, Citlali, Zhongli, and Furina", (
         constellationCount: 6,
       },
     ],
+  );
+});
+
+test("adds Bennett and Lan Yan with representative damage and full constellations", () => {
+  assert.deepEqual(
+    ["bennett", "lan-yan"].map((id) => {
+      const preset = character(id);
+      return {
+        id,
+        level: preset.level,
+        hasDamage: Boolean(preset.damageProfile),
+        hasTeamBuff: Boolean(preset.teamBuffs?.length),
+        constellationCount: preset.constellations?.length,
+      };
+    }),
+    [
+      {
+        id: "bennett",
+        level: 90,
+        hasDamage: true,
+        hasTeamBuff: true,
+        constellationCount: 6,
+      },
+      {
+        id: "lan-yan",
+        level: 90,
+        hasDamage: true,
+        hasTeamBuff: true,
+        constellationCount: 6,
+      },
+    ],
+  );
+
+  const bennett = calculate("bennett", "skyward-blade", {
+    constellation: 5,
+  });
+  const lanYanC0 = calculate("lan-yan", "thrilling-tales", {
+    constellation: 0,
+  });
+  const lanYanC1 = calculate("lan-yan", "thrilling-tales", {
+    constellation: 1,
+  });
+  assert.equal(
+    bennett.selectedSkill?.id,
+    "bennett-fantastic-voyage",
+  );
+  assert.equal(bennett.effectiveSettings.burstTalentLevel, 13);
+  assert.equal(
+    lanYanC1.selectedSkill?.id,
+    "lan-yan-feathermoon-rings",
+  );
+  assert.equal(
+    lanYanC1.selectedSkill?.variants[0].nonCrit,
+    (lanYanC0.selectedSkill?.variants[0].nonCrit ?? 0) * 2,
+  );
+  assert.equal(lanYanC1.selectedSkill?.segments?.length, 2);
+});
+
+test("uses Bennett base ATK after conversions and applies his C6 Pyro bonus", () => {
+  const bennettC1 = teammatePlan({
+    characterId: "bennett",
+    weaponId: "skyward-blade",
+    constellation: 1,
+  });
+  const sandroneBaseline = calculate(
+    "sandrone",
+    "a-teaspoon-of-transcendence",
+  );
+  const sandroneBuffed = calculate(
+    "sandrone",
+    "a-teaspoon-of-transcendence",
+    { team: teamFor(bennettC1) },
+  );
+  const expectedAttackBuff = (191 + 608) * 1.21;
+  assert.equal(
+    sandroneBuffed.panel.atk - sandroneBaseline.panel.atk,
+    Math.round(expectedAttackBuff),
+  );
+  assert.equal(
+    sandroneBuffed.panel.elementalMastery,
+    sandroneBaseline.panel.elementalMastery,
+  );
+
+  const bennettC5 = teammatePlan({
+    characterId: "bennett",
+    weaponId: "skyward-blade",
+    constellation: 5,
+  });
+  const bennettC6 = teammatePlan({
+    characterId: "bennett",
+    weaponId: "skyward-blade",
+    constellation: 6,
+  });
+  const arlecchinoC5 = calculate("arlecchino", "homa", {
+    team: teamFor(bennettC5),
+  });
+  const arlecchinoC6 = calculate("arlecchino", "homa", {
+    team: teamFor(bennettC6),
+  });
+  assert.ok(
+    arlecchinoC6.selectedSkill!.variants[0].nonCrit >
+      arlecchinoC5.selectedSkill!.variants[0].nonCrit,
+  );
+  assert.ok(
+    arlecchinoC6.teamBuffs.some(
+      (buff) => buff.name === "C6·烈火与勇气",
+    ),
+  );
+
+  const kleeC5 = calculate("klee", "lost-prayer", {
+    team: teamFor(bennettC5),
+  });
+  const kleeC6 = calculate("klee", "lost-prayer", {
+    team: teamFor(bennettC6),
+  });
+  assert.equal(
+    kleeC6.selectedSkill?.variants[0].nonCrit,
+    kleeC5.selectedSkill?.variants[0].nonCrit,
+  );
+});
+
+test("lets Lan Yan C4 mastery update off-field Sucrose's Moonsign bonus", () => {
+  const createParty = (lanYanConstellation: number) => {
+    const plans = [
+      teammatePlan({
+        characterId: "sucrose",
+        weaponId: "sacrificial-fragments",
+      }),
+      teammatePlan({
+        characterId: "lan-yan",
+        weaponId: "thrilling-tales",
+        constellation: lanYanConstellation,
+      }),
+      teammatePlan({
+        characterId: "columbina",
+        weaponId: "nocturnes-curtain-call",
+      }),
+    ];
+    const configuration = createEmptyTeamConfiguration();
+    plans.forEach((plan, slot) => {
+      configuration.slots[slot] = {
+        characterId: plan.snapshot.characterId,
+        planId: plan.id,
+      };
+    });
+    return createTeamCalculationInput(configuration, plans);
+  };
+  const getSucroseBonus = (
+    result: ReturnType<typeof calculate>,
+  ) => {
+    const buff = result.teamBuffs.find(
+      ({ sourceName, name }) =>
+        sourceName === "砂糖" && name === "月兆·满辉队伍增益",
+    );
+    assert.ok(buff);
+    const modifier = buff.modifiers.find(
+      (candidate) =>
+        candidate.kind === "damage" &&
+        candidate.stat === "lunarReactionDamageBonus",
+    );
+    assert.ok(modifier && modifier.kind === "damage");
+    return modifier.value;
+  };
+  const c3 = calculate("flins", "bloodsoaked-ruins", {
+    team: createParty(3),
+  });
+  const c4 = calculate("flins", "bloodsoaked-ruins", {
+    team: createParty(4),
+  });
+
+  assert.ok(
+    Math.abs(getSucroseBonus(c4) - getSucroseBonus(c3) - 1.35) <
+      1e-9,
   );
 });
 
