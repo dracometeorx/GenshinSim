@@ -1,10 +1,26 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import type { BuildInput } from "../lib/calculator.ts";
+import { calculateFinalPanel } from "../lib/calculator.ts";
+import {
+  calculateRepresentativeDamage,
+  defaultDamageSettings,
+} from "../lib/damage.ts";
 import { artifactSets } from "../lib/data/artifacts/index.ts";
-import { characters } from "../lib/data/characters/index.ts";
+import {
+  characters,
+  getCharacterRarity,
+  getDefaultConstellation,
+} from "../lib/data/characters/index.ts";
+import {
+  getRepresentativeSkillCharacterIds,
+  getRepresentativeSkillId,
+} from "../lib/data/characters/representative-skills.ts";
 import {
   getCompatibleWeapons,
+  getDefaultWeaponRefinement,
+  getWeaponRarity,
   isWeaponCompatible,
   weapons,
 } from "../lib/data/weapons/index.ts";
@@ -18,6 +34,21 @@ test("exports every character preset with a unique id", () => {
       "hutao",
       "raiden",
       "nahida",
+      "xilonen",
+      "citlali",
+      "zhongli",
+      "furina",
+      "kokomi",
+      "escoffier",
+      "charlotte",
+      "yelan",
+      "xingqiu",
+      "bennett",
+      "lan-yan",
+      "arlecchino",
+      "mavuika",
+      "skirk",
+      "chiori",
       "columbina",
       "flins",
       "ineffa",
@@ -57,6 +88,21 @@ test("exports every character preset with a unique id", () => {
       "hutao",
       "raiden",
       "nahida",
+      "xilonen",
+      "citlali",
+      "zhongli",
+      "furina",
+      "kokomi",
+      "escoffier",
+      "charlotte",
+      "yelan",
+      "xingqiu",
+      "bennett",
+      "lan-yan",
+      "arlecchino",
+      "mavuika",
+      "skirk",
+      "chiori",
       "columbina",
       "flins",
       "ineffa",
@@ -92,6 +138,21 @@ test("exports every character preset with a unique id", () => {
       "polearm",
       "polearm",
       "catalyst",
+      "sword",
+      "catalyst",
+      "polearm",
+      "sword",
+      "catalyst",
+      "polearm",
+      "catalyst",
+      "bow",
+      "sword",
+      "sword",
+      "catalyst",
+      "polearm",
+      "claymore",
+      "sword",
+      "sword",
       "catalyst",
       "polearm",
       "polearm",
@@ -121,6 +182,104 @@ test("exports every character preset with a unique id", () => {
       "any",
     ],
   );
+});
+
+test("classifies every combat character and derives its default constellation", () => {
+  const combatCharacters = characters.filter(({ id }) => id !== "custom");
+  const fourStarIds = combatCharacters
+    .filter((character) => getCharacterRarity(character) === 4)
+    .map(({ id }) => id);
+
+  assert.deepEqual(fourStarIds, [
+    "charlotte",
+    "xingqiu",
+    "bennett",
+    "lan-yan",
+    "beidou",
+    "diona",
+    "fischl",
+    "sucrose",
+    "razor",
+    "prune",
+  ]);
+  assert.ok(
+    combatCharacters.every(
+      (character) => getCharacterRarity(character) !== null,
+    ),
+  );
+  assert.ok(
+    combatCharacters.every(
+      (character) =>
+        getDefaultConstellation(character) ===
+        (getCharacterRarity(character) === 4 ? 6 : 0),
+    ),
+  );
+  assert.equal(getCharacterRarity("custom"), null);
+  assert.equal(getDefaultConstellation("custom"), 0);
+});
+
+test("defines one fixed representative skill for every combat character", () => {
+  assert.deepEqual(
+    [...getRepresentativeSkillCharacterIds()].sort(),
+    characters
+      .filter((character) => character.damageProfile)
+      .map((character) => character.id)
+      .sort(),
+  );
+
+  for (const character of characters.filter(
+    (candidate) => candidate.damageProfile,
+  )) {
+    const weapon =
+      weapons.find(
+        (candidate) => candidate.id === character.defaultWeaponId,
+      ) ?? weapons[0];
+    const build: BuildInput = {
+      element: character.element,
+      character,
+      weapon,
+      artifactSetId: "none",
+      artifactSetPieces: 0,
+      artifactSetSelections: {},
+      artifact: {
+        flatHp: 0,
+        flatAtk: 0,
+        flatDef: 0,
+        critRate: 0,
+        critDmg: 0,
+        energyRecharge: 0,
+        elementalMastery: 0,
+        elementalDmg: 0,
+        healingBonus: 0,
+      },
+      talentBonuses: {
+        skill: 0,
+        burst: 0,
+        normal: 0,
+        charged: 0,
+        plunge: 0,
+      },
+    };
+    const result = calculateRepresentativeDamage(
+      character,
+      build,
+      calculateFinalPanel(build),
+      defaultDamageSettings,
+      [],
+      [],
+      0,
+      "ascendant",
+      true,
+      true,
+      12,
+    );
+
+    assert.equal(
+      result.selectedSkill?.id,
+      getRepresentativeSkillId(character.id),
+      character.id,
+    );
+  }
 });
 
 test("exports every weapon preset with a unique id", () => {
@@ -176,6 +335,7 @@ test("exports every weapon preset with a unique id", () => {
       "the-stringless",
       "rust",
       "the-viridescent-hunt",
+      "a-thousand-blazing-suns",
       "wolfs-gravestone",
       "skyward-pride",
       "ultimate-overlords-mega-magic-sword",
@@ -248,6 +408,7 @@ test("exports every weapon preset with a unique id", () => {
       "claymore",
       "claymore",
       "claymore",
+      "claymore",
       "any",
     ],
   );
@@ -256,6 +417,31 @@ test("exports every weapon preset with a unique id", () => {
       .filter(({ id }) => id !== "custom")
       .every(({ passive }) => passive.refinementDescriptions?.length === 5),
   );
+});
+
+test("classifies every standard weapon and derives its default refinement", () => {
+  const standardWeapons = weapons.filter(({ id }) => id !== "custom");
+
+  assert.ok(
+    standardWeapons.every((weapon) => getWeaponRarity(weapon) !== null),
+  );
+  assert.deepEqual(
+    standardWeapons
+      .filter((weapon) => getWeaponRarity(weapon) === 3)
+      .map(({ id }) => id),
+    ["thrilling-tales", "slingshot"],
+  );
+  assert.ok(
+    standardWeapons.every((weapon) => {
+      const rarity = getWeaponRarity(weapon);
+      return (
+        getDefaultWeaponRefinement(weapon) ===
+        (rarity === 3 || rarity === 4 ? 5 : 1)
+      );
+    }),
+  );
+  assert.equal(getWeaponRarity("custom"), null);
+  assert.equal(getDefaultWeaponRefinement("custom"), 1);
 });
 
 test("keeps constellation and team buff definitions catalog-owned", () => {
@@ -389,6 +575,12 @@ test("exports every artifact set preset with a unique id", () => {
       "crimson-witch",
       "shimenawa",
       "emblem",
+      "golden-troupe",
+      "gilded-dreams",
+      "obsidian-codex",
+      "fragment-of-harmonic-whimsy",
+      "marechaussee-hunter",
+      "finale-of-the-deep-galleries",
       "deepwood",
       "silken-moons-serenade",
       "night-of-skys-unveiling",
@@ -397,6 +589,14 @@ test("exports every artifact set preset with a unique id", () => {
       "celestial-gift",
       "viridescent-venerer",
       "tenacity-of-the-millelith",
+      "noblesse-oblige",
+      "instructor",
+      "archaic-petra",
+      "scroll-of-the-hero-of-cinder-city",
+      "song-of-days-past",
+      "maiden-beloved",
+      "the-exile",
+      "scholar",
       "delusion-of-immolated-shadow",
     ],
   );

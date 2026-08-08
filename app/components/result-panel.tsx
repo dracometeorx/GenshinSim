@@ -4,7 +4,11 @@ import type { Dispatch, SetStateAction } from "react";
 import type { BuildInput } from "../../lib/calculator";
 import type { CalculationResult } from "../../lib/calculation";
 import type { CharacterPreset } from "../../lib/data/characters";
-import type { DamageSettings } from "../../lib/damage";
+import type {
+  DamageSettings,
+  DamageVariantResult,
+  RepresentativeDamageSegmentResult,
+} from "../../lib/damage";
 import { NumericInput } from "./numeric-input";
 
 const talentLabels: Array<{
@@ -37,6 +41,16 @@ const moonsignLabels = {
   ascendant: "月兆·满辉",
 } as const;
 
+const lunarReactionBonusLabels = [
+  { key: "lunarCharged" as const, label: "月感电" },
+  { key: "lunarBloom" as const, label: "月绽放" },
+  { key: "lunarCrystallize" as const, label: "月结晶" },
+];
+
+const stellarReactionBonusLabels = [
+  { key: "stellarConduct" as const, label: "星电导" },
+];
+
 const elementDisplay: Record<string, { label: string; icon: string }> = {
   cryo: { label: "冰", icon: "❄" },
   hydro: { label: "水", icon: "◉" },
@@ -46,6 +60,79 @@ const elementDisplay: Record<string, { label: string; icon: string }> = {
   geo: { label: "岩", icon: "◇" },
   dendro: { label: "草", icon: "♧" },
 };
+
+function DamageTable({ variants }: { variants: DamageVariantResult[] }) {
+  return (
+    <div className="damage-table" role="table">
+      <div className="damage-table-head" role="row">
+        <span role="columnheader">反应</span>
+        <span role="columnheader">未暴击</span>
+        <span role="columnheader">暴击</span>
+        <span role="columnheader">期望</span>
+      </div>
+      {variants.map((variant) => (
+        <div
+          className={`damage-row reaction-${variant.reaction}`}
+          key={variant.reaction}
+          role="row"
+        >
+          <span role="cell">{variant.label}</span>
+          <span role="cell">{formatNumber(variant.nonCrit)}</span>
+          <strong role="cell">{formatNumber(variant.crit)}</strong>
+          <strong className="damage-expected" role="cell">
+            {formatNumber(variant.expected)}
+          </strong>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DamageSegmentTable({
+  segments,
+}: {
+  segments: RepresentativeDamageSegmentResult[];
+}) {
+  return (
+    <section className="damage-segments" aria-label="分段伤害明细">
+      <header>
+        <strong>分段明细</strong>
+        <small>各段之和与上方总计一致</small>
+      </header>
+      <div className="damage-segment-table" role="table">
+        <div className="damage-segment-table-head" role="row">
+          <span role="columnheader">伤害段</span>
+          <span role="columnheader">反应</span>
+          <span role="columnheader">未暴击</span>
+          <span role="columnheader">暴击</span>
+          <span role="columnheader">期望</span>
+        </div>
+        {segments.flatMap((segment) =>
+          segment.variants.map((variant, variantIndex) => (
+            <div
+              className={`damage-segment-row reaction-${variant.reaction}`}
+              key={`${segment.id}-${variant.reaction}`}
+              role="row"
+            >
+              <span role="cell">
+                <strong>{segment.name}</strong>
+                {variantIndex === 0 ? (
+                  <small>{segment.multiplierLabel}</small>
+                ) : null}
+              </span>
+              <span role="cell">{variant.label}</span>
+              <span role="cell">{formatNumber(variant.nonCrit)}</span>
+              <strong role="cell">{formatNumber(variant.crit)}</strong>
+              <strong className="damage-expected" role="cell">
+                {formatNumber(variant.expected)}
+              </strong>
+            </div>
+          )),
+        )}
+      </div>
+    </section>
+  );
+}
 
 export function ResultPanel({
   activeElement,
@@ -79,6 +166,9 @@ export function ResultPanel({
   setDamageSettings: Dispatch<SetStateAction<DamageSettings>>;
 }) {
   const panel = calculation.panel;
+  const displayedSkills = calculation.selectedSkill
+    ? [calculation.selectedSkill]
+    : [];
 
   return (
     <aside className="panel result-panel" aria-live="polite">
@@ -171,13 +261,63 @@ export function ResultPanel({
       </dl>
 
       <div className="bonus-summary">
-        <span>分类伤害加成</span>
-        <div>
-          {talentLabels.map((talent) => (
-            <b key={talent.key}>
-              {talent.label} {panel.talentBonuses[talent.key]}%
-            </b>
-          ))}
+        <div className="bonus-summary-group">
+          <span>分类伤害加成</span>
+          <div>
+            {talentLabels.map((talent) => (
+              <b key={talent.key}>
+                {talent.label}{" "}
+                {formatNumber(
+                  calculation.damageBonusSummary.categories[
+                    talent.key
+                  ],
+                  1,
+                )}
+                %
+              </b>
+            ))}
+          </div>
+        </div>
+        <div className="bonus-summary-group">
+          <span>月反应伤害提升</span>
+          <div>
+            {lunarReactionBonusLabels.map((reaction) => (
+              <b key={reaction.key}>
+                {reaction.label}{" "}
+                {formatNumber(
+                  calculation.damageBonusSummary.lunarReactions[
+                    reaction.key
+                  ],
+                  1,
+                )}
+                % · 擢升{" "}
+                {formatNumber(
+                  calculation.damageBonusSummary.lunarElevations[
+                    reaction.key
+                  ],
+                  1,
+                )}
+                %
+              </b>
+            ))}
+          </div>
+        </div>
+        <div className="bonus-summary-group">
+          <span>星反应伤害提升</span>
+          <div>
+            {stellarReactionBonusLabels.map((reaction) => (
+              <b key={reaction.key}>
+                {reaction.label}{" "}
+                {formatNumber(
+                  calculation.damageBonusSummary.stellarReactions[
+                    reaction.key
+                  ],
+                  1,
+                )}
+                %
+              </b>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -319,9 +459,9 @@ export function ResultPanel({
           </section>
         </div>
 
-        {calculation.skills.length ? (
+        {displayedSkills.length ? (
           <div className="damage-skills">
-            {calculation.skills.map((skill) => (
+            {displayedSkills.map((skill) => (
               <article className="damage-skill" key={skill.id}>
                 <div className="damage-skill-title">
                   <span>
@@ -348,32 +488,20 @@ export function ResultPanel({
                       : ""}
                   </b>
                 </div>
-                <div className="damage-table" role="table">
-                  <div className="damage-table-head" role="row">
-                    <span role="columnheader">反应</span>
-                    <span role="columnheader">未暴击</span>
-                    <span role="columnheader">暴击</span>
-                    <span role="columnheader">期望</span>
+                {skill.segments?.length ? (
+                  <div className="damage-total">
+                    <header>
+                      <strong>总计</strong>
+                      <small>{skill.segments.length} 段伤害合计</small>
+                    </header>
+                    <DamageTable variants={skill.variants} />
                   </div>
-                  {skill.variants.map((variant) => (
-                    <div
-                      className={`damage-row reaction-${variant.reaction}`}
-                      key={variant.reaction}
-                      role="row"
-                    >
-                      <span role="cell">{variant.label}</span>
-                      <span role="cell">
-                        {formatNumber(variant.nonCrit)}
-                      </span>
-                      <strong role="cell">
-                        {formatNumber(variant.crit)}
-                      </strong>
-                      <strong className="damage-expected" role="cell">
-                        {formatNumber(variant.expected)}
-                      </strong>
-                    </div>
-                  ))}
-                </div>
+                ) : (
+                  <DamageTable variants={skill.variants} />
+                )}
+                {skill.segments?.length ? (
+                  <DamageSegmentTable segments={skill.segments} />
+                ) : null}
               </article>
             ))}
           </div>
@@ -383,21 +511,56 @@ export function ResultPanel({
           </div>
         )}
 
+        {calculation.artifactSubstatImpacts.length ? (
+          <section
+            className="artifact-substat-impact"
+            aria-label="有效圣遗物词条收益"
+          >
+            <header>
+              <span>
+                <strong>有效圣遗物词条收益</strong>
+                <small>
+                  按当前最高期望伤害 · 每次增加 1 个平均档副词条
+                </small>
+              </span>
+              <b>伤害提升</b>
+            </header>
+            <div className="artifact-substat-impact-grid">
+              {calculation.artifactSubstatImpacts.map((impact) => (
+                <div key={impact.key}>
+                  <span>
+                    <strong>{impact.label}</strong>
+                    <small>{impact.rollLabel}</small>
+                  </span>
+                  <span>
+                    <strong>
+                      +{formatNumber(impact.damageIncrease)}
+                    </strong>
+                    <small>
+                      +{formatNumber(impact.percentIncrease, 2)}%
+                    </small>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         <p className="damage-formula-note">
-          {calculation.skills.some(
+          {displayedSkills.some(
             (skill) => skill.model === "directLunar",
           )
             ? `${moonsignLabels[calculation.moonsign.level]}（${calculation.moonsign.count} 级） · 月曜直伤不进入常规防御区与元素/分类增伤区，各结果按其伤害元素单独结算抗性`
-            : calculation.skills.some(
+            : displayedSkills.some(
                   (skill) => skill.model === "directStellar",
                 )
               ? `星极场 ${calculation.stellarConduct.elementalPower} 元素力 · 星电导直伤不进入常规防御区与元素/分类增伤区，按伤害元素单独结算抗性`
             : `防御倍率 ${(calculation.defenseMultiplier * 100).toFixed(1)}% · 有效抗性 ${calculation.effectiveResistance.toFixed(1)}% · 抗性倍率 ${(calculation.resistanceMultiplier * 100).toFixed(1)}%`}
-          {calculation.skills.length > 1 &&
+          {displayedSkills.length > 1 &&
           new Set(
-            calculation.skills.map((s) => s.damageElement),
+            displayedSkills.map((s) => s.damageElement),
           ).size > 1
-            ? `（${calculation.skills
+            ? `（${displayedSkills
                 .map((s) => s.damageElement)
                 .filter(
                   (el, i, arr) => arr.indexOf(el) === i,

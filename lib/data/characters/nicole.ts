@@ -37,6 +37,27 @@ export const nicole: CharacterPreset = {
       ],
     },
     {
+      id: "nicole-c2-guidance-bonus",
+      name: "C2·我要教导你，指引你应走的路",
+      description:
+        "虚己之赐额外提高 300 点攻击力；圣祝之引生效时，附近敌人的对应元素抗性降低 25%，同元素不叠加。",
+      minConstellation: 2,
+      appliesToSelf: true,
+      evaluate: ({ target }) => [
+        {
+          kind: "panel",
+          stat: "flatAtk",
+          value: 300,
+        },
+        {
+          kind: "damage",
+          stat: "enemyResistanceReduction",
+          element: target.element,
+          value: 25,
+        },
+      ],
+    },
+    {
       id: "nicole-secret-imagery",
       name: "魔导·秘仪·奥迹造影",
       description:

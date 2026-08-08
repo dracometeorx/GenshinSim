@@ -44,6 +44,27 @@ export interface CalculationRequest {
   settings: DamageSettings;
   constellation?: number;
   team?: TeamCalculationInput;
+  analyzeArtifactSubstats?: boolean;
+}
+
+export type ArtifactSubstatKey =
+  | "flatHp"
+  | "hpPct"
+  | "flatAtk"
+  | "atkPct"
+  | "flatDef"
+  | "defPct"
+  | "critRate"
+  | "critDmg"
+  | "energyRecharge"
+  | "elementalMastery";
+
+export interface ArtifactSubstatImpact {
+  key: ArtifactSubstatKey;
+  label: string;
+  rollLabel: string;
+  damageIncrease: number;
+  percentIncrease: number;
 }
 
 export interface CalculationResult extends DamageCalculationResult {
@@ -67,8 +88,91 @@ export interface CalculationResult extends DamageCalculationResult {
     active: boolean;
     elementalPower: number;
   };
+  artifactSubstatImpacts: ArtifactSubstatImpact[];
   warnings: CalculationWarning[];
 }
+
+type ArtifactSubstatRoll = {
+  key: ArtifactSubstatKey;
+  label: string;
+  rollLabel: string;
+  artifactKey: keyof BuildInput["artifact"];
+  increment: (build: BuildInput) => number;
+};
+
+const averageArtifactSubstatRolls: ArtifactSubstatRoll[] = [
+  {
+    key: "flatHp",
+    label: "生命值",
+    rollLabel: "+254",
+    artifactKey: "flatHp",
+    increment: () => 253.94,
+  },
+  {
+    key: "hpPct",
+    label: "生命值%",
+    rollLabel: "+5.0%",
+    artifactKey: "flatHp",
+    increment: (build) => build.character.baseHp * 0.04955,
+  },
+  {
+    key: "flatAtk",
+    label: "攻击力",
+    rollLabel: "+17",
+    artifactKey: "flatAtk",
+    increment: () => 16.535,
+  },
+  {
+    key: "atkPct",
+    label: "攻击力%",
+    rollLabel: "+5.0%",
+    artifactKey: "flatAtk",
+    increment: (build) =>
+      (build.character.baseAtk + build.weapon.baseAtk) * 0.04955,
+  },
+  {
+    key: "flatDef",
+    label: "防御力",
+    rollLabel: "+20",
+    artifactKey: "flatDef",
+    increment: () => 19.675,
+  },
+  {
+    key: "defPct",
+    label: "防御力%",
+    rollLabel: "+6.2%",
+    artifactKey: "flatDef",
+    increment: (build) => build.character.baseDef * 0.06195,
+  },
+  {
+    key: "critRate",
+    label: "暴击率",
+    rollLabel: "+3.3%",
+    artifactKey: "critRate",
+    increment: () => 3.305,
+  },
+  {
+    key: "critDmg",
+    label: "暴击伤害",
+    rollLabel: "+6.6%",
+    artifactKey: "critDmg",
+    increment: () => 6.605,
+  },
+  {
+    key: "energyRecharge",
+    label: "元素充能效率",
+    rollLabel: "+5.5%",
+    artifactKey: "energyRecharge",
+    increment: () => 5.505,
+  },
+  {
+    key: "elementalMastery",
+    label: "元素精通",
+    rollLabel: "+20",
+    artifactKey: "elementalMastery",
+    increment: () => 19.815,
+  },
+];
 
 /**
  * Unified public calculation entry point.
@@ -85,6 +189,7 @@ export function calculateBuild({
   settings,
   constellation: requestedConstellation = 0,
   team,
+  analyzeArtifactSubstats = false,
 }: CalculationRequest): CalculationResult {
   const warnings: CalculationWarning[] = [];
   const characterMismatch =
@@ -223,10 +328,13 @@ export function calculateBuild({
     resolvedTeam.stellarConduct.elementalPower,
   );
 
-  const hasMeltVariant = damage.skills.some((skill) =>
+  const selectedSkills = damage.selectedSkill
+    ? [damage.selectedSkill]
+    : [];
+  const hasMeltVariant = selectedSkills.some((skill) =>
     skill.variants.some((variant) => variant.reaction === "melt"),
   );
-  const hasDirectLunarDamage = damage.skills.some(
+  const hasDirectLunarDamage = selectedSkills.some(
     (skill) => skill.model === "directLunar",
   );
   if (hasDirectLunarDamage) {
@@ -236,7 +344,7 @@ export function calculateBuild({
         "月曜结果仅包含技能直接造成的月反应伤害，不包含雷暴云、草原核/月绽放产物或月笼等反应触发伤害。",
     });
   }
-  const hasDirectStellarDamage = damage.skills.some(
+  const hasDirectStellarDamage = selectedSkills.some(
     (skill) => skill.model === "directStellar",
   );
   if (hasDirectStellarDamage) {
@@ -270,7 +378,7 @@ export function calculateBuild({
     });
   }
 
-  return {
+  const result: CalculationResult = {
     ...damage,
     panel: combatPanel,
     staticPanel,
@@ -281,6 +389,90 @@ export function calculateBuild({
     moonsign: resolvedTeam.moonsign,
     hexerei: resolvedTeam.hexerei,
     stellarConduct: resolvedTeam.stellarConduct,
+    artifactSubstatImpacts: [],
     warnings,
   };
+
+  if (analyzeArtifactSubstats && damage.selectedSkill) {
+    result.artifactSubstatImpacts = calculateArtifactSubstatImpacts({
+      baseline: result,
+      build: normalizedBuild,
+      character,
+      weapon,
+      artifactSet,
+      settings,
+      constellation,
+      team,
+    });
+  }
+
+  return result;
+}
+
+function highestExpectedDamage(result: CalculationResult) {
+  return Math.max(
+    0,
+    ...(result.selectedSkill?.variants.map(
+      (variant) => variant.expected,
+    ) ?? []),
+  );
+}
+
+function calculateArtifactSubstatImpacts({
+  baseline,
+  build,
+  character,
+  weapon,
+  artifactSet,
+  settings,
+  constellation,
+  team,
+}: {
+  baseline: CalculationResult;
+  build: BuildInput;
+  character: CharacterPreset;
+  weapon: WeaponPreset;
+  artifactSet: ArtifactSetPreset;
+  settings: DamageSettings;
+  constellation: number;
+  team?: TeamCalculationInput;
+}) {
+  const baselineExpected = highestExpectedDamage(baseline);
+  if (baselineExpected <= 0) return [];
+
+  return averageArtifactSubstatRolls
+    .map((roll): ArtifactSubstatImpact => {
+      const increment = roll.increment(build);
+      const nextBuild: BuildInput = {
+        ...build,
+        artifact: {
+          ...build.artifact,
+          [roll.artifactKey]:
+            build.artifact[roll.artifactKey] + increment,
+        },
+      };
+      const next = calculateBuild({
+        build: nextBuild,
+        character,
+        weapon,
+        artifactSet,
+        settings,
+        constellation,
+        team,
+        analyzeArtifactSubstats: false,
+      });
+      const damageIncrease = Math.max(
+        0,
+        highestExpectedDamage(next) - baselineExpected,
+      );
+      return {
+        key: roll.key,
+        label: roll.label,
+        rollLabel: roll.rollLabel,
+        damageIncrease,
+        percentIncrease: (damageIncrease / baselineExpected) * 100,
+      };
+    })
+    .filter((impact) => impact.damageIncrease > 0)
+    .sort((left, right) => right.damageIncrease - left.damageIncrease);
 }

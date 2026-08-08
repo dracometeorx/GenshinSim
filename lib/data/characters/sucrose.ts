@@ -69,11 +69,90 @@ export const sucrose: CharacterPreset = {
             ]
           : [],
     },
+    {
+      id: "sucrose-c6-chaotic-entropy",
+      name: "C6·混元熵增论",
+      description:
+        "大型风灵发生元素转化后，全队获得 20% 对应元素伤害加成；魔导·秘仪开启时，魔导角色额外获得 8.57142%。",
+      minConstellation: 6,
+      appliesToSelf: true,
+      evaluate: ({ source, target, party }) => {
+        const absorbedElement =
+          source.settings.selections.sucroseBurstAbsorption;
+        if (
+          !absorbedElement ||
+          absorbedElement === "none" ||
+          target.element !== absorbedElement
+        ) {
+          return [];
+        }
+        return [
+          {
+            kind: "panel",
+            stat: "elementalDmg",
+            value:
+              20 +
+              (party.hexereiSecretRite && target.hexerei
+                ? 8.57142
+                : 0),
+          },
+        ];
+      },
+    },
+  ],
+  constellations: [
+    {
+      level: 1,
+      name: "堆叠真空域",
+      description: "元素战技的可使用次数增加 1 次。",
+    },
+    {
+      level: 2,
+      name: "不羁型贝特",
+      description: "元素爆发的技能持续时间延长 2 秒。",
+    },
+    {
+      level: 3,
+      name: "零失误少女",
+      description: "元素战技等级提高 3 级。",
+      talentLevelBonuses: { skill: 3 },
+    },
+    {
+      level: 4,
+      name: "炼金的偏执",
+      description:
+        "普通攻击或重击累计命中 7 次后，元素战技冷却时间随机减少 1–7 秒。",
+    },
+    {
+      level: 5,
+      name: "认真普通瓶",
+      description: "元素爆发等级提高 3 级。",
+      talentLevelBonuses: { burst: 3 },
+    },
+    {
+      level: 6,
+      name: "混元熵增论",
+      description:
+        "元素爆发发生元素转化后提供对应元素增伤，并强化魔导角色获得的增伤。",
+    },
   ],
   damageProfile: {
     kind: "sucrose",
     talentLabel: "风灵作成·陆叁零捌",
-    controls: [],
+    controls: [
+      {
+        key: "sucroseBurstAbsorption",
+        label: "C6 大型风灵元素转化",
+        defaultValue: "none",
+        options: [
+          { value: "none", label: "未发生元素转化" },
+          { value: "pyro", label: "火元素转化" },
+          { value: "hydro", label: "水元素转化" },
+          { value: "electro", label: "雷元素转化" },
+          { value: "cryo", label: "冰元素转化" },
+        ],
+      },
+    ],
     evaluateTargets: ({ panel, settings, talentValue }) => {
       const multiplier = talentValue(
         skillDamage,

@@ -264,6 +264,7 @@ export function calculateFinalPanel(
     if (
       modifier.kind === "damageBonus" ||
       modifier.kind === "reactionBonus" ||
+      modifier.kind === "additiveBaseDamage" ||
       modifier.kind === "lunarDamageBonus" ||
       modifier.kind === "stellarDamageBonus" ||
       modifier.kind === "enemyResistanceReduction"
@@ -337,6 +338,23 @@ export function calculateFinalPanel(
   for (const modifier of evaluatePanelEffects(
     effects,
     "conversion",
+    includeConditional,
+    effectContext(panel),
+  )) {
+    applyPanelModifier(modifier, totals, talentBonuses, flatStats);
+  }
+
+  panel = createPanel(
+    totals,
+    talentBonuses,
+    baseHp,
+    baseAtk,
+    baseDef,
+    flatStats,
+  );
+  for (const modifier of evaluatePanelEffects(
+    effects,
+    "postConversion",
     includeConditional,
     effectContext(panel),
   )) {

@@ -40,6 +40,11 @@ export type ArtifactModifier =
       category?: keyof TalentBonuses;
     }
   | {
+      kind: "additiveBaseDamage";
+      value: number;
+      category?: keyof TalentBonuses;
+    }
+  | {
       kind: "reactionBonus";
       value: number;
       reactions: Array<"vaporize" | "melt">;

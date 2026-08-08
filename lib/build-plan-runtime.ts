@@ -16,10 +16,12 @@ import { cloneDefaultBuild, defaultBuild } from "./default-build.ts";
 import { artifactSets, getArtifactSet } from "./data/artifacts/index.ts";
 import {
   characters,
+  getDefaultConstellation,
   type CharacterPreset,
 } from "./data/characters/index.ts";
 import {
   getCompatibleWeapons,
+  getDefaultWeaponRefinement,
   isWeaponCompatible,
   weapons,
   type WeaponPreset,
@@ -480,12 +482,13 @@ export function normalizeBuildPlanStore(
 }
 
 export function createDefaultDraft(): BuildPlanDraft {
+  const character = characters[0];
   return {
     build: cloneDefaultBuild(),
-    characterId: "ayaka",
-    weaponId: "mistsplitter",
-    damageSettings: normalizeDamageSettings(undefined, characters[0]),
-    constellation: 0,
+    characterId: character.id,
+    weaponId: defaultBuild.weapon.id,
+    damageSettings: normalizeDamageSettings(undefined, character),
+    constellation: getDefaultConstellation(character),
     team: createEmptyTeamConfiguration(),
   };
 }
@@ -513,7 +516,10 @@ export function createDraftForCharacter(
     character,
   );
   const weapon = weaponChanged
-    ? { ...weaponPreset }
+    ? {
+        ...weaponPreset,
+        refinement: getDefaultWeaponRefinement(weaponPreset),
+      }
     : {
         ...weaponPreset,
         refinement: clampRefinement(current.build.weapon.refinement),
@@ -523,7 +529,7 @@ export function createDraftForCharacter(
     characterId: character.id,
     weaponId: weapon.id,
     damageSettings,
-    constellation: 0,
+    constellation: getDefaultConstellation(character),
     team: normalizeTeamConfiguration(
       current.team,
       character.id,
@@ -559,13 +565,17 @@ export function resetDraftForCharacter(
   const character =
     characters.find((item) => item.id === current.characterId) ??
     characters[0];
-  const weapon = getPreferredWeapon(character);
+  const weaponPreset = getPreferredWeapon(character);
+  const weapon = {
+    ...weaponPreset,
+    refinement: getDefaultWeaponRefinement(weaponPreset),
+  };
   const damageSettings = normalizeDamageSettings(undefined, character);
   return {
     characterId: character.id,
     weaponId: weapon.id,
     damageSettings,
-    constellation: 0,
+    constellation: getDefaultConstellation(character),
     team: createEmptyTeamConfiguration(),
     build: {
       ...cloneDefaultBuild(),

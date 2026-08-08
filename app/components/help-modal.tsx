@@ -24,7 +24,9 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
         <span className="modal-icon">✦</span>
         <h2 id="help-title">如何录入</h2>
         <ol>
-          <li>在角色卡片中新建或切换方案；当前输入会自动保存在本机。</li>
+          <li>
+            在角色卡片中新建、复制或切换方案；当前输入会自动保存在本机。
+          </li>
           <li>选择角色、武器、精炼等级和圣遗物套装，并设置触发条件。</li>
           <li>
             魔导角色默认已完成对应课业；当前角色与队友中至少两名不同魔导角色时，会自动开启「魔导·秘仪」。
@@ -38,7 +40,7 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
           <li>把游戏内圣遗物详情页的绿色加成合计录入对应字段。</li>
           <li>按需填写战技、爆发等额外伤害加成。</li>
           <li>点击计算后，在结果区调整天赋等级、敌人等级与抗性。</li>
-          <li>代表技能会同时显示未暴击、暴击和暴击期望伤害。</li>
+          <li>每个角色使用预设代表技能，并显示未暴击、暴击和暴击期望伤害。</li>
         </ol>
         <div className="formula-box">
           技能伤害 = 技能基础值 × 增伤 × 防御倍率 × 抗性倍率 ×

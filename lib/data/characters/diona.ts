@@ -70,8 +70,11 @@ export const diona: CharacterPreset = {
     talentLabel: "猫爪冻冻",
     controls: stellarConductControls,
     evaluateTargets: ({ panel, settings, talentValue, percent }) => {
-      const multiplier =
-        talentValue(icyPaw, settings.skillTalentLevel) * 5;
+      const pawMultiplier = talentValue(
+        icyPaw,
+        settings.skillTalentLevel,
+      );
+      const multiplier = pawMultiplier * 5;
       return [
         {
           id: "diona-hold-skill",
@@ -82,6 +85,12 @@ export const diona: CharacterPreset = {
           baseDamage: panel.atk * multiplier,
           category: "skill",
           reactions: ["none"],
+          segments: Array.from({ length: 5 }, (_, index) => ({
+            id: `diona-hold-skill-paw-${index + 1}`,
+            name: `冰猫爪第 ${index + 1} 枚`,
+            multiplierLabel: `${percent(pawMultiplier)} 攻击力`,
+            baseDamage: panel.atk * pawMultiplier,
+          })),
         },
       ];
     },

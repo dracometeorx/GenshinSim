@@ -34,8 +34,13 @@ test("renders production product and social metadata", async () => {
   const html = await response.text();
   assert.doesNotMatch(html, developmentPreviewMeta);
   assert.match(html, socialImageMeta);
-  assert.match(html, /原神伤害计算器/);
+  assert.match(html, /队伍计算器/);
   assert.match(html, /选择角色方案/);
   assert.match(html, /复制当前配置为新方案/);
+  assert.match(html, /复制当前角色方案/);
+  assert.match(html, /编辑队友 1 的方案/);
+  assert.match(html, /导出方案/);
+  assert.match(html, /导入方案/);
+  assert.match(html, /擢升/);
   assert.match(html, /武器精炼等级/);
 });

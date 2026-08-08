@@ -92,6 +92,13 @@ export const cyno: CharacterPreset = {
           model: directStellarModel(),
           extraStellarAdditiveBaseDamage:
             panel.elementalMastery * 6 * 3,
+          segments: Array.from({ length: 3 }, (_, index) => ({
+            id: `cyno-duststalker-stellar-${index + 1}`,
+            name: `渡荒之雷第 ${index + 1} 枚`,
+            multiplierLabel: "200% 攻击力 + 600% 元素精通",
+            baseDamage:
+              panel.atk * 2 + panel.elementalMastery * 6,
+          })),
         },
       ];
       if (constellation >= 6) {

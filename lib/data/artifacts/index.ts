@@ -2,6 +2,12 @@ import { blizzardStrayer } from "./blizzard-strayer.ts";
 import { crimsonWitch } from "./crimson-witch.ts";
 import { deepwood } from "./deepwood.ts";
 import { emblem } from "./emblem.ts";
+import { goldenTroupe } from "./golden-troupe.ts";
+import { gildedDreams } from "./gilded-dreams.ts";
+import { obsidianCodex } from "./obsidian-codex.ts";
+import { fragmentOfHarmonicWhimsy } from "./fragment-of-harmonic-whimsy.ts";
+import { marechausseeHunter } from "./marechaussee-hunter.ts";
+import { finaleOfTheDeepGalleries } from "./finale-of-the-deep-galleries.ts";
 import { noArtifactSet } from "./none.ts";
 import { shimenawa } from "./shimenawa.ts";
 import { silkenMoonsSerenade } from "./silken-moons-serenade.ts";
@@ -12,6 +18,14 @@ import { celestialGift } from "./celestial-gift.ts";
 import { tenacityOfTheMillelith } from "./tenacity-of-the-millelith.ts";
 import { viridescentVenerer } from "./viridescent-venerer.ts";
 import { delusionOfImmolatedShadow } from "./delusion-of-immolated-shadow.ts";
+import { archaicPetra } from "./archaic-petra.ts";
+import { instructor } from "./instructor.ts";
+import { noblesseOblige } from "./noblesse-oblige.ts";
+import { scrollOfTheHeroOfCinderCity } from "./scroll-of-the-hero-of-cinder-city.ts";
+import { songOfDaysPast } from "./song-of-days-past.ts";
+import { maidenBeloved } from "./maiden-beloved.ts";
+import { theExile } from "./the-exile.ts";
+import { scholar } from "./scholar.ts";
 import type {
   ArtifactModifierContext,
   ArtifactModifier,
@@ -32,6 +46,12 @@ export const artifactSets: ArtifactSetPreset[] = [
   crimsonWitch,
   shimenawa,
   emblem,
+  goldenTroupe,
+  gildedDreams,
+  obsidianCodex,
+  fragmentOfHarmonicWhimsy,
+  marechausseeHunter,
+  finaleOfTheDeepGalleries,
   deepwood,
   silkenMoonsSerenade,
   nightOfSkysUnveiling,
@@ -40,6 +60,14 @@ export const artifactSets: ArtifactSetPreset[] = [
   celestialGift,
   viridescentVenerer,
   tenacityOfTheMillelith,
+  noblesseOblige,
+  instructor,
+  archaicPetra,
+  scrollOfTheHeroOfCinderCity,
+  songOfDaysPast,
+  maidenBeloved,
+  theExile,
+  scholar,
   delusionOfImmolatedShadow,
 ];
 

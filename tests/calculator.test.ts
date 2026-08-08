@@ -345,6 +345,42 @@ test("converts final Energy Recharge into Emblem burst damage", () => {
   assert.equal(panel.talentBonuses.burst, 56.3);
 });
 
+test("applies every Gilded Dreams party composition", () => {
+  const panelFor = (gildedDreamsTeam: string) =>
+    calculateFinalPanel({
+      ...build,
+      artifactSetId: "gilded-dreams",
+      artifactSetPieces: 4,
+      artifactSetSelections: { gildedDreamsTeam },
+    });
+  const inactive = panelFor("inactive");
+  const differentThree = panelFor("same0Different3");
+  const sameOne = panelFor("same1Different2");
+  const sameTwo = panelFor("same2Different1");
+  const sameThree = panelFor("same3Different0");
+
+  assert.deepEqual(
+    [
+      inactive.elementalMastery,
+      differentThree.elementalMastery,
+      sameOne.elementalMastery,
+      sameTwo.elementalMastery,
+      sameThree.elementalMastery,
+    ],
+    [160, 310, 260, 210, 160],
+  );
+  assert.deepEqual(
+    [
+      inactive.atk,
+      differentThree.atk,
+      sameOne.atk,
+      sameTwo.atk,
+      sameThree.atk,
+    ],
+    [2170, 2170, 2296, 2422, 2548],
+  );
+});
+
 test("keeps Deepwood enemy resistance outside the character panel", () => {
   const panel = calculateFinalPanel({
     ...build,

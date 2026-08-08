@@ -176,36 +176,51 @@ export const flins: CharacterPreset = {
         thunderousSymphony,
         settings.burstTalentLevel,
       );
+      const extraMultiplier =
+        moonsignLevel === "ascendant"
+          ? talentValue(
+              thunderousExtra,
+              settings.burstTalentLevel,
+            )
+          : 0;
       const targets = [
         {
           id: "flins-thunderous-symphony",
-          name: "雷霆交响",
+          name:
+            extraMultiplier > 0
+              ? "雷霆交响·两段合计"
+              : "雷霆交响",
           description:
-            "特殊元素爆发的直接月感电伤害；不计算雷暴云伤害。",
-          multiplierLabel: `${percent(multiplier)} 攻击力`,
-          baseDamage: panel.atk * multiplier,
+            extraMultiplier > 0
+              ? "特殊元素爆发本体与雷暴云存在时的追加直伤之和；不计算雷暴云本体伤害。"
+              : "特殊元素爆发的直接月感电伤害；满辉且雷暴云存在时会补充追加段。",
+          multiplierLabel:
+            extraMultiplier > 0
+              ? `${percent(multiplier)} + ${percent(extraMultiplier)} 攻击力`
+              : `${percent(multiplier)} 攻击力`,
+          baseDamage: panel.atk * (multiplier + extraMultiplier),
           category: "burst" as const,
           reactions: [],
           model: directLunarModel("lunarCharged"),
+          segments:
+            extraMultiplier > 0
+              ? [
+                  {
+                    id: "flins-thunderous-symphony-main",
+                    name: "雷霆交响本体",
+                    multiplierLabel: `${percent(multiplier)} 攻击力`,
+                    baseDamage: panel.atk * multiplier,
+                  },
+                  {
+                    id: "flins-thunderous-symphony-extra",
+                    name: "满辉追加直伤",
+                    multiplierLabel: `${percent(extraMultiplier)} 攻击力`,
+                    baseDamage: panel.atk * extraMultiplier,
+                  },
+                ]
+              : undefined,
         },
       ];
-      if (moonsignLevel === "ascendant") {
-        const extraMultiplier = talentValue(
-          thunderousExtra,
-          settings.burstTalentLevel,
-        );
-        targets.push({
-          id: "flins-thunderous-symphony-extra",
-          name: "雷霆交响·满辉追加",
-          description:
-            "月兆·满辉且附近存在雷暴云时的技能追加直伤；不计算雷暴云本体。",
-          multiplierLabel: `${percent(extraMultiplier)} 攻击力`,
-          baseDamage: panel.atk * extraMultiplier,
-          category: "burst",
-          reactions: [],
-          model: directLunarModel("lunarCharged"),
-        });
-      }
       if (constellation >= 2) {
         targets.push({
           id: "flins-c2-wall",

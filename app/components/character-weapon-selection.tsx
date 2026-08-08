@@ -26,6 +26,7 @@ export function CharacterWeaponSelection({
   onConstellationChange,
   onCreatePlan,
   onDeletePlan,
+  onDuplicatePlan,
   onPlanChange,
   onRenamePlan,
   onWeaponChange,
@@ -47,6 +48,7 @@ export function CharacterWeaponSelection({
   onConstellationChange: (value: number) => void;
   onCreatePlan: () => void;
   onDeletePlan: () => void;
+  onDuplicatePlan: () => void;
   onPlanChange: (id: string) => void;
   onRenamePlan: () => void;
   onWeaponChange: (id: string) => void;
@@ -113,6 +115,7 @@ export function CharacterWeaponSelection({
           plans={characterPlans}
           onChoose={onPlanChange}
           onCreate={onCreatePlan}
+          onDuplicate={onDuplicatePlan}
           onRename={onRenamePlan}
           onDelete={onDeletePlan}
         />

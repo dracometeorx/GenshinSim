@@ -60,6 +60,74 @@ export const mona: CharacterPreset = {
             ]
           : [],
     },
+    {
+      id: "mona-c1-reaction-bonus",
+      name: "C1·沉没的预言",
+      description:
+        "命中处于星异状态的敌人后，蒸发、月感电与月结晶伤害提高 15%。",
+      minConstellation: 1,
+      appliesToSelf: true,
+      evaluate: () => [
+        {
+          kind: "damage",
+          stat: "amplifyingReactionBonus",
+          value: 15,
+          reactions: ["vaporize"],
+        },
+        {
+          kind: "damage",
+          stat: "lunarReactionDamageBonus",
+          value: 15,
+          lunarReactions: ["lunarCharged", "lunarCrystallize"],
+        },
+      ],
+    },
+    {
+      id: "mona-c4-crit-rate",
+      name: "C4·灭绝的预言",
+      description: "攻击处于星异状态的敌人时，暴击率提高 15%。",
+      minConstellation: 4,
+      appliesToSelf: true,
+      evaluate: () => [
+        { kind: "damage", stat: "critRate", value: 15 },
+      ],
+    },
+  ],
+  constellations: [
+    {
+      level: 1,
+      name: "沉没的预言",
+      description:
+        "星异状态下，水元素相关反应效果提高 15%。",
+    },
+    {
+      level: 2,
+      name: "星月的连珠",
+      description: "普通攻击命中时有概率自动施放一次重击。",
+    },
+    {
+      level: 3,
+      name: "不休的天象",
+      description: "元素爆发等级提高 3 级。",
+      talentLevelBonuses: { burst: 3 },
+    },
+    {
+      level: 4,
+      name: "灭绝的预言",
+      description: "攻击处于星异状态的敌人时，暴击率提高 15%。",
+    },
+    {
+      level: 5,
+      name: "命运的嘲弄",
+      description: "元素战技等级提高 3 级。",
+      talentLevelBonuses: { skill: 3 },
+    },
+    {
+      level: 6,
+      name: "厄运的修辞",
+      description:
+        "虚实流动每移动 1 秒，使下一次重击伤害提高 60%，至多 180%。",
+    },
   ],
   damageProfile: {
     kind: "mona",

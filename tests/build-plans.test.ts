@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
@@ -7,6 +8,7 @@ import {
   createBuildPlan,
   createBuildPlanSnapshot,
   parseBuildPlanStore,
+  serializeBuildPlanStore,
 } from "../lib/build-plans.ts";
 import type { BuildInput } from "../lib/calculator.ts";
 import type { DamageSettings } from "../lib/damage.ts";
@@ -160,8 +162,38 @@ test("round-trips a versioned build-plan store", () => {
   };
 
   assert.deepEqual(parseBuildPlanStore(JSON.stringify(store)), store);
+  assert.deepEqual(parseBuildPlanStore(serializeBuildPlanStore(store)), store);
   assert.equal(parseBuildPlanStore('{"schemaVersion":1,"plans":[]}'), null);
   assert.equal(parseBuildPlanStore("{damaged-json"), null);
+});
+
+test("loads the saved character plans fixture for cross-environment testing", async () => {
+  const raw = await readFile(
+    new URL("./saved-character-plans.json", import.meta.url),
+    "utf8",
+  );
+  const store = parseBuildPlanStore(raw);
+
+  assert.ok(store);
+  assert.equal(store.schemaVersion, buildPlansSchemaVersion);
+  assert.equal(store.activeCharacterId, "ayaka");
+  assert.equal(store.plans.length, 10);
+  assert.deepEqual(
+    [...new Set(store.plans.map((plan) => plan.snapshot.characterId))].sort(),
+    [
+      "ayaka",
+      "cyno",
+      "hutao",
+      "ineffa",
+      "mona",
+      "nahida",
+      "qiqi",
+      "sandrone",
+      "sucrose",
+      "yae-miko",
+    ],
+  );
+  assert.deepEqual(parseBuildPlanStore(serializeBuildPlanStore(store)), store);
 });
 
 test("migrates global v1 plans into character-scoped active plans", () => {

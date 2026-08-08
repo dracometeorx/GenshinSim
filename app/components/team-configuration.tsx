@@ -13,6 +13,7 @@ const sourceLabels = {
   weapon: "武器",
   artifact: "圣遗物",
   resonance: "共鸣",
+  reaction: "反应",
 } as const;
 
 export function TeamConfigurationPanel({
@@ -22,6 +23,7 @@ export function TeamConfigurationPanel({
   plans,
   team,
   onBuffToggle,
+  onEditPlan,
   onSlotCharacterChange,
   onSlotPlanChange,
 }: {
@@ -31,6 +33,7 @@ export function TeamConfigurationPanel({
   plans: readonly BuildPlan[];
   team: TeamConfiguration;
   onBuffToggle: (buffId: string, enabled: boolean) => void;
+  onEditPlan: (planId: string) => void;
   onSlotCharacterChange: (
     slot: number,
     characterId: string | null,
@@ -108,26 +111,44 @@ export function TeamConfigurationPanel({
                     ))}
                 </select>
               </label>
-              <label>
-                <span>队友方案</span>
-                <select
-                  aria-label={`队友 ${index + 1} 方案`}
-                  disabled={!slot.characterId || !characterPlans.length}
-                  value={resolvedPlanId}
-                  onChange={(event) =>
-                    onSlotPlanChange(index, event.target.value)
+              <div className="team-plan-field">
+                <label>
+                  <span>队友方案</span>
+                  <select
+                    aria-label={`队友 ${index + 1} 方案`}
+                    disabled={!slot.characterId || !characterPlans.length}
+                    value={resolvedPlanId}
+                    onChange={(event) =>
+                      onSlotPlanChange(index, event.target.value)
+                    }
+                  >
+                    {!characterPlans.length ? (
+                      <option value="">自动创建默认方案</option>
+                    ) : null}
+                    {characterPlans.map((plan) => (
+                      <option key={plan.id} value={plan.id}>
+                        {plan.name} · C{plan.snapshot.constellation ?? 0}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="team-plan-edit"
+                  aria-label={`编辑队友 ${index + 1} 的方案`}
+                  disabled={!resolvedPlanId}
+                  title={
+                    resolvedPlanId
+                      ? "编辑当前队友方案"
+                      : "暂无可编辑方案"
                   }
+                  onClick={() => {
+                    if (resolvedPlanId) onEditPlan(resolvedPlanId);
+                  }}
                 >
-                  {!characterPlans.length ? (
-                    <option value="">自动创建默认方案</option>
-                  ) : null}
-                  {characterPlans.map((plan) => (
-                    <option key={plan.id} value={plan.id}>
-                      {plan.name} · C{plan.snapshot.constellation ?? 0}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  编辑
+                </button>
+              </div>
             </article>
           );
         })}
@@ -136,19 +157,12 @@ export function TeamConfigurationPanel({
       <div className="team-buffs">
         <div className="team-buff-heading">
           <strong>可用增益</strong>
-          <small>开关状态保存在当前角色方案中</small>
+          <small>条件增益开关保存在当前方案中，常驻效果自动生效</small>
         </div>
         {buffs.length ? (
           <div className="team-buff-list">
-            {buffs.map((buff) => (
-              <label className="team-buff" key={buff.id}>
-                <input
-                  type="checkbox"
-                  checked={buff.enabled}
-                  onChange={(event) =>
-                    onBuffToggle(buff.id, event.target.checked)
-                  }
-                />
+            {buffs.map((buff) => {
+              const details = (
                 <span>
                   <b>
                     {buff.name}
@@ -158,8 +172,28 @@ export function TeamConfigurationPanel({
                     {buff.sourceName} · {buff.description}
                   </small>
                 </span>
-              </label>
-            ))}
+              );
+              return buff.toggleable ? (
+                <label className="team-buff" key={buff.id}>
+                  <input
+                    type="checkbox"
+                    checked={buff.enabled}
+                    onChange={(event) =>
+                      onBuffToggle(buff.id, event.target.checked)
+                    }
+                  />
+                  {details}
+                </label>
+              ) : (
+                <div
+                  className="team-buff team-buff-always-on"
+                  key={buff.id}
+                >
+                  <em className="team-buff-status">常驻</em>
+                  {details}
+                </div>
+              );
+            })}
           </div>
         ) : (
           <p className="team-buff-empty">

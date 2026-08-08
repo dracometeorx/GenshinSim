@@ -16,12 +16,14 @@ import {
 import type { BuildInput } from "../lib/calculator.ts";
 import { defaultDamageSettings } from "../lib/damage.ts";
 import { ayaka } from "../lib/data/characters/ayaka.ts";
+import { chiori } from "../lib/data/characters/chiori.ts";
 import { customCharacter } from "../lib/data/characters/custom.ts";
 import { hutao } from "../lib/data/characters/hutao.ts";
 import { nahida } from "../lib/data/characters/nahida.ts";
 import { raiden } from "../lib/data/characters/raiden.ts";
 import type { CharacterPreset } from "../lib/data/characters/types.ts";
 import { customWeapon } from "../lib/data/weapons/custom.ts";
+import { cinnabarSpindle } from "../lib/data/weapons/cinnabar-spindle.ts";
 import { dreams } from "../lib/data/weapons/dreams.ts";
 import { engulfing } from "../lib/data/weapons/engulfing.ts";
 import { favoniusLance } from "../lib/data/weapons/favonius-lance.ts";
@@ -152,6 +154,99 @@ test("derives panel and damage from one request", () => {
   assert.equal(result.defenseMultiplier, 190 / 395);
 });
 
+test("reports the representative-damage gain from every effective artifact substat", () => {
+  const calculateImpacts = (
+    character: CharacterPreset,
+    weapon: WeaponPreset,
+    artifactSetId = "none",
+    artifactSetPieces: 0 | 2 | 4 = 0,
+  ) =>
+    calculateResolvedBuild({
+      build: buildFor(character, weapon, {
+        artifactSetId,
+        artifactSetPieces,
+      }),
+      character,
+      weapon,
+      artifactSet: getArtifactSet(artifactSetId),
+      settings: defaultDamageSettings,
+      analyzeArtifactSubstats: true,
+    }).artifactSubstatImpacts;
+
+  const ayakaImpacts = calculateImpacts(
+    ayaka,
+    mistsplitter,
+    "blizzard-strayer",
+    4,
+  );
+  const hutaoImpacts = calculateImpacts(hutao, homa);
+  const raidenImpacts = calculateImpacts(
+    raiden,
+    engulfing,
+    "emblem",
+    4,
+  );
+  const chioriImpacts = calculateImpacts(chiori, cinnabarSpindle);
+  const effectiveKeys = new Set(
+    [
+      ...ayakaImpacts,
+      ...hutaoImpacts,
+      ...raidenImpacts,
+      ...chioriImpacts,
+    ].map(({ key }) => key),
+  );
+  const rollLabels = Object.fromEntries(
+    [
+      ...ayakaImpacts,
+      ...hutaoImpacts,
+      ...raidenImpacts,
+      ...chioriImpacts,
+    ].map(({ key, rollLabel }) => [key, rollLabel]),
+  );
+
+  assert.deepEqual(
+    [...effectiveKeys].sort(),
+    [
+      "atkPct",
+      "critDmg",
+      "critRate",
+      "defPct",
+      "elementalMastery",
+      "energyRecharge",
+      "flatAtk",
+      "flatDef",
+      "flatHp",
+      "hpPct",
+    ],
+  );
+  assert.ok(
+    [...ayakaImpacts, ...hutaoImpacts, ...raidenImpacts, ...chioriImpacts]
+      .every(
+        ({ damageIncrease, percentIncrease }) =>
+          damageIncrease > 0 && percentIncrease > 0,
+      ),
+  );
+  assert.deepEqual(rollLabels, {
+    atkPct: "+5.0%",
+    critRate: "+3.3%",
+    critDmg: "+6.6%",
+    flatAtk: "+17",
+    elementalMastery: "+20",
+    hpPct: "+5.0%",
+    flatHp: "+254",
+    energyRecharge: "+5.5%",
+    defPct: "+6.2%",
+    flatDef: "+20",
+  });
+  assert.ok(
+    ayakaImpacts.every(
+      (impact, index) =>
+        index === 0 ||
+        ayakaImpacts[index - 1].damageIncrease >= impact.damageIncrease,
+    ),
+  );
+});
+
 test("does not calculate Melt for Ayaka's representative skill", () => {
   const result = calculateBuild({
     build,
@@ -186,6 +281,131 @@ test("separates static panel from selected combat conditions", () => {
   assert.equal(result.combatPanel.critRate, 45);
   assert.equal(result.staticPanel.elementalDmg, 27);
   assert.equal(result.combatPanel.elementalDmg, 73);
+});
+
+test("summarizes resolved category damage bonuses", () => {
+  const shimenawaBuild = {
+    ...build,
+    artifactSetId: "shimenawa",
+    artifactSetPieces: 4 as const,
+    artifactSetSelections: { shimenawaState: "active" },
+  };
+  const result = calculateResolvedBuild({
+    build: shimenawaBuild,
+    character: ayaka,
+    weapon: mistsplitter,
+    artifactSet: getArtifactSet("shimenawa"),
+    settings: defaultDamageSettings,
+  });
+
+  assert.deepEqual(result.damageBonusSummary.categories, {
+    skill: 0,
+    burst: 0,
+    normal: 50,
+    charged: 50,
+    plunge: 50,
+  });
+});
+
+test("summarizes active weapon damage bonuses", () => {
+  const result = calculateResolvedBuild({
+    build: buildFor(raiden, theCatch),
+    character: raiden,
+    weapon: theCatch,
+    artifactSet: getArtifactSet("none"),
+    settings: {
+      ...defaultDamageSettings,
+      selections: {
+        ...defaultDamageSettings.selections,
+        raidenEyeState: "inactive",
+        raidenResolveStacks: "0",
+      },
+    },
+  });
+
+  assert.equal(result.damageBonusSummary.categories.burst, 16);
+});
+
+test("applies Golden Troupe on-field and off-field skill bonuses", () => {
+  const calculateGoldenTroupe = (state: "onField" | "offField") =>
+    calculateResolvedBuild({
+      build: {
+        ...build,
+        artifactSetId: "golden-troupe",
+        artifactSetPieces: 4,
+        artifactSetSelections: { goldenTroupeState: state },
+      },
+      character: ayaka,
+      weapon: mistsplitter,
+      artifactSet: getArtifactSet("golden-troupe"),
+      settings: defaultDamageSettings,
+    });
+  const onField = calculateGoldenTroupe("onField");
+  const offField = calculateGoldenTroupe("offField");
+
+  assert.equal(onField.damageBonusSummary.categories.skill, 45);
+  assert.equal(offField.damageBonusSummary.categories.skill, 70);
+  assert.equal(
+    (offField.skills.find((skill) => skill.id === "ayaka-skill")
+      ?.variants[0].damageBonus ?? 0) -
+      (onField.skills.find((skill) => skill.id === "ayaka-skill")
+        ?.variants[0].damageBonus ?? 0),
+    25,
+  );
+});
+
+test("uses the catalog-defined representative skill", () => {
+  const result = calculateBuild({
+    build,
+    character: ayaka,
+    settings: defaultDamageSettings,
+  });
+
+  assert.deepEqual(
+    result.skills.map((skill) => skill.id),
+    ["ayaka-skill", "ayaka-burst"],
+  );
+  assert.equal(result.selectedSkill?.id, "ayaka-burst");
+});
+
+test("summarizes lunar and stellar reaction damage bonuses", () => {
+  const lunarBuild = {
+    ...build,
+    artifactSetId: "aubade-of-morningstar-and-moon",
+    artifactSetPieces: 4 as const,
+    artifactSetSelections: { aubadeState: "active" },
+  };
+  const lunar = calculateResolvedBuild({
+    build: lunarBuild,
+    character: ayaka,
+    weapon: mistsplitter,
+    artifactSet: getArtifactSet(
+      "aubade-of-morningstar-and-moon",
+    ),
+    settings: defaultDamageSettings,
+  });
+  const stellarBuild = {
+    ...build,
+    artifactSetId: "delusion-of-immolated-shadow",
+    artifactSetPieces: 4 as const,
+    artifactSetSelections: { delusionStellarState: "active" },
+  };
+  const stellar = calculateResolvedBuild({
+    build: stellarBuild,
+    character: ayaka,
+    weapon: mistsplitter,
+    artifactSet: getArtifactSet("delusion-of-immolated-shadow"),
+    settings: defaultDamageSettings,
+  });
+
+  assert.deepEqual(lunar.damageBonusSummary.lunarReactions, {
+    lunarCharged: 20,
+    lunarBloom: 20,
+    lunarCrystallize: 20,
+  });
+  assert.deepEqual(stellar.damageBonusSummary.stellarReactions, {
+    stellarConduct: 40,
+  });
 });
 
 test("applies Hu Tao panel passives from the character preset", () => {
@@ -401,9 +621,25 @@ test("exports panel and damage from the same recalculation", () => {
 
   assert.equal(payload.攻击力, result.panel.atk);
   assert.deepEqual(
+    payload.额外伤害加成,
+    result.damageBonusSummary.categories,
+  );
+  assert.deepEqual(
+    payload.月反应伤害提升,
+    result.damageBonusSummary.lunarReactions,
+  );
+  assert.deepEqual(
+    payload.月反应擢升,
+    result.damageBonusSummary.lunarElevations,
+  );
+  assert.deepEqual(
+    payload.星反应伤害提升,
+    result.damageBonusSummary.stellarReactions,
+  );
+  assert.deepEqual(
     payload.代表技能伤害,
     Object.fromEntries(
-      result.skills.map((skill) => [
+      (result.selectedSkill ? [result.selectedSkill] : []).map((skill) => [
         skill.name,
         Object.fromEntries(
           skill.variants.map((variant) => [

@@ -128,6 +128,7 @@ function calculate(
     artifactSetSelections?: Record<string, string>;
     team?: TeamCalculationInput;
     selections?: Record<string, string>;
+    constellation?: number;
   } = {},
 ) {
   const artifactSetId = options.artifactSetId ?? "none";
@@ -149,8 +150,19 @@ function calculate(
         ...options.selections,
       },
     },
+    constellation: options.constellation,
     team: options.team,
   });
+}
+
+function skillNonCrit(
+  result: ReturnType<typeof calculate>,
+  skillId: string,
+) {
+  const value = result.skills.find(({ id }) => id === skillId)
+    ?.variants[0]?.nonCrit;
+  assert.equal(typeof value, "number", skillId);
+  return value;
 }
 
 test("catalogs every current Hexerei character as homework-complete", () => {
@@ -215,6 +227,391 @@ test("gates character Secret Rite buffs on party composition", () => {
       ({ name }) => name === "虚己之赐·圣祝之引",
     ),
   );
+});
+
+test("applies Sucrose constellation talent levels and C6 absorption buffs", () => {
+  const sucrose = getCharacter("sucrose");
+  assert.equal(sucrose.constellations?.length, 6);
+
+  const c0 = calculate(sucrose, { constellation: 0 });
+  const c3 = calculate(sucrose, { constellation: 3 });
+  const c5 = calculate(sucrose, { constellation: 5 });
+  assert.equal(c3.effectiveSettings.skillTalentLevel, 13);
+  assert.equal(c5.effectiveSettings.burstTalentLevel, 13);
+  assert.ok(
+    c3.skills[0].variants[0].nonCrit >
+      c0.skills[0].variants[0].nonCrit,
+  );
+
+  const c6Member = {
+    ...memberFor(sucrose, 0),
+    constellation: 6,
+    settings: {
+      ...defaultDamageSettings,
+      selections: { sucroseBurstAbsorption: "pyro" },
+    },
+  };
+  const c5Member = { ...c6Member, constellation: 5 };
+  const hutao = getCharacter("hutao");
+  const withoutC6 = calculate(hutao, {
+    team: teamFor(c5Member),
+  });
+  const withC6 = calculate(hutao, {
+    team: teamFor(c6Member),
+  });
+  assert.equal(
+    withC6.panel.elementalDmg - withoutC6.panel.elementalDmg,
+    20,
+  );
+
+  const klee = getCharacter("klee");
+  const kleeWithoutC6 = calculate(klee, {
+    team: teamFor(c5Member),
+  });
+  const kleeWithC6 = calculate(klee, {
+    team: teamFor(c6Member),
+  });
+  assert.ok(
+    Math.abs(
+      kleeWithC6.panel.elementalDmg -
+        kleeWithoutC6.panel.elementalDmg -
+        28.6,
+    ) < 1e-9,
+  );
+  const c6Buff = kleeWithC6.teamBuffs.find(
+    ({ name }) => name === "C6·混元熵增论",
+  );
+  assert.ok(c6Buff);
+  assert.deepEqual(c6Buff.modifiers, [
+    {
+      kind: "panel",
+      stat: "elementalDmg",
+      value: 28.57142,
+    },
+  ]);
+
+  const ayakaWithPyroAbsorption = calculate(
+    getCharacter("ayaka"),
+    { team: teamFor(c6Member) },
+  );
+  assert.equal(
+    ayakaWithPyroAbsorption.teamBuffs.some(
+      ({ name }) => name === "C6·混元熵增论",
+    ),
+    false,
+  );
+});
+
+test("lets Sucrose convert fixed party mastery from Silken Moon without double counting", () => {
+  const flins = getCharacter("flins");
+  const sucrose = getCharacter("sucrose");
+  const columbina = getCharacter("columbina");
+  const sucroseMember = memberFor(sucrose, 0);
+  const columbinaMember = memberFor(columbina, 1);
+  const getSucroseShare = (result: ReturnType<typeof calculate>) => {
+    const buff = result.teamBuffs.find(
+      ({ sourceName, name }) =>
+        sourceName === "砂糖" &&
+        name === "触媒置换术·小小的慧风",
+    );
+    assert.ok(buff);
+    const modifier = buff.modifiers.find(
+      (candidate) =>
+        candidate.kind === "panel" &&
+        candidate.stat === "elementalMastery",
+    );
+    assert.ok(modifier && modifier.kind === "panel");
+    return modifier.value;
+  };
+  const getSucroseMoonsignBonus = (
+    result: ReturnType<typeof calculate>,
+  ) => {
+    const buff = result.teamBuffs.find(
+      ({ sourceName, name }) =>
+        sourceName === "砂糖" &&
+        name === "月兆·满辉队伍增益",
+    );
+    assert.ok(buff);
+    const modifier = buff.modifiers.find(
+      (candidate) =>
+        candidate.kind === "damage" &&
+        candidate.stat === "lunarReactionDamageBonus",
+    );
+    assert.ok(modifier && modifier.kind === "damage");
+    return modifier.value;
+  };
+
+  const baseline = calculate(flins, {
+    team: teamFor(sucroseMember, columbinaMember),
+  });
+  const teammateSilken = calculate(flins, {
+    team: teamFor(
+      sucroseMember,
+      memberFor(columbina, 1, "silken-moons-serenade", 4),
+    ),
+  });
+  const sucroseSilken = calculate(flins, {
+    team: teamFor(
+      memberFor(sucrose, 0, "silken-moons-serenade", 4),
+      columbinaMember,
+    ),
+  });
+  const disabledTeam = teamFor(
+    sucroseMember,
+    memberFor(columbina, 1, "silken-moons-serenade", 4),
+  );
+  disabledTeam.configuration.buffToggles[
+    "slot:1:artifact:silken-moon-devotion"
+  ] = false;
+  const disabled = calculate(flins, { team: disabledTeam });
+
+  assert.equal(teammateSilken.moonsign.level, "ascendant");
+  assert.equal(getSucroseShare(teammateSilken) - getSucroseShare(baseline), 24);
+  assert.equal(getSucroseShare(sucroseSilken) - getSucroseShare(baseline), 24);
+  assert.equal(getSucroseShare(disabled), getSucroseShare(baseline));
+  assert.ok(
+    Math.abs(
+      getSucroseMoonsignBonus(teammateSilken) -
+        getSucroseMoonsignBonus(baseline) -
+        2.7,
+    ) < 1e-9,
+  );
+  assert.ok(
+    Math.abs(
+      getSucroseMoonsignBonus(sucroseSilken) -
+        getSucroseMoonsignBonus(baseline) -
+        2.7,
+    ) < 1e-9,
+  );
+  assert.equal(
+    getSucroseMoonsignBonus(disabled),
+    getSucroseMoonsignBonus(baseline),
+  );
+  assert.equal(teammateSilken.panel.elementalMastery - baseline.panel.elementalMastery, 144);
+  assert.equal(sucroseSilken.panel.elementalMastery - baseline.panel.elementalMastery, 144);
+});
+
+test("does not snapshot Ineffa's active-character mastery into off-field Sucrose", () => {
+  const flins = getCharacter("flins");
+  const sucrose = getCharacter("sucrose");
+  const ineffa = getCharacter("ineffa");
+  const team = teamFor(
+    memberFor(sucrose, 0),
+    memberFor(ineffa, 1),
+  );
+  const enabled = calculate(flins, { team });
+  const disabledTeam = teamFor(
+    memberFor(sucrose, 0),
+    memberFor(ineffa, 1),
+  );
+  disabledTeam.configuration.buffToggles[
+    "slot:1:character:ineffa-parameter-reconstruction"
+  ] = false;
+  const disabled = calculate(flins, { team: disabledTeam });
+  const getSucroseMoonsignBonus = (
+    result: ReturnType<typeof calculate>,
+  ) => {
+    const buff = result.teamBuffs.find(
+      ({ sourceName, name }) =>
+        sourceName === "砂糖" &&
+        name === "月兆·满辉队伍增益",
+    );
+    assert.ok(buff);
+    const modifier = buff.modifiers.find(
+      (candidate) =>
+        candidate.kind === "damage" &&
+        candidate.stat === "lunarReactionDamageBonus",
+    );
+    assert.ok(modifier && modifier.kind === "damage");
+    return modifier.value;
+  };
+
+  assert.ok(enabled.panel.elementalMastery > disabled.panel.elementalMastery);
+  assert.equal(
+    getSucroseMoonsignBonus(enabled),
+    getSucroseMoonsignBonus(disabled),
+  );
+});
+
+test("defines all six constellations for the requested Hexerei characters", () => {
+  for (const id of [
+    "durin",
+    "venti",
+    "klee",
+    "albedo",
+    "mona",
+    "fischl",
+    "razor",
+    "varka",
+    "prune",
+    "lohen",
+  ]) {
+    assert.deepEqual(
+      getCharacter(id).constellations?.map(({ level }) => level),
+      [1, 2, 3, 4, 5, 6],
+      id,
+    );
+  }
+});
+
+test("applies Durin, Venti, Klee, and Albedo constellation damage", () => {
+  const durin = getCharacter("durin");
+  const durinC0 = calculate(durin, {
+    selections: { durinForm: "dark" },
+  });
+  const durinC1 = calculate(durin, {
+    constellation: 1,
+    selections: { durinForm: "dark" },
+  });
+  const durinC4 = calculate(durin, {
+    constellation: 4,
+    selections: { durinForm: "dark" },
+  });
+  const durinC6 = calculate(durin, {
+    constellation: 6,
+    selections: { durinForm: "dark" },
+  });
+  assert.ok(
+    skillNonCrit(durinC1, "durin-dark-dragon") >
+      skillNonCrit(durinC0, "durin-dark-dragon"),
+  );
+  assert.ok(
+    skillNonCrit(durinC4, "durin-dark-dragon") >
+      skillNonCrit(durinC1, "durin-dark-dragon"),
+  );
+  assert.ok(
+    skillNonCrit(durinC6, "durin-dark-dragon") >
+      skillNonCrit(durinC4, "durin-dark-dragon"),
+  );
+  assert.equal(durinC6.effectiveSettings.burstTalentLevel, 13);
+  assert.equal(durinC6.effectiveSettings.skillTalentLevel, 13);
+
+  const venti = getCharacter("venti");
+  const ventiC0 = calculate(venti);
+  const ventiC6 = calculate(venti, { constellation: 6 });
+  assert.equal(ventiC6.effectiveSettings.burstTalentLevel, 13);
+  assert.equal(ventiC6.effectiveSettings.skillTalentLevel, 13);
+  assert.ok(ventiC6.panel.elementalDmg > ventiC0.panel.elementalDmg);
+  assert.equal(ventiC6.effectiveResistance, -22);
+
+  const klee = getCharacter("klee");
+  const kleeC0 = calculate(klee);
+  const kleeC6 = calculate(klee, { constellation: 6 });
+  assert.ok(kleeC6.defenseMultiplier > kleeC0.defenseMultiplier);
+  assert.ok(kleeC6.skills.some(({ id }) => id === "klee-c1-spark"));
+  assert.ok(
+    kleeC6.skills.some(({ id }) => id === "klee-c4-explosion"),
+  );
+  assert.equal(kleeC6.effectiveSettings.skillTalentLevel, 13);
+  assert.equal(kleeC6.effectiveSettings.burstTalentLevel, 13);
+
+  const albedo = getCharacter("albedo");
+  const albedoC0 = calculate(albedo);
+  const albedoC6 = calculate(albedo, { constellation: 6 });
+  assert.ok(
+    albedoC6.skills.some(({ id }) => id === "albedo-c2-burst"),
+  );
+  assert.ok(
+    skillNonCrit(albedoC6, "albedo-transient-blossom") >
+      skillNonCrit(albedoC0, "albedo-transient-blossom"),
+  );
+  assert.equal(albedoC6.effectiveSettings.skillTalentLevel, 13);
+  assert.equal(albedoC6.effectiveSettings.burstTalentLevel, 13);
+});
+
+test("applies Mona, Fischl, and Razor constellation damage", () => {
+  const mona = getCharacter("mona");
+  const monaC0 = calculate(mona);
+  const monaC6 = calculate(mona, { constellation: 6 });
+  const monaC0Vaporize = monaC0.skills[0].variants.find(
+    ({ reaction }) => reaction === "vaporize",
+  );
+  const monaC6Vaporize = monaC6.skills[0].variants.find(
+    ({ reaction }) => reaction === "vaporize",
+  );
+  assert.ok(monaC0Vaporize && monaC6Vaporize);
+  assert.ok(monaC6Vaporize.expected > monaC0Vaporize.expected);
+  assert.equal(monaC6.effectiveSettings.burstTalentLevel, 13);
+  assert.equal(monaC6.effectiveSettings.skillTalentLevel, 13);
+
+  const fischl = getCharacter("fischl");
+  const fischlC0 = calculate(fischl);
+  const fischlC6 = calculate(fischl, { constellation: 6 });
+  assert.ok(
+    skillNonCrit(fischlC6, "fischl-oz-attack") >
+      skillNonCrit(fischlC0, "fischl-oz-attack"),
+  );
+  for (const id of [
+    "fischl-c2-summon",
+    "fischl-c4-burst",
+    "fischl-c6-coordinated",
+  ]) {
+    assert.ok(fischlC6.skills.some((skill) => skill.id === id), id);
+  }
+
+  const razor = getCharacter("razor");
+  const razorC0 = calculate(razor);
+  const razorC6 = calculate(razor, { constellation: 6 });
+  assert.ok(
+    skillNonCrit(razorC6, "razor-claw") >
+      skillNonCrit(razorC0, "razor-claw"),
+  );
+  assert.ok(
+    razorC6.skills.some(({ id }) => id === "razor-c6-lightning"),
+  );
+  assert.equal(razorC6.effectiveSettings.burstTalentLevel, 13);
+  assert.equal(razorC6.effectiveSettings.skillTalentLevel, 13);
+});
+
+test("applies Varka, Prune, and Lohen constellation mechanics", () => {
+  const varka = getCharacter("varka");
+  const varkaC0 = calculate(varka);
+  const varkaC6 = calculate(varka, { constellation: 6 });
+  assert.ok(
+    skillNonCrit(varkaC6, "varka-four-winds") >
+      skillNonCrit(varkaC0, "varka-four-winds") * 2,
+  );
+  assert.ok(
+    varkaC6.skills.some(({ id }) => id === "varka-c2-followup"),
+  );
+  assert.equal(varkaC6.effectiveSettings.skillTalentLevel, 13);
+  assert.equal(varkaC6.effectiveSettings.burstTalentLevel, 13);
+
+  const prune = getCharacter("prune");
+  const pruneC0 = calculate(prune);
+  const pruneC6 = calculate(prune, { constellation: 6 });
+  assert.ok(pruneC6.panel.atk > pruneC0.panel.atk + 350);
+  assert.ok(
+    pruneC6.skills.some(({ id }) => id === "prune-c4-ricochet"),
+  );
+  assert.equal(pruneC6.effectiveSettings.skillTalentLevel, 13);
+  assert.equal(pruneC6.effectiveSettings.burstTalentLevel, 13);
+
+  const lohen = getCharacter("lohen");
+  const lohenC0 = calculate(lohen, {
+    selections: { lohenRivalry: "300" },
+  });
+  const lohenC1 = calculate(lohen, {
+    constellation: 1,
+    selections: { lohenRivalry: "300" },
+  });
+  const lohenC6 = calculate(lohen, {
+    constellation: 6,
+    selections: { lohenRivalry: "100" },
+  });
+  assert.ok(
+    skillNonCrit(lohenC1, "lohen-heart-piercer") >
+      skillNonCrit(lohenC0, "lohen-heart-piercer"),
+  );
+  assert.ok(
+    lohenC6.skills.some(({ id }) => id === "lohen-c2-evilsbane"),
+  );
+  assert.ok(
+    skillNonCrit(lohenC6, "lohen-burst") >
+      skillNonCrit(lohenC1, "lohen-burst"),
+  );
+  assert.equal(lohenC6.effectiveSettings.skillTalentLevel, 13);
+  assert.equal(lohenC6.effectiveSettings.burstTalentLevel, 13);
 });
 
 test("resolves both Hexerei artifact sets from homework and Secret Rite", () => {

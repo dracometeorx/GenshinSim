@@ -14,6 +14,7 @@ import {
   createBuildPlanSnapshot,
   legacyBuildPlansStorageKeys,
   parseBuildPlanStore,
+  serializeBuildPlanStore,
   type BuildPlanStore,
 } from "../../lib/build-plans.ts";
 import {
@@ -35,8 +36,12 @@ import {
 } from "../../lib/build-plan-runtime.ts";
 import type { BuildInput } from "../../lib/calculator.ts";
 import type { DamageSettings } from "../../lib/damage.ts";
-import { characters } from "../../lib/data/characters/index.ts";
 import {
+  characters,
+  getDefaultConstellation,
+} from "../../lib/data/characters/index.ts";
+import {
+  getDefaultWeaponRefinement,
   isWeaponCompatible,
   weapons,
 } from "../../lib/data/weapons/index.ts";
@@ -90,6 +95,7 @@ export type BuildPlansAction =
       enabled: boolean;
     }
   | { type: "create-plan"; name: string }
+  | { type: "duplicate-plan" }
   | { type: "rename-plan"; name: string }
   | { type: "delete-plan" }
   | { type: "reset-plan" }
@@ -101,6 +107,27 @@ function activePlanName(state: BuildPlansState) {
     state.store.plans.find((plan) => plan.id === state.activePlanId)
       ?.name ?? "当前方案"
   );
+}
+
+function duplicatePlanName(state: BuildPlansState) {
+  const sourceName = activePlanName(state);
+  const baseName =
+    sourceName.replace(/ 副本(?: \d+)?$/, "").trim() || "未命名方案";
+  const siblingNames = new Set(
+    state.store.plans
+      .filter(
+        (plan) =>
+          plan.snapshot.characterId === state.draft.characterId,
+      )
+      .map((plan) => plan.name),
+  );
+
+  for (let copyNumber = 1; ; copyNumber += 1) {
+    const suffix = copyNumber === 1 ? " 副本" : ` 副本 ${copyNumber}`;
+    const stem = baseName.slice(0, 80 - suffix.length).trimEnd();
+    const candidate = `${stem}${suffix}`;
+    if (!siblingNames.has(candidate)) return candidate;
+  }
 }
 
 function commitDraft(
@@ -400,6 +427,31 @@ export function buildPlansReducer(
         },
       };
     }
+    case "duplicate-plan": {
+      const sourcePlan = state.store.plans.find(
+        (plan) =>
+          plan.id === state.activePlanId &&
+          plan.snapshot.characterId === state.draft.characterId,
+      );
+      if (!sourcePlan) return state;
+      const plan = createBuildPlan(
+        createBuildPlanSnapshot(state.draft),
+        duplicatePlanName(state),
+      );
+      return {
+        ...state,
+        activePlanId: plan.id,
+        status: `已复制为「${plan.name}」`,
+        store: {
+          ...state.store,
+          activePlanIds: {
+            ...state.store.activePlanIds,
+            [state.draft.characterId]: plan.id,
+          },
+          plans: [...state.store.plans, plan],
+        },
+      };
+    }
     case "rename-plan": {
       const name = action.name.trim().slice(0, 80);
       if (!name || name === activePlanName(state)) return state;
@@ -525,7 +577,7 @@ function legacyStoreFromRaw(
       characterId: character.id,
       weaponId: weaponPreset.id,
       damageSettings,
-      constellation: 0,
+      constellation: getDefaultConstellation(character),
       team: createEmptyTeamConfiguration(),
       build: {
         ...restoredBuild,
@@ -535,7 +587,7 @@ function legacyStoreFromRaw(
           refinement: clampRefinement(
             requestedWeapon?.id === weaponPreset.id
               ? restoredBuild.weapon.refinement
-              : weaponPreset.refinement,
+              : getDefaultWeaponRefinement(weaponPreset),
           ),
         },
         element:
@@ -670,6 +722,20 @@ export function useBuildPlans() {
       update: (draft) => ({ ...draft, weaponId }),
     });
   }, []);
+  const exportPlanData = useCallback(
+    () => serializeBuildPlanStore(state.store),
+    [state.store],
+  );
+  const importPlanData = useCallback((raw: string) => {
+    const parsed = parseBuildPlanStore(raw);
+    if (!parsed) return false;
+    dispatch({
+      type: "hydrate",
+      store: normalizeBuildPlanStore(parsed),
+      status: "已导入角色方案",
+    });
+    return true;
+  }, []);
 
   return {
     ...state,
@@ -680,6 +746,8 @@ export function useBuildPlans() {
     constellation: state.draft.constellation,
     team: state.draft.team,
     plans: state.store.plans,
+    exportPlanData,
+    importPlanData,
     setBuild,
     setDamageSettings,
     setWeaponId,
@@ -717,6 +785,7 @@ export function useBuildPlans() {
       dispatch({ type: "switch-character", characterId }),
     createPlan: (name: string) =>
       dispatch({ type: "create-plan", name }),
+    duplicatePlan: () => dispatch({ type: "duplicate-plan" }),
     renamePlan: (name: string) =>
       dispatch({ type: "rename-plan", name }),
     deletePlan: () => dispatch({ type: "delete-plan" }),

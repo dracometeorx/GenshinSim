@@ -10,6 +10,7 @@ import type {
   StellarReactionType,
 } from "./damage-types.ts";
 import type { PanelEffectStat } from "./effects.ts";
+import type { PanelEffectStage } from "./effects.ts";
 
 export type TeamBuffSourceKind =
   | "constellation"
@@ -24,6 +25,7 @@ export type TeamBuffModifier =
       kind: "panel";
       stat: PanelEffectStat;
       value: number;
+      stage?: Exclude<PanelEffectStage, "conversion">;
     }
   | {
       kind: "damage";
@@ -62,6 +64,7 @@ export interface TeamBuffEvaluationContext {
     stellarConductRelated?: boolean;
     constellation: number;
     element: ElementKey;
+    baseAtk: number;
     panel: Readonly<FinalPanel>;
     settings: Readonly<DamageSettings>;
     weaponRefinement: number;
@@ -71,6 +74,7 @@ export interface TeamBuffEvaluationContext {
   target: {
     characterId: string;
     element: ElementKey;
+    weaponType: CharacterPreset["weaponType"];
     burstEnergyCost: number;
     moonsign: boolean;
     hexerei: boolean;
@@ -98,6 +102,14 @@ export interface TeamBuffDefinition {
   stackingGroup?: string;
   minConstellation?: number;
   minArtifactPieces?: 2 | 4;
+  /** Intrinsic effects stay enabled and are shown as always active. */
+  toggleable?: boolean;
+  /**
+   * Direct fixed-stat party buffs marked here are applied to teammate source
+   * panels before stat-sharing talents are evaluated. Percentage-derived
+   * sharing effects must not use this flag, which prevents recursive scaling.
+   */
+  contributesToBuffSourcePanel?: boolean;
   appliesToSelf?: boolean;
   appliesToTeammates?: boolean;
   evaluate(
@@ -121,6 +133,7 @@ export interface ResolvedTeamBuff {
   sourceName: string;
   name: string;
   description: string;
+  toggleable: boolean;
   enabled: boolean;
   modifiers: readonly TeamBuffModifier[];
 }

@@ -22,6 +22,7 @@ export const dreams: WeaponPreset = {
         name: "千夜的曙歌",
         description:
           "千夜浮梦使装备者以外的队友获得元素精通，数值随精炼等级提高。",
+        contributesToBuffSourcePanel: true,
         evaluate: ({ source }) => [
           {
             kind: "panel",
